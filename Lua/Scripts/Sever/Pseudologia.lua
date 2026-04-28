@@ -280,28 +280,29 @@ if CLIENT then
                     if msg ~= nil then
                         Networking.Send(msg)
                     end
+                end
+            end
+
+            false_evidence_key_was_down = combo_down
+        end
+    end
+
+    -- 每巡回开始重置状态：
+    -- - 重置“死亡回溯全局已触发”标记
+    -- - 清空伪证冷却表
+    -- - 重置按键边沿状态
+    Hook.Add("roundStart", "Touhou.Talents.RoundReset", function()
+        death_rewind_used_this_round = false
+        false_evidence_cooldown = setmetatable({}, { __mode = "k" })
+        false_evidence_key_was_down = false
+    end)
+
+    -- 统一心跳：遍历角色并检查天赋1触发条件
+    Hook.Add("think", "Touhou.DeathRewind.Tick", function()
+        for character in Character.CharacterList do
+            if character ~= nil and not character.Removed and not character.IsDead then
+                handle_death_rewind(character)
             end
         end
 
-        false_evidence_key_was_down = combo_down
-    end)
-end
-
--- 每巡回开始重置状态：
--- - 重置“死亡回溯全局已触发”标记
--- - 清空伪证冷却表
--- - 重置按键边沿状态
-Hook.Add("roundStart", "Touhou.Talents.RoundReset", function()
-    death_rewind_used_this_round = false
-    false_evidence_cooldown = setmetatable({}, { __mode = "k" })
-    false_evidence_key_was_down = false
-end)
-
--- 统一心跳：遍历角色并检查天赋1触发条件
-Hook.Add("think", "Touhou.DeathRewind.Tick", function()
-    for character in Character.CharacterList do
-        if character ~= nil and not character.Removed and not character.IsDead then
-            handle_death_rewind(character)
-        end
-    end
 end)
