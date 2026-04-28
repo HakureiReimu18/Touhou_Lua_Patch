@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="Simplified Chinese" translatedname="中文(简体)" nowhitespace="false">
+  <Override>
+    <entityname.Touhou_Monarch>君王</entityname.Touhou_Monarch>
+    <entitydescription.Touhou_Monarch>相传，有一位执政者愿放弃一切，将自己的信仰铸入这把枪中。枪身刻满古老的铭文，每一道刻痕都映着王权的辉光与枯萎。人们曾将它遗忘在废墟之上。重见天日时，君王已被黑暗洗礼——它不问出身，不畏威严，只守威权。
+            开启改装后，君王的下一次射击将发射定位鱼叉，鱼叉存在期间，追踪弹匣的追踪弹幕会追踪鱼叉的方向进行射击。
+            使用‖color:gui.yellow‖追踪弹匣或破坏弹匣‖end‖</entitydescription.Touhou_Monarch>
+    <entityname.Touhou_Monarch_Round01>定位鱼叉</entityname.Touhou_Monarch_Round01>
+    <entitydescription.Touhou_Monarch_Round01>击中目标后，君王的追踪弹幕将自动锁定鱼叉方向飞行</entitydescription.Touhou_Monarch_Round01>
+    <entityname.Touhou_Monarch_Ammo02>追踪弹匣</entityname.Touhou_Monarch_Ammo02>
+    <entitydescription.Touhou_Monarch_Ammo02>特殊弹匣，能发射追踪弹幕。作为‖color:gui.yellow‖君王‖end‖的弹药</entitydescription.Touhou_Monarch_Ammo02>
+    <entityname.Touhou_Monarch_Ammo03>破坏弹匣</entityname.Touhou_Monarch_Ammo03>
+    <entitydescription.Touhou_Monarch_Ammo03>常规弹匣，具备更高的杀伤力。作为‖color:gui.yellow‖君王‖end‖的弹药</entitydescription.Touhou_Monarch_Ammo03>
+    <entityname.Touhou_Monorail>‖color:255,195,255,255‖单轨‖color:end‖</entityname.Touhou_Monorail>
+    <entitydescription.Touhou_Monorail>一把来自黑洞“另一端”的武器，它身上承载着一个文明的未来，和某个生命体的过去</entitydescription.Touhou_Monorail>
+    <entityname.Touhou_Monorail_Bullet>‖color:255,195,255,255‖单轨稳定锚‖color:end‖</entityname.Touhou_Monorail_Bullet>
+    <entitydescription.Touhou_Monorail_Bullet>单轨本身极其不稳定，随时有爆炸的风险，因此每次射击都需要消耗一整个稳定锚。作为‖color:gui.yellow‖单轨‖end‖的弹药</entitydescription.Touhou_Monorail_Bullet>
+    <entityname.Touhou_Zero_Moment_Pendant>零点时刻项链</entityname.Touhou_Zero_Moment_Pendant>
+    <entitydescription.Touhou_Zero_Moment_Pendant>在零点，时间像指环般收拢；被抹去的刻度沉睡在金环里。佩戴者身上的负重（携带物品数量）越少，项链提供更多的伤害加成</entitydescription.Touhou_Zero_Moment_Pendant>
+    <afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier1>零点时刻</afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier1>
+    <afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier2>零点时刻</afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier2>
+    <afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier3>零点时刻</afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier3>
+    <afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier4>零点时刻</afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier4>
+    <afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier5>零点时刻</afflictionname.Touhou_Zero_Moment_Pendant_Hook_tier5>
+    <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier1>增加15%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier1>
+    <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier2>增加10%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier2>
+    <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier3>增加7.5%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier3>
+    <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier4>增加5%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier4>
+    <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier5>增加0%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier5>
+    <entityname.Touhou_Renamer>命名工具</entityname.Touhou_Renamer>
+    <entitydescription.Touhou_Renamer>重新命名一个物品。需要安装在潜艇上使用（右键+E键安装）</entitydescription.Touhou_Renamer>
+  </Override>
+</infotexts>

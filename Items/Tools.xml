@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Override>
+  <Items>
+    <!--零点时刻项链-->
+    <Item name="零点时刻项链" identifier="Touhou_Zero_Moment_Pendant" tags="smallitem,mobileradio" subcategory="Touhou" category="Equipment" allowasextracargo="true" cargocontaineridentifier="metalcrate" maxstacksize="1" scale="0.15">
+      <PreferredContainer primary="medcab" />
+      <Price baseprice="3000" sold="false">
+        <Price storeidentifier="merchantoutpost" minavailable="8" />
+        <Price storeidentifier="merchantcity" minavailable="8" />
+        <Price storeidentifier="merchantresearch" minavailable="8" />
+        <Price storeidentifier="merchantmilitary" minavailable="8" />
+        <Price storeidentifier="merchantmine" minavailable="8" />
+        <Price storeidentifier="Merchant_Kawasiro_Nitori" multiplier="0.7" sold="true" maxavailable="1" />
+      </Price>
+      <Sprite texture="%ModDir%/Images/Touhou_Zero_Moment_Pendant.png" sourcerect="0,0,151,200" depth="0.6" origin="0.5,0.5" />
+      <Body width="48" height="48" density="10" />
+      <Holdable slots="Any,RightHand+LeftHand" msg="ItemMsgPickUpSelect">
+        <StatusEffect type="OnBroken" target="This">
+          <Remove />
+        </StatusEffect>
+      </Holdable>
+      <Deconstruct time="1" />
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="10">
+        <RequiredSkill identifier="Touhou_Magic" level="30" />
+        <RequiredItem identifier="Seven_Elements_Alchemical_Fake" />
+        <RequiredItem identifier="organicfiber" />
+        <RequiredItem identifier="Touhou_Plant_Extract" />
+      </Fabricate>
+      <WifiComponent range="65000.0" LinkToChat="true" MinChatMessageInterval="0.0" />
+      <Wearable limbtype="Head" slots="Any,Headset" msg="ItemMsgPickUpSelect">
+        <sprite name="Headset Wearable" texture="%ModDir:2941124988%/Images/Divinggear/Yin_Yang_Orb_0.png" sourcerect="32,32,32,32" limb="Head" hidelimb="false" inheritlimbdepth="true" inheritscale="true" ignorelimbscale="true" scale="0.7" hideotherwearables="false" origin="0.5,0.5" />
+        <StatusEffect type="OnWearing" target="Character" Interval="15.0" disabledeltatime="true">
+          <LuaHook name="Touhou_Zero_Moment_Pendant_Hook" />
+        </StatusEffect>
+        <StatusEffect type="OnWearing" target="This,Character" Condition="-0.01" Interval="1.0" disabledeltatime="true">
+          <Conditional HealthPercentage="lte 85" />
+        </StatusEffect>
+      </Wearable>
+    </Item>
+    <Item name="Touhou_Renamer" identifier="Touhou_Renamer" tags="smallitem" spritecolor="255,100,100,255" subcategory="Touhou" category="Equipment" scale="0.5">
+      <InventoryIcon texture="Content/Items/Alien/AlienRuins_Items.png" sourcerect="806,103,124,100" origin="0.5,0.5" />
+      <Sprite texture="Content/Items/Alien/AlienRuins_Items.png" sourcerect="806,2,124,100" depth="0.6" />
+      <Body width="124" height="95" density="20" />
+      <Holdable slots="Any,RightHand+LeftHand" msg="ItemMsgDetach" MsgWhenDropped="ItemMsgPickupSelect" selectkey="Select" pickkey="Use" pickingtime="2.0" attachable="true" />
+      <ItemContainer capacity="1" maxstacksize="1" canbeselected="true" hideitems="true" keepopenwhenequipped="true" movableframe="true" QuickUseMovesItemsInside="false">
+        <GuiFrame relativesize="0.1,0.15" anchor="Center" style="ItemUI" />
+      </ItemContainer>
+      <CustomInterface canbeselected="true" drawhudwhenequipped="true">
+        <GuiFrame relativesize="0.25,0.2" anchor="BottomCenter" style="ItemUI" />
+        <TextBox text="Name:" propertyname="notnull" maxtextlength="32" />
+        <Button text="rename">
+          <StatusEffect type="OnUse" target="This">
+            <LuaHook name="Touhou_Renamer_Rename" />
+            <Sound file="%ModDir%/Sounds/Tools/Touhou_Renamer_Anvil.ogg" range="500" />
+          </StatusEffect>
+        </Button>
+        <Button text="reset name">
+          <StatusEffect type="OnUse" target="This">
+            <LuaHook name="Touhou_Renamer_Resetname" />
+            <Sound file="%ModDir%/Sounds/Tools/Touhou_Renamer_Anvil.ogg" range="500" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+      <LightComponent canbeselected="true" color="255,255,255,255" ison="false" />
+    </Item>
+<!--
+      &lt;!&ndash;物品信息展示器&ndash;&gt;
+      <Item name="物品信息展示器" identifier="Touhou_Item_Message_Display" tags="mediumitem" subcategory="Touhou"
+            category="Electrical" scale="0.12">
+          <Price baseprice="400" minleveldifficulty="5">
+              <Price storeidentifier="merchantoutpost" minavailable="1" sold="false"/>
+              <Price storeidentifier="merchantcity" multiplier="1" sold="true" maxavailable="1"/>
+              <Price storeidentifier="merchantresearch" multiplier="1.1" sold="true" maxavailable="1"/>
+              <Price storeidentifier="merchantmilitary" multiplier="1" sold="true" maxavailable="1"/>
+              <Price storeidentifier="merchantmine" multiplier="1.1" sold="true" maxavailable="1"/>
+              <Price storeidentifier="Merchant_Kawasiro_Nitori" multiplier="0.6" sold="false" maxavailable="1"/>
+          </Price>
+          <Deconstruct time="2">
+              <Item identifier="Magic_Material"/>
+          </Deconstruct>
+          <Fabricate suitablefabricators="fabricator" requiredtime="10" >
+              <RequiredItem identifier="Magic_Material"/>
+          </Fabricate>
+          <Sprite texture="%ModDir%/Images/Touhou_Item_Message_Display.png" sourcerect="0,0,136,200" depth="0.15" scale="0.5" origin="0.5,0.5"/>
+          <Body width="136" height="200" density="10"/>
+          <Holdable slots="Any,RightHand,LeftHand" controlpose="true" aimpos="63,0" handle1="-26,-11" msg="ItemMsgPickUpSelect"/>
+          <ItemContainer capacity="1" maxstacksize="1">
+              <Containable items="smallitem,mediumitem">
+                  <StatusEffect type="OnInserted" target="This">
+                      <LuaHook name="Touhou_Item_Message_Display_Oninsert" />
+                  </StatusEffect>
+              </Containable>
+          </ItemContainer>
+
+      </Item>-->
+  </Items>
+</Override>

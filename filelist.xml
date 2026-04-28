@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<contentpackage name="东方潜渊行动组Lua补丁" modversion="1.0.11" corepackage="False" steamworkshopid="3578631758" gameversion="1.12.7.0">
+  <Item file="%ModDir%/Items/Item.xml" />
+  <Item file="%ModDir%/Items/Tools.xml" />
+  <Text file="%ModDir%/Text/Text.xml" />
+  <Afflictions file="%ModDir%/Afflictions.xml" />
+</contentpackage>
