@@ -49,6 +49,14 @@ local function notify_local_player(message)
             GUI.AddMessage(message, Color(180, 255, 180, 255))
             return true
         end
+        if GUI ~= nil and GUI.GUI ~= nil and GUI.GUI.AddMessage ~= nil and Color ~= nil then
+            GUI.GUI.AddMessage(message, Color(180, 255, 180, 255))
+            return true
+        end
+        if GUI ~= nil and GUI.MessageBox ~= nil then
+            GUI.MessageBox("天赋提示", message)
+            return true
+        end
         return false
     end)
 
