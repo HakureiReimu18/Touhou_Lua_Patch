@@ -244,7 +244,7 @@ local function try_activate_false_evidence(character, prediction_only)
         apply_affliction(character, FALSE_EVIDENCE_BUFF, 1)
     end
 
-    notify_local_player("天赋​:codex-terminal-citation[codex-terminal-citation]{line_range_start=1 line_range_end=339 terminal_chunk_id=伪证专家】已激活", character)
+    notify_local_player("天赋【伪证专家】已激活", character)
 
     return true
 end
