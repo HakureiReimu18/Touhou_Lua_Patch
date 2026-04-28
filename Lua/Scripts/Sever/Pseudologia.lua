@@ -23,6 +23,8 @@ local TALENT_FALSE_EVIDENCE = "HiroTalent"
 -- 相关 affliction 标识符（需与 Afflictions.xml 完全一致）
 local FALSE_EVIDENCE_BUFF = "Hiro_Pseudo_Buff"
 local REQUIRED_GATE_AFFLICTION = "Hiro_Executor_Of_Justice"
+-- 网络消息标识符（客户端请求服务端触发“伪证专家”）
+local FALSE_EVIDENCE_NETMSG = "Touhou.FalseEvidence.Request"
 
 -- 伪证专家冷却：300 秒 = 5 分钟
 local FALSE_EVIDENCE_COOLDOWN = 300
@@ -273,9 +275,11 @@ if CLIENT then
             if Game.IsSingleplayer then
                 try_activate_false_evidence(Character.Controlled)
             else
-                if Networking ~= nil and Networking.Send ~= nil then
-                    Networking.Send(FALSE_EVIDENCE_NETMSG)
-                end
+                if Networking ~= nil and Networking.Start ~= nil and Networking.Send ~= nil then
+                    local msg = Networking.Start(FALSE_EVIDENCE_NETMSG)
+                    if msg ~= nil then
+                        Networking.Send(msg)
+                    end
             end
         end
 
