@@ -36,10 +36,31 @@ local death_rewind_used_this_round = false
 local false_evidence_cooldown = setmetatable({}, { __mode = "k" })
 local false_evidence_key_was_down = false
 
+-- 向对应玩家提示：
+-- - 客户端：本地 GUI 提示
+-- - 服务端：定向发聊天框给该角色所属客户端
+local function notify_local_player(message, character)
+    if SERVER then
+        local ok = pcall(function()
+            if Game ~= nil and Game.SendDirectChatMessage ~= nil
+                    and Util ~= nil and Util.FindClientCharacter ~= nil
+                    and ChatMessageType ~= nil and character ~= nil then
+                local target_client = Util.FindClientCharacter(character)
+                if target_client ~= nil then
+                    Game.SendDirectChatMessage("天赋提示", message, nil, ChatMessageType.MessageBox, target_client)
+                    return
+                end
+            end
+            error("server ui notify unavailable")
+        end)
+        if not ok then
+            print(message)
+        end
+        return
+    end
 
--- 客户端提示
-local function notify_local_player(message)
     if not CLIENT then
+        print(message)
         return
     end
 
@@ -194,7 +215,8 @@ local function handle_death_rewind(character)
 end
 
 -- 天赋3：伪证专家主动施放
-local function try_activate_false_evidence(character)
+-- prediction_only=true 时仅做本地冷却/提示，不施加实际效果（用于客户端多人模式提示）
+local function try_activate_false_evidence(character, prediction_only)
     if character == nil or character.IsDead or character.Removed then
         return
     end
@@ -210,21 +232,21 @@ local function try_activate_false_evidence(character)
     local now = Timer.GetTime()
     local next_time = false_evidence_cooldown[character] or 0
     if now < next_time then
-        if CLIENT and character == Character.Controlled then
-            local remain = next_time - now
-            notify_local_player("天赋冷却中，剩余：" .. format_cooldown_time(remain))
-        end
+        local remain = next_time - now
+        notify_local_player("天赋冷却中，剩余：" .. format_cooldown_time(remain), character)
         return
     end
 
     -- 进入冷却
     false_evidence_cooldown[character] = now + FALSE_EVIDENCE_COOLDOWN
-    -- 施加“伪证”效果（持续时间由 aff 自身 duration 控制）
-    apply_affliction(character, FALSE_EVIDENCE_BUFF, 1)
-
-    if CLIENT and character == Character.Controlled then
-        notify_local_player("天赋【伪证专家】已激活")
+    if not prediction_only then
+        -- 施加“伪证”效果（持续时间由 aff 自身 duration 控制）
+        apply_affliction(character, FALSE_EVIDENCE_BUFF, 1)
     end
+
+    notify_local_player("天赋​:codex-terminal-citation[codex-terminal-citation]{line_range_start=1 line_range_end=339 terminal_chunk_id=伪证专家】已激活", character)
+
+    return true
 end
 
 -- 多人模式：客户端只发请求，服务端执行实际施放
@@ -275,6 +297,7 @@ if CLIENT then
         end
 
         local alt_down = PlayerInput.KeyDown(keys.LeftAlt)
+                or PlayerInput.KeyDown(keys.RightAlt)
         local x_down = PlayerInput.KeyDown(keys.X)
         local combo_down = alt_down and x_down
 
@@ -282,34 +305,35 @@ if CLIENT then
             if Game.IsSingleplayer then
                 try_activate_false_evidence(Character.Controlled)
             else
-                if Networking ~= nil and Networking.Start ~= nil and Networking.Send ~= nil then
+                local predicted_ok = try_activate_false_evidence(Character.Controlled, true)
+                if predicted_ok and Networking ~= nil and Networking.Start ~= nil and Networking.Send ~= nil then
                     local msg = Networking.Start(FALSE_EVIDENCE_NETMSG)
                     if msg ~= nil then
                         Networking.Send(msg)
                     end
-                    end
                 end
             end
-
-            false_evidence_key_was_down = combo_down
-        end)
-    end
-
-    -- 每巡回开始重置状态：
-    -- - 重置“死亡回溯全局已触发”标记
-    -- - 清空伪证冷却表
-    -- - 重置按键边沿状态
-    Hook.Add("roundStart", "Touhou.Talents.RoundReset", function()
-        death_rewind_used_this_round = false
-        false_evidence_cooldown = setmetatable({}, { __mode = "k" })
-        false_evidence_key_was_down = false
-    end)
-
-    -- 统一心跳：遍历角色并检查天赋1触发条件
-    Hook.Add("think", "Touhou.DeathRewind.Tick", function()
-        for character in Character.CharacterList do
-            if character ~= nil and not character.Removed and not character.IsDead then
-                handle_death_rewind(character)
-            end
         end
+
+        false_evidence_key_was_down = combo_down
     end)
+end
+
+-- 每巡回开始重置状态：
+-- - 重置“死亡回溯全局已触发”标记
+-- - 清空伪证冷却表
+-- - 重置按键边沿状态
+Hook.Add("roundStart", "Touhou.Talents.RoundReset", function()
+    death_rewind_used_this_round = false
+    false_evidence_cooldown = setmetatable({}, { __mode = "k" })
+    false_evidence_key_was_down = false
+end)
+
+-- 统一心跳：遍历角色并检查天赋1触发条件
+Hook.Add("think", "Touhou.DeathRewind.Tick", function()
+    for character in Character.CharacterList do
+        if character ~= nil and not character.Removed and not character.IsDead then
+            handle_death_rewind(character)
+        end
+    end
+end)
