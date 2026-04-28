@@ -267,9 +267,8 @@ if CLIENT then
         end
 
         local alt_down = PlayerInput.KeyDown(keys.LeftAlt)
-                or PlayerInput.KeyDown(keys.RightAlt)
-        local c_down = PlayerInput.KeyDown(keys.X)
-        local combo_down = alt_down and c_down
+        local x_down = PlayerInput.KeyDown(keys.X)
+        local combo_down = alt_down and x_down
 
         if combo_down and not false_evidence_key_was_down then
             if Game.IsSingleplayer then
@@ -280,11 +279,12 @@ if CLIENT then
                     if msg ~= nil then
                         Networking.Send(msg)
                     end
+                    end
                 end
             end
 
             false_evidence_key_was_down = combo_down
-        end
+        end)
     end
 
     -- 每巡回开始重置状态：
@@ -304,5 +304,4 @@ if CLIENT then
                 handle_death_rewind(character)
             end
         end
-
-end)
+    end)
