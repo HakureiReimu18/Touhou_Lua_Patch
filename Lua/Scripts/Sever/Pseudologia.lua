@@ -47,7 +47,7 @@ local function notify_local_player(message, character)
                     and ChatMessageType ~= nil and character ~= nil then
                 local target_client = Util.FindClientCharacter(character)
                 if target_client ~= nil then
-                    Game.SendDirectChatMessage("天赋提示", message, nil, ChatMessageType.MessageBox, target_client)
+                    Game.SendDirectChatMessage("天赋提示", message, nil, ChatMessageType.Default, target_client)
                     return
                 end
             end
@@ -72,10 +72,6 @@ local function notify_local_player(message, character)
         end
         if GUI ~= nil and GUI.GUI ~= nil and GUI.GUI.AddMessage ~= nil and Color ~= nil then
             GUI.GUI.AddMessage(message, Color(180, 255, 180, 255))
-            return true
-        end
-        if GUI ~= nil and GUI.MessageBox ~= nil then
-            GUI.MessageBox("天赋提示", message)
             return true
         end
         return false
