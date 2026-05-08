@@ -22,6 +22,7 @@ end
 	dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Cam_Offset.lua")
 	dofile(TLE.Path.."/Lua/Scripts/Sever/Touhou_Renamer.lua")
 	dofile(TLE.Path.."/Lua/Scripts/Sever/Touhou_Monorail.lua")
+	dofile(TLE.Path.."/Lua/Scripts/Sever/Iroha_Versatile_Adaptation.lua")
 
 
 --[[ if CLIENT then
