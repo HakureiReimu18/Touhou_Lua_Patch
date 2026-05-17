@@ -1,18 +1,20 @@
 -- 彩叶装束+：多面适配天赋模式切换
 -- 条件：
 -- 1) 角色拥有 Iroha_Versatile_Adaptation affliction
--- 2) 穿着指定服装（默认 Iroha_Colorful_Leaf_Outfit_Plus）
+-- 2) 穿着指定服装（默认 Iroha_Plus）
 -- 3) 根据六项技能中的最高值，激活对应模式 affliction；并列最高可同时激活
 
 local REQUIRED_GATE_AFFLICTION = "Iroha_Versatile_Adaptation"
 local REQUIRED_OUTFIT_IDENTIFIER = "Iroha_Plus"
+local OVERRIDE_GLASSES_IDENTIFIER = "Touhou_Tsukuyomi_Stealth_VR_Glasses"
+
 
 -- 为了降低性能开销：
 -- - 每秒检查一次
 -- - 仅在状态变化时才写入 affliction
 local UPDATE_INTERVAL = 1.0
 
-local Touhou_Magic = "Touhou_Magic"
+local MAGIC_SKILL_IDENTIFIER = "Touhou_Magic"
 
 local MODE_DEFINITIONS = {
     { skill = "electrical", affliction = "Iroha_Mode_Engineer" },
@@ -20,7 +22,7 @@ local MODE_DEFINITIONS = {
     { skill = "weapons",    affliction = "Iroha_Mode_SafetyOfficer" },
     { skill = "medical",    affliction = "Iroha_Mode_Doctor" },
     { skill = "helm",       affliction = "Iroha_Mode_Captain" },
-    { skill = "weapons",    affliction = "Iroha_Mode_Creator", customskill = Touhou_Magic }
+    { skill = "weapons",    affliction = "Iroha_Mode_Creator", customskill = MAGIC_SKILL_IDENTIFIER }
 }
 
 local character_state_cache = setmetatable({}, { __mode = "k" })
@@ -51,7 +53,10 @@ local function set_affliction_strength(character, affliction_identifier, strengt
     local target_strength = strength or 0
 
     if current ~= nil then
-        if math.abs((current.Strength or 0) - target_strength) > 0.0001 then
+        -- 对激活中的模式定期续写，避免 duration 倒计时到 0 造成短暂中断。
+        if target_strength > 0 then
+            current.Strength = target_strength
+        elseif math.abs((current.Strength or 0) - target_strength) > 0.0001 then
             current.Strength = target_strength
         end
         return
@@ -68,6 +73,26 @@ local function set_affliction_strength(character, affliction_identifier, strengt
     end
 
     health.ApplyAffliction(limb, prefab.Instantiate(target_strength))
+end
+
+local function has_equipped_item(character, target_identifier)
+    if character == nil or character.Inventory == nil or target_identifier == nil then
+        return false
+    end
+
+    local inv = character.Inventory
+    local slot_types = { InvSlotType.Headset, InvSlotType.Head, InvSlotType.InnerClothes, InvSlotType.OuterClothes }
+
+    for _, slot_type in ipairs(slot_types) do
+        local item = inv.GetItemInLimbSlot(slot_type)
+        if item ~= nil and item.Prefab ~= nil and item.Prefab.Identifier ~= nil then
+            if tostring(item.Prefab.Identifier) == target_identifier then
+                return true
+            end
+        end
+    end
+
+    return false
 end
 
 local function is_wearing_required_outfit(character)
@@ -118,9 +143,14 @@ local function update_character_modes(character)
     end
 
     local active_flags = {}
-    local should_run_modes = has_affliction(character, REQUIRED_GATE_AFFLICTION) and is_wearing_required_outfit(character)
+    local has_override_glasses = has_equipped_item(character, OVERRIDE_GLASSES_IDENTIFIER)
+    local should_run_modes = has_override_glasses or (has_affliction(character, REQUIRED_GATE_AFFLICTION) and is_wearing_required_outfit(character))
 
-    if should_run_modes then
+    if has_override_glasses then
+        for _, mode in ipairs(MODE_DEFINITIONS) do
+            active_flags[mode.affliction] = true
+        end
+    elseif should_run_modes then
         local max_skill = -math.huge
         local levels = {}
 
@@ -142,21 +172,15 @@ local function update_character_modes(character)
     end
 
     local cache = character_state_cache[character] or {}
-    local changed = false
 
     for _, mode in ipairs(MODE_DEFINITIONS) do
         local aff = mode.affliction
         local should_enable = active_flags[aff] == true
-        if cache[aff] ~= should_enable then
-            changed = true
-            cache[aff] = should_enable
-        end
-    end
+        cache[aff] = should_enable
 
-    if changed then
-        for _, mode in ipairs(MODE_DEFINITIONS) do
-            set_affliction_strength(character, mode.affliction, cache[mode.affliction] and 1 or 0)
-        end
+        -- 即使状态未变化，也要定期兜底：
+        -- 若增益因 duration 到期被系统移除，这里会在下一轮自动补回。
+        set_affliction_strength(character, aff, should_enable and 1 or 0)
     end
 
     character_state_cache[character] = cache
