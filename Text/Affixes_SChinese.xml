@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="Simplified Chinese" nowhitespace="false" translatedname="中文(简体)">
+	<entityname.Touhou_Enchantingstation>附魔台</entityname.Touhou_Enchantingstation>
+	<entitydescription.Touhou_Enchantingstation>通过附魔材料赋予物品词缀，以此获取更多效果</entitydescription.Touhou_Enchantingstation>
+	<!-- Custom button texts -->
+	<enchantingstation.enchant>附魔</enchantingstation.enchant>
+	<entityname.affixes_1>附魔核心</entityname.affixes_1>
+	<entityname.affixes_2>附魔棱镜</entityname.affixes_2>
+	<entityname.affixes_3>附魔合金</entityname.affixes_3>
+
+	<!-- UI labels -->
+	<enchantingstation.input>输入</enchantingstation.input>
+	<enchantingstation.output>输出</enchantingstation.output>
+	<enchantingstation.invalidinput>附魔</enchantingstation.invalidinput>
+	<enchantingstation.empty.infotext>放入附魔材料</enchantingstation.empty.infotext>
+  
+	 <!-- Tier names -->
+	<affixtier.broken>损坏</affixtier.broken>
+	<affixtier.normal>普通</affixtier.normal>
+	<affixtier.rare>稀有</affixtier.rare>
+	<affixtier.epic>史诗</affixtier.epic>
+	<affixtier.legendary>传奇</affixtier.legendary>
+	<affixtier.special>特殊</affixtier.special>
+
+
+	<!-- ===== 词缀本地化 (简体中文) ===== -->
+	<affix.prefix.brittle>‖color:128,128,128,255‖脆弱‖color:end‖‖color:255,255,255,255‖</affix.prefix.brittle>
+	<affix.desc.brittle>伤害 -6%</affix.desc.brittle>
+	<affix.descarmor.brittle>受到的伤害 +5%</affix.descarmor.brittle>
+	<affix.prefix.dull>‖color:128,128,128,255‖钝拙‖color:end‖‖color:255,255,255,255‖</affix.prefix.dull>
+	<affix.desc.dull>伤害 -8%，攻速 -4%</affix.desc.dull>
+	<affix.prefix.rusty>‖color:128,128,128,255‖锈蚀‖color:end‖‖color:255,255,255,255‖</affix.prefix.rusty>
+	<affix.desc.rusty>消耗品消耗 +20%</affix.desc.rusty>
+	<affix.prefix.cursed>‖color:128,128,128,255‖诅咒‖color:end‖‖color:255,255,255,255‖</affix.prefix.cursed>
+	<affix.desc.cursed>伤害 -4%；使用时自身流血 +1.5、精神 +0.3</affix.desc.cursed>
+	<affix.descarmor.cursed>穿戴时持续微量流血/器官损伤/精神病</affix.descarmor.cursed>
+	<affix.prefix.sturdy>‖color:255,255,255,255‖坚固‖color:end‖‖color:255,255,255,255‖</affix.prefix.sturdy>
+	<affix.desc.sturdy>受到的伤害 -3%</affix.desc.sturdy>
+	<affix.prefix.keen>‖color:255,255,255,255‖锐利‖color:end‖‖color:255,255,255,255‖</affix.prefix.keen>
+	<affix.desc.keen>伤害 +5%</affix.desc.keen>
+	<affix.prefix.steady>‖color:255,255,255,255‖稳手‖color:end‖‖color:255,255,255,255‖</affix.prefix.steady>
+	<affix.desc.steady>射速 +6%</affix.desc.steady>
+	<affix.prefix.balanced>‖color:255,255,255,255‖均衡‖color:end‖‖color:255,255,255,255‖</affix.prefix.balanced>
+	<affix.desc.balanced>伤害 +3%，射速 +3%</affix.desc.balanced>
+	<affix.prefix.repairman>‖color:255,255,255,255‖巧匠‖color:end‖‖color:255,255,255,255‖</affix.prefix.repairman>
+	<affix.desc.repairman>修理时每秒额外恢复目标 10% 最大耐久</affix.desc.repairman>
+	<affix.prefix.insulated>‖color:255,255,255,255‖绝缘‖color:end‖‖color:255,255,255,255‖</affix.prefix.insulated>
+	<affix.desc.insulated>穿戴时眩晕 -0.1/秒</affix.desc.insulated>
+	<affix.prefix.flame>‖color:74,144,255,255‖火焰‖color:end‖‖color:255,255,255,255‖</affix.prefix.flame>
+	<affix.desc.flame>命中有 50% 概率附加 8 点烧伤（每把武器 2 秒冷却）</affix.desc.flame>
+	<affix.prefix.shock>‖color:74,144,255,255‖电击‖color:end‖‖color:255,255,255,255‖</affix.prefix.shock>
+	<affix.desc.shock>命中有 50% 概率附加 0.2 秒眩晕与 12 点电击（每把武器 3 秒冷却）</affix.desc.shock>
+	<affix.prefix.medics_touch>‖color:74,144,255,255‖医者‖color:end‖‖color:255,255,255,255‖</affix.prefix.medics_touch>
+	<affix.desc.medics_touch>使用时额外治疗 5 点内脏损伤与流血</affix.desc.medics_touch>
+	<affix.prefix.accurate>‖color:74,144,255,255‖精准‖color:end‖‖color:255,255,255,255‖</affix.prefix.accurate>
+	<affix.desc.accurate>散布 -15%</affix.desc.accurate>
+	<affix.prefix.intuitive>‖color:74,144,255,255‖顺手‖color:end‖‖color:255,255,255,255‖</affix.prefix.intuitive>
+	<affix.desc.intuitive>使用所需技能等级 -30%</affix.desc.intuitive>
+	<affix.prefix.fortified>‖color:74,144,255,255‖强化‖color:end‖‖color:255,255,255,255‖</affix.prefix.fortified>
+	<affix.desc.fortified>受到的伤害 -5%</affix.desc.fortified>
+	<affix.prefix.efficient>‖color:74,144,255,255‖节能‖color:end‖‖color:255,255,255,255‖</affix.prefix.efficient>
+	<affix.desc.efficient>消耗品消耗 -20%</affix.desc.efficient>
+	<affix.prefix.inferno>‖color:192,64,255,255‖炼狱‖color:end‖‖color:255,255,255,255‖</affix.prefix.inferno>
+	<affix.desc.inferno>伤害 +6%；命中有 50% 概率附加 14 点烧伤（2 秒冷却）</affix.desc.inferno>
+	<affix.prefix.lightning>‖color:192,64,255,255‖雷霆‖color:end‖‖color:255,255,255,255‖</affix.prefix.lightning>
+	<affix.desc.lightning>命中有 50% 概率附加 0.3 秒眩晕与 30 点电击（4 秒冷却）</affix.desc.lightning>
+	<affix.prefix.vampiric>‖color:192,64,255,255‖吸血‖color:end‖‖color:255,255,255,255‖</affix.prefix.vampiric>
+	<affix.desc.vampiric>伤害 +4%；命中附加 6 点流血并回复自身 0.5 点物理伤害（1 秒冷却）</affix.desc.vampiric>
+	<affix.prefix.guardian>‖color:192,64,255,255‖守护‖color:end‖‖color:255,255,255,255‖</affix.prefix.guardian>
+	<affix.desc.guardian>受到的伤害 -6%；穿戴时眩晕 -0.2/秒、流血 -0.1/秒</affix.desc.guardian>
+	<affix.prefix.masterwork>‖color:192,64,255,255‖大师‖color:end‖‖color:255,255,255,255‖</affix.prefix.masterwork>
+	<affix.desc.masterwork>伤害 +7%，射速 +5%</affix.desc.masterwork>
+	<affix.prefix.ragnarok>‖color:255,140,0,255‖诸神黄昏‖color:end‖‖color:255,255,255,255‖</affix.prefix.ragnarok>
+	<affix.desc.ragnarok>伤害 +14%；每 3 秒一次：50% 概率 12 烧伤+12 流血，30% 概率 0.5 秒眩晕</affix.desc.ragnarok>
+	<affix.prefix.immortal>‖color:255,140,0,255‖不朽‖color:end‖‖color:255,255,255,255‖</affix.prefix.immortal>
+	<affix.desc.immortal>受到的伤害 -8%；穿戴时缓慢持续回复内脏损伤/流血/缺氧</affix.desc.immortal>
+	<affix.prefix.abyssal>‖color:255,140,0,255‖深渊‖color:end‖‖color:255,255,255,255‖</affix.prefix.abyssal>
+	<affix.desc.abyssal>伤害 +10%，射速 +6%；命中有 50% 概率附加 10 点「梦消失」（4 秒冷却）</affix.desc.abyssal>
+	<affix.prefix.euphoria>‖color:255,64,64,255‖亢奋‖color:end‖‖color:255,255,255,255‖</affix.prefix.euphoria>
+	<affix.desc.euphoria>使用后目标 45 秒内移速 +35%，持续恢复内脏损伤并止血，附加 10 醉酒与 5 精神病</affix.desc.euphoria>
+	<affix.prefix.weightless>‖color:255,64,64,255‖失重‖color:end‖‖color:255,255,255,255‖</affix.prefix.weightless>
+	<affix.desc.weightless>穿戴时移速 +30%，受伤 -5%，眩晕积累 -0.05/s</affix.desc.weightless>
+</infotexts>

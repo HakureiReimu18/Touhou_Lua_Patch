@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Override>
   <Items>
     <!--君王-->
@@ -309,10 +309,10 @@
       <InventoryIcon texture="%ModDir%/Images/Touhou_Monorail.png" sourcerect="467,0,207,117" origin="0.5,0.5" />
       <Sprite texture="%ModDir%/Images/Touhou_Monorail.png" depth="0.4" sourcerect="0,0,467,80" />
       <Body width="190" height="50" density="10" />
-      <Holdable slots="Any,RightHand+LeftHand" controlpose="true" holdpos="40,-10" aimpos="55,5" handle1="-25,-16" handle2="26,0" holdangle="-40" msg="ItemMsgPickUpSelect">
-        <StatusEffect type="Always" target="This,Character" targetitemcomponent="RangedWeapon" interval="1">
-          <Conditional condition="lte 100" />
-          <LuaHook name="Touhou_Monorail_update" />
+      <Holdable slots="Any,RightHand+LeftHand" controlpose="true" holdpos="40,-10" aimpos="55,5" handle1="-95,-16" handle2="0,0" holdangle="-40" msg="ItemMsgPickUpSelect">
+        <!-- 每帧驱动蓄力状态机（服务端权威），逻辑见 Lua/Scripts/Sever/Touhou_Monorail.lua -->
+        <StatusEffect type="Always" target="This">
+          <LuaHook name="Touhou_Monorail_charge" />
         </StatusEffect>
       </Holdable>
       <Fabricate suitablefabricators="Magic_Altar" requiredtime="10">
@@ -323,29 +323,51 @@
         <RequiredItem identifier="Touhou_Repair_Gun" />
         <RequiredItem identifier="Touhou_Precious_Metal" amount="4" />
       </Fabricate>
-      <RangedWeapon barrelpos="80,0" reload="2" drawhudwhenequipped="true" crosshairscale="0.15">
+
+        <CustomInterface canbeselected="true" drawhudwhenequipped="true">
+            <GuiFrame relativesize="0.06,0.08" anchor="BottomLeft" absoluteoffset="20,60" relativeoffset="0,0.25" style="ItemUI" />
+            <Button text="Text.Touhou_Open_Mod">
+                <StatusEffect type="OnUse" target="This,Character" condition="0.001" delay="0.65" setvalue="true" disabledeltatime="true" checkconditionalalways="true">
+                    <Conditional Condition="gte 99.99" />
+                </StatusEffect>
+                <StatusEffect type="OnUse" target="This" settags="monorail_overclock" setvalue="true">
+                    <Conditional Condition="gte 99.99" />
+                </StatusEffect>
+                <StatusEffect type="OnUse" target="This" settags="monorail_overclock_False" delay="10.0" stackable="false" setvalue="true">
+                    <Conditional Condition="gte 99.99" />
+                </StatusEffect>
+                <StatusEffect type="OnUse" target="This" setvalue="true">
+                    <Conditional Condition="gte 99.99" />
+                    <ParticleEmitter particle="Touhou_Electric_Shock" copyentityangle="false" anglemin="0" anglemax="360" particlespersecond="3" velocitymin="100" velocitymax="150" scalemin="0.15" scalemax="0.25" colormultiplier="255,255,200,180" />
+                    <Sound file="%ModDir:2941124988%/Sounds/Weapons/Touhou_Deceit/Touhou_Deceit_Mod_Open.ogg" type="OnUse" range="500" selectionmode="Random" />
+                </StatusEffect>
+                <StatusEffect type="OnUse" target="This" holdpos="65,0" aimpos="68,10" handle1="-90,-8" handle2="24,25" holdangle="-30" disabledeltatime="true" checkconditionalalways="true" delay="0.65" maxchargetime="0.0" setvalue="true" comparison="And">
+                    <Conditional Condition="gte 99.99" />
+                    <conditional maxchargetime="eq 999" />
+                </StatusEffect>
+            </Button>
+        </CustomInterface>
+
+      <!-- maxchargetime 仅用于驱动原生蓄力音效/粒子（音调随蓄力上扬）；实际蓄力进度、松手发射与过蓄自爆由 Lua 控制（Lua/Scripts/Sever/Touhou_Monorail.lua），Lua 会在 6 秒强制发射，原生 8 秒自动开火永远不会触发 -->
+      <RangedWeapon barrelpos="80,0" reload="2" drawhudwhenequipped="true" crosshairscale="0.15" maxchargetime="8" chargesoundwinduppitchslide="0.5,2.0">
         <Crosshair texture="Content/Items/Weapons/Crosshairs.png" sourcerect="0,256,256,256" />
         <CrosshairPointer texture="Content/Items/Weapons/Crosshairs.png" sourcerect="256,256,256,256" />
         <ParticleEmitter particle="muzzleflash" particleamount="1" velocitymin="0" velocitymax="0" />
+        <ParticleEmitterCharge particle="spark" particleamount="2" anglemin="0" anglemax="360" velocitymin="10" velocitymax="60" scalemin="0.3" scalemax="0.6" colormultiplier="200,130,255,200" />
         <ChargeSound file="Content/Items/Weapons/CHAINGUN_chargeUp_loop.ogg" range="2000" />
         <Sound file="%ModDir:2941124988%/Sounds/Weapons/Touhou_Deceit/Touhou_Deceit_Attack.ogg" type="OnUse" range="3000" volume="3.5" selectionmode="Random" />
         <StatusEffect type="OnUse" target="This">
           <Explosion range="150.0" force="2.0" shockwave="false" smoke="false" flash="true" sparks="false" flames="false" underwaterbubble="false" camerashake="30.0" />
         </StatusEffect>
-        <StatusEffect type="OnSpawn" target="This" isshootable="false" delay="0.5" />
-        <StatusEffect type="OnSecondaryUse" target="This,Character" targetitemcomponent="RangedWeapon">
-          <LuaHook name="Touhou_Monorail_aiming" />
-        </StatusEffect>
-        <StatusEffect type="OnSecondaryUse" target="This" condition="0" setvalue="true" delay="3" stackable="false" checkconditionalalways="true">
-          <!--  explode after overcharging  -->
-          <Conditional condition="eq 100" />
-          <LuaHook name="Touhou_Monorail_explosion" />
-          <Explosion range="200">
+        <!-- 注意：不要再用 isshootable=false 禁用原生射击路径——蓄力音效/粒子由原生蓄力状态机驱动（联机时各客户端通过同步的按键状态本地预测），原生命名路径必须保持可用；maxchargetime=8 的蓄力门槛保证左键不会直接开火 -->
+        <!-- 过蓄自爆：Lua 将 Condition 置 0 触发本效果，1 秒后自动修复；武器被摧毁时同样会殉爆 -->
+        <StatusEffect type="OnBroken" target="This">
+          <Explosion range="200" force="5.0" camerashake="50.0">
             <Affliction identifier="internaldamage" strength="400" penetration="1.0" />
             <Affliction identifier="explosiondamage" strength="400" penetration="1.0" />
+            <Affliction identifier="stun" strength="5" />
           </Explosion>
         </StatusEffect>
-        <StatusEffect type="OnBroken" target="This" condition="101" setvalue="true" delay="5" stackable="false" />
         <RequiredItems items="Touhou_Monorail_Ammo,Touhou_Monorail_Bullet" type="Contained" msg="ItemMsgAmmoRequired" />
         <!--                <StatusEffect type="OnUse" target="Contained">
                     <Use />
@@ -361,7 +383,7 @@
       <SkillRequirementHint identifier="Touhou_Magic" level="100" />
     </Item>
     <!--单轨稳定锚-->
-    <Item name="单轨稳定锚" identifier="Touhou_Monorail_Bullet" subcategory="Touhou" category="Weapon" maxstacksize="21" color="155,125,245,255" cargocontaineridentifier="metalcrate" tags="mediumitem,Touhou_Magic_Danmu" Scale="0.2" impactsoundtag="impact_metal_light">
+    <Item name="单轨稳定锚" identifier="Touhou_Monorail_Bullet" subcategory="Touhou" category="Weapon" maxstacksize="21" color="155,125,245,255" cargocontaineridentifier="metalcrate" tags="mediumitem,Touhou_Magic_Danmu" Scale="0.1" impactsoundtag="impact_metal_light">
       <PreferredContainer primary="armcab" />
       <PreferredContainer secondary="secarmcab" />
       <Sprite texture="%ModDir%/Images/Touhou_Monorail.png" depth="0.54" sourcerect="0,107,104,108" origin="0.5,0.5" />
@@ -377,7 +399,8 @@
       </Fabricate>
       <Projectile characterusable="false" hitscan="true" removeonhit="true" sticktocharacters="true" sticktoitems="true" maxtargetstohit="3" sticktostructures="true" sticktodoors="false">
         <ParticleEmitter particle="UFO_Danmu_Laser" particleamount="1" velocitymin="0" velocitymax="0" scalemultiplier="1,0.35" colormultiplier="255,130,170,255" />
-        <Attack itemdamage="100" targetforce="5" targetimpulse="5" severlimbsprobability="5.0" penetration="1.0">
+        <!-- 基础穿甲为 0：命中时的总穿甲 = 弹药穿甲 + 武器穿甲，蓄力时 Lua 会将武器穿甲从 0 提升至 1（见 Touhou_Monorail.lua） -->
+        <Attack itemdamage="100" targetforce="5" targetimpulse="5" severlimbsprobability="5.0" penetration="0.0">
           <Affliction identifier="lacerations" strength="10" />
           <Affliction identifier="explosiondamage" strength="10" />
           <Affliction identifier="Touhou_Lost_Dream" strength="10" multiplyafflictionsbymaxvitality="true" />

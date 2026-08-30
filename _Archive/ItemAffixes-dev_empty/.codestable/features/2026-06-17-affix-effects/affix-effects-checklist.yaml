@@ -1,0 +1,80 @@
+feature: 2026-06-17-affix-effects
+created: 2026-06-17
+
+steps:
+  - action: "反射基础设施：在 Helpers 中实现 GetStatusEffectLists / AddEffectToItem / RemoveEffectFromItem，缓存 FieldInfo"
+    exit_signal: "编译通过，启动游戏无崩溃，调试日志确认能读取到 statusEffectLists 字典引用"
+    status: done
+
+  - action: "ApplyAffix 集成：修改 ApplyAffix 添加效果注入 + 追踪逻辑，新增 ApplyAffixEffects / RemoveAffixEffects 方法，新增 AffixEffectTracker 静态字段"
+    exit_signal: "/enchant 后 /listaffixes 显示词缀，OnActive 类型效果持续触发可观察"
+    status: done
+
+  - action: "ItemLoadPatch 统一：将 Postfix 中直接创建 AffixData 的代码块替换为调用 Mod.ApplyAffix"
+    exit_signal: "存档→重启→加载，词缀前缀 + 效果均生效"
+    status: done
+
+  - action: "RemoveAffix 清理：修改 RemoveAffix 命令，调用 RemoveAffixEffects 清理效果 + OnRoundEnd 中追加 AffixEffectTracker.Clear()"
+    exit_signal: "/removeaffix 后效果停止触发，/listaffixes 中条目消失"
+    status: done
+
+  - action: "Affixes.xml 示例：为 2-3 个词缀添加 <StatusEffect> 子元素，验证端到端管线"
+    exit_signal: "/enchant 指定词缀后，游戏内可观察效果数值变化"
+    status: done
+
+checks:
+  - item: "附魔注入效果：/enchant <含StatusEffect的词缀> 后物品使用时触发对应效果"
+    source: 验收场景
+    status: passed
+
+  - item: "效果叠加：已有原生效的物品附魔后两种效果同时触发"
+    source: 验收场景
+    status: passed
+
+  - item: "效果恢复：附魔后存档→退出→重进，效果仍生效"
+    source: 验收场景
+    status: passed
+
+  - item: "移除效果清理：/removeaffix 后效果停止"
+    source: 验收场景
+    status: passed
+
+  - item: "空效果词缀兼容：无 <StatusEffect> 的旧词缀无报错无崩溃"
+    source: 验收场景
+    status: passed
+
+  - item: "替换词缀不叠加：重复附魔替换旧效果而非累加"
+    source: 验收场景
+    status: passed
+
+  - item: "不修改 Barotrauma 核心程序集（仅 Harmony Prefix/Postfix + 反射）"
+    source: 范围守护
+    status: passed
+
+  - item: "不新增 ActionType 枚举值"
+    source: 范围守护
+    status: passed
+
+  - item: "Affixes.xml 示例不超过 3 个词缀的 StatusEffect 子元素"
+    source: 范围守护
+    status: passed
+
+  - item: "AffixDef.Effects 正确从 XML <StatusEffect> 子元素加载"
+    source: 名词契约
+    status: passed
+
+  - item: "AffixEffectTracker 正确记录每物品注入的效果引用"
+    source: 名词契约
+    status: passed
+
+  - item: "ApplyAffix 幂等：tag 追加前检查 !item.Tags.Contains(affixTag)"
+    source: 编排骨架
+    status: passed
+
+  - item: "单个效果加载失败不阻塞其余效果注入"
+    source: 流程级约束
+    status: passed
+
+  - item: "OnRoundEnd 清理 AffixEffectTracker"
+    source: 挂载点
+    status: passed

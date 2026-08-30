@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Override>
+  <Items>
+    <!--
+      自由料理台（自由搭配烹饪设备）
+      玩家放入任意食材，由 Lua 按风味画像打分决定产出，逻辑见 Lua/Scripts/Sever/Cook.lua。
+      组件契约（Cook.lua 依赖，改动需同步）：
+        - 第 1 个 ItemContainer = 食材输入栏，即 OwnInventory（烹饪中被 Lua 锁定）
+        - 第 2 个 ItemContainer = 输出槽（不锁定，产出生成到这里，玩家直接取用）
+        - LightComponent.IsOn    = 烹饪状态标志（Lua 置位，下方归零逻辑复位）
+        - MemoryComponent.Value  = 本锅产出 identifier
+        - PowerContainer.Charge  = 烹饪倒计时（Lua 启动时写入秒数，XML 每秒扣 1）
+        - 第 1 个 CustomInterface = 料理/取消按钮（Labels 由 Lua 切换），必须排在分析界面之前
+      注：按钮 text 直接写文本键名（主模组惯例，如 uilabel.*），不要加 "Text." 前缀（不解析）。
+    -->
+    <Item name="自由料理台" identifier="Touhou_Cooktop03" tags="Touhou_Cooktop,donttakeitems,dontsellitems" subcategory="Food_Ingredients"
+          category="Machine" linkable="true" allowedlinks="Touhou_Ingredient_Refrigerator,medcabinet,locker,toxcontainer" scale="0.35"
+          description="" damagedbyexplosions="true" GrabWhenSelected="true" explosiondamagemultiplier="0.2">
+      <Price baseprice="800">
+        <Price storeidentifier="merchantoutpost" multiplier="1.1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantcity" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantresearch" multiplier="1.1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantmilitary" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantmine" multiplier="1.1" sold="true" maxavailable="1" />
+      </Price>
+      <Deconstruct time="5">
+        <Item identifier="Touhou_Base_Metal" />
+        <Item identifier="carbon" amount="2" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="fabricator" requiredtime="20">
+        <RequiredSkill identifier="electrical" level="40" />
+        <RequiredSkill identifier="mechanical" level="40" />
+        <RequiredItem identifier="Touhou_Base_Metal" amount="2" />
+        <RequiredItem identifier="carbon" amount="4" />
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+      </Fabricate>
+      <Body width="160" height="160" density="30" />
+      <Holdable selectkey="Select" pickkey="Use" slots="RightHand+LeftHand" PickingTime="10.0" aimpos="65,-10" handle1="0,0" attachable="true"
+                aimable="false">
+        <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.75" setvalue="true" />
+      </Holdable>
+
+      <UpgradePreviewSprite scale="2.5" texture="Content/UI/WeaponUI.png" sourcerect="256,960,64,64" origin="0.5,0.45" />
+      <!-- 复用主模组加工台贴图，暖色调色区分（无新美术） -->
+      <Sprite texture="%ModDir:2941124988%/Images/General_Items/Touhou_Cooktop01.png" depth="0.8" sourcerect="0,0,360,220" origin="0.5,0.5"
+              spritecolor="255,210,170,255" />
+      <InventoryIcon texture="%ModDir:2941124988%/Images/General_Items/Touhou_Cooktop01.png" sourcerect="0,0,360,220" origin="0.5,0.5"
+                     spritecolor="255,210,170,255" />
+
+      <!-- 烹饪状态灯：IsOn=正在烹饪，powerconsumption=0 无需电网供电 -->
+      <LightComponent range="100.0" lightcolor="255,150,50,255" powerconsumption="0" IsOn="false" castshadows="false" alphablend="false"
+                      allowingameediting="false" canbeselected="false">
+        <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
+      </LightComponent>
+
+      <!-- 存储本锅产出 identifier（Lua 读写） -->
+      <MemoryComponent canbeselected="false" allowingameediting="false" />
+
+      <!-- 烹饪计时器：Charge=剩余秒数（capacity 覆盖最长配方 120s 并留余量），maxrechargespeed=0 禁止回充 -->
+      <PowerContainer capacity="300" charge="0" maxrechargespeed="0" rechargespeed="0" canbeselected="false" allowingameediting="false"
+                      VulnerableToEMP="false">
+        <!-- 烹饪中每秒扣 1（计时模式先例：主模组 TouhouMachine.xml） -->
+        <StatusEffect type="OnActive" target="This" interval="1" charge="-1" stackable="false" disabledeltatime="true" comparison="And">
+          <Conditional Charge="gt 0" />
+          <Conditional targetitemcomponent="LightComponent" IsOn="eq true" />
+        </StatusEffect>
+        <!-- 计时归零且仍在烹饪 → 关灯并触发完成 hook（Lua 负责解锁食材栏、消耗食材、生成产出；
+             取消烹饪时 Lua 已清空配方与 Charge，end hook 会直接返回，不产生消耗） -->
+        <StatusEffect type="OnActive" target="This" targetitemcomponent="LightComponent" IsOn="false" setvalue="true" interval="0.25"
+                      stackable="false" disabledeltatime="true" comparison="And">
+          <Conditional targetitemcomponent="PowerContainer" Charge="lte 0" />
+          <Conditional targetitemcomponent="LightComponent" IsOn="eq true" />
+          <LuaHook name="Touhou.Cooktop.end" />
+        </StatusEffect>
+      </PowerContainer>
+
+      <!-- 料理/取消按钮（GetComponentString 取第一个 CustomInterface，本界面必须排在分析界面之前）
+           GuiFrame 位置为初值，实机微调 -->
+      <CustomInterface canbeselected="true" allowuioverlap="false">
+        <GuiFrame relativesize="0.10,0.05" anchor="TopCenter" relativeoffset="-0.11,0.24" style="ItemUI" />
+        <Button text="touhou.cooktop.cook">
+          <StatusEffect type="OnUse" target="This">
+            <LuaHook name="Touhou.Cooktop.start" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+
+      <!-- 风味分析按钮（独立界面，避免 Labels 切换波及）GuiFrame 位置为初值，实机微调 -->
+      <CustomInterface canbeselected="true" allowuioverlap="true">
+        <GuiFrame relativesize="0.10,0.05" anchor="TopCenter" relativeoffset="0.11,0.24" style="ItemUI" />
+        <Button text="touhou.cooktop.analyze">
+          <StatusEffect type="OnUse" target="This">
+            <LuaHook name="Touhou.Cooktop.analyze" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+
+      <!-- 食材输入栏：第 1 个容器即 OwnInventory；接受食材与料理（料理也可回锅参与搭配） -->
+      <ItemContainer capacity="6" canbeselected="true" hideitems="true" slotsperrow="6" uilabel="" allowuioverlap="false">
+        <Containable items="Touhou_Food_Ingredients,Touhou_Cuisine" />
+      </ItemContainer>
+
+      <!-- 输出槽：第 2 个容器，烹饪产出生成到这里（Lua 按定义顺序取第 2 个 ItemContainer）；
+           不锁定，玩家直接取用。GuiFrame 位置为初值，实机微调 -->
+      <ItemContainer capacity="2" canbeselected="true" hideitems="true" slotsperrow="2" uilabel="" allowuioverlap="true">
+        <GuiFrame relativesize="0.20,0.08" anchor="TopCenter" relativeoffset="0.0,0.13" style="ItemUI" />
+      </ItemContainer>
+    </Item>
+  </Items>
+</Override>

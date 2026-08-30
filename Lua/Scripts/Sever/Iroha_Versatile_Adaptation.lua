@@ -8,10 +8,9 @@ local REQUIRED_GATE_AFFLICTION = "Iroha_Versatile_Adaptation"
 local REQUIRED_OUTFIT_IDENTIFIER = "Iroha_Plus"
 local OVERRIDE_GLASSES_IDENTIFIER = "Touhou_Tsukuyomi_Stealth_VR_Glasses"
 
-
 -- 为了降低性能开销：
--- - 每秒检查一次
--- - 仅在状态变化时才写入 affliction
+-- - 间隔检测
+-- - 持续续写激活中的 aff，避免 duration 到期导致短暂中断
 local UPDATE_INTERVAL = 1.0
 
 local MAGIC_SKILL_IDENTIFIER = "Touhou_Magic"
@@ -32,6 +31,7 @@ local function has_affliction(character, affliction_identifier)
     if character == nil or character.CharacterHealth == nil then
         return false
     end
+
     local affliction = character.CharacterHealth.GetAffliction(affliction_identifier)
     return affliction ~= nil and affliction.Strength ~= nil and affliction.Strength > 0
 end
@@ -40,6 +40,7 @@ local function get_main_limb(character)
     if character == nil or character.AnimController == nil then
         return nil
     end
+
     return character.AnimController.MainLimb or character.AnimController.GetLimb(LimbType.Torso)
 end
 
@@ -53,7 +54,7 @@ local function set_affliction_strength(character, affliction_identifier, strengt
     local target_strength = strength or 0
 
     if current ~= nil then
-        -- 对激活中的模式定期续写，避免 duration 倒计时到 0 造成短暂中断。
+        -- 对激活中的模式定期续写，避免 duration 倒计时到 0 造成短暂中断
         if target_strength > 0 then
             current.Strength = target_strength
         elseif math.abs((current.Strength or 0) - target_strength) > 0.0001 then
@@ -143,8 +144,10 @@ local function update_character_modes(character)
     end
 
     local active_flags = {}
-    local has_override_glasses = has_equipped_item(character, OVERRIDE_GLASSES_IDENTIFIER)
-    local should_run_modes = has_override_glasses or (has_affliction(character, REQUIRED_GATE_AFFLICTION) and is_wearing_required_outfit(character))
+    local has_gate = has_affliction(character, REQUIRED_GATE_AFFLICTION)
+
+    local has_override_glasses = has_gate and has_equipped_item(character, OVERRIDE_GLASSES_IDENTIFIER)
+    local should_run_modes = has_override_glasses or (has_gate and is_wearing_required_outfit(character))
 
     if has_override_glasses then
         for _, mode in ipairs(MODE_DEFINITIONS) do
@@ -178,8 +181,6 @@ local function update_character_modes(character)
         local should_enable = active_flags[aff] == true
         cache[aff] = should_enable
 
-        -- 即使状态未变化，也要定期兜底：
-        -- 若增益因 duration 到期被系统移除，这里会在下一轮自动补回。
         set_affliction_strength(character, aff, should_enable and 1 or 0)
     end
 
@@ -187,6 +188,10 @@ local function update_character_modes(character)
 end
 
 Hook.Add("think", "Iroha.VersatileAdaptation.Update", function(delta_time)
+    -- 服务端权威：联机客户端不执行（作为主机时本脚本会在两个 Lua 环境各加载一次，
+    -- 客户端重复施加 affliction 既浪费性能又与服务端同步冲突）
+    if CLIENT and not Game.IsSingleplayer then return end
+
     elapsed = elapsed + (delta_time or 0)
     if elapsed < UPDATE_INTERVAL then
         return

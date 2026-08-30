@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<contentpackage name="ItemAffixes" modversion="1.0.0" corepackage="false" gameversion="1.13.4.0">
+  <Item file="%ModDir%/Items/EnchantingStation.xml" />
+  <Text file="%ModDir%/Texts/Simplified Chinese.xml" />
+  <CSharp file="%ModDir%/CSharp/Shared/Mod.cs" />
+  <CSharp file="%ModDir%/CSharp/Shared/HarmonyPatches.cs" />
+</contentpackage>

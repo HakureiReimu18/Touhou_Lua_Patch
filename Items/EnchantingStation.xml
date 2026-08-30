@@ -1,0 +1,183 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Items>
+  <Item
+    name=""
+    identifier="Touhou_Enchantingstation"
+    tags="enchantingstation,donttakeitems,dontsellitems"
+    category="Machine"
+    subcategory="Touhou"
+    linkable="true"
+    allowedlinks="fabricator,deconstructor,locker"
+    description=""
+    scale="0.5"
+    damagedbyexplosions="true"
+    GrabWhenSelected="true"
+    explosiondamagemultiplier="0.2"
+    isshootable="true">
+
+    <Price baseprice="500">
+      <Price storeidentifier="merchantoutpost" multiplier="1.1" sold="true" maxavailable="1" />
+      <Price storeidentifier="merchantcity" multiplier="1.0" sold="true" maxavailable="1" />
+      <Price storeidentifier="merchantresearch" multiplier="1.1" sold="true" maxavailable="1" />
+      <Price storeidentifier="merchantmilitary" multiplier="1.0" sold="true" maxavailable="1" />
+      <Price storeidentifier="merchantmine" multiplier="1.1" sold="true" maxavailable="1" />
+    </Price>
+
+    <Deconstruct time="5">
+      <Item identifier="steel" amount="2" />
+      <Item identifier="fpgacircuit" amount="1" />
+      <Item identifier="plastic" amount="1" />
+    </Deconstruct>
+
+    <Fabricate suitablefabricators="fabricator" requiredtime="15">
+      <RequiredSkill identifier="Touhou_Magic" level="45" />
+      <RequiredSkill identifier="mechanical" level="40" />
+      <RequiredItem identifier="steel" amount="3" />
+      <RequiredItem identifier="fpgacircuit" amount="2" />
+      <RequiredItem identifier="Magic_Material" amount="2" />
+    </Fabricate>
+
+    <Body width="160" height="100" density="30" />
+
+    <Holdable selectkey="Select" pickkey="Use" slots="RightHand+LeftHand" PickingTime="8.0" aimpos="65,-10" handle1="0,0" attachable="true" aimable="true">
+      <RequiredItem items="screwdriver" type="Equipped" requireempty="true" IgnoreInEditor="false" />
+      <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.70" setvalue="true" />
+    </Holdable>
+
+    <UpgradePreviewSprite scale="2.5" texture="Content/UI/WeaponUI.png" sourcerect="256,960,64,64" origin="0.5,0.45" />
+
+    <Sprite texture="%ModDir%/Images/Touhou_Enchantingstation.png" sourcerect="0,0,200,196" depth="0.8" />
+
+    <LightComponent range="60.0" lightcolor="170,120,255,150" powerconsumption="5" IsOn="true" castshadows="false" alphablend="false" allowingameediting="false">
+      <sprite texture="Content/Items/Command/navigatorLights.png" depth="0.025" sourcerect="688,339,336,288" alpha="1.0" />
+      <IsActiveConditional conditionpercentage="gt 0" />
+    </LightComponent>
+	  
+    <Deconstructor canbeselected="true" showoutput="false" powerconsumption="0.0" deconstructitemssimultaneously="true" msg="ItemMsgInteractSelect" DeconstructionSpeed="6.0" activatebuttontext="enchantingstation.invalidinput" infotext="enchantingstation.empty.infotext" infoareawidth="0.7">
+      <GuiFrame relativesize="0.35,0.48" style="ItemUI" anchor="Center" />
+      <sound file="Content/Items/Fabricators/Deconstructor.ogg" type="OnActive" range="1000.0" loop="true" />
+      <poweronsound file="Content/Items/PowerOnLight3.ogg" range="300" loop="false" />
+      <StatusEffect type="InWater" target="This" condition="-0.5" />
+    </Deconstructor>
+
+    <ConnectionPanel selectkey="Action" canbeselected="true" hudpriority="10" msg="ItemMsgRewireScrewdriver">
+      <GuiFrame relativesize="0.2,0.32" minsize="400,350" maxsize="480,420" anchor="Center" style="ConnectionPanel" />
+      <RequiredSkill identifier="electrical" level="55" />
+      <StatusEffect type="OnFailure" target="Character" targetlimbs="LeftHand,RightHand" AllowWhenBroken="true">
+        <Sound file="Content/Sounds/Damage/Electrocution1.ogg" range="1000" />
+        <Explosion range="100.0" force="1.0" flames="false" shockwave="false" sparks="true" underwaterbubble="false" />
+        <Affliction identifier="stun" strength="4" probability="0.5" />
+        <Affliction identifier="electricshock" strength="60" />
+        <Affliction identifier="burn" strength="5" />
+        <ParticleEmitter particle="ElectricShock" DistanceMin="10" DistanceMax="25" ParticleAmount="5" ScaleMin="0.1" ScaleMax="0.12" />
+      </StatusEffect>
+      <RequiredItem items="screwdriver" type="Equipped" />
+      <input name="toggle" displayname="connection.togglestate" />
+      <output name="condition_out" displayname="connection.conditionout" />
+    </ConnectionPanel>
+
+    <Repairable selectkey="Action" header="mechanicalrepairsheader" deteriorationspeed="0.50" mindeteriorationdelay="60" maxdeteriorationdelay="120" RepairThreshold="80" fixDurationHighSkill="15" fixDurationLowSkill="35" msg="ItemMsgRepairWrench" hudpriority="10">
+      <GuiFrame relativesize="0.2,0.16" minsize="400,180" maxsize="480,280" anchor="Center" relativeoffset="0.0,0.27" style="ItemUI" />
+      <RequiredSkill identifier="mechanical" level="70" />
+      <RequiredItem items="wrench" type="Equipped" />
+      <ParticleEmitter particle="damagebubbles" particlespersecond="2" scalemin="0.5" scalemax="1.5" anglemax="360" velocitymin="-10" velocitymax="10" mincondition="0.0" maxcondition="50.0" />
+      <ParticleEmitter particle="smoke" particlespersecond="2" scalemin="1" scalemax="2.5" anglemax="360" velocitymin="-50" velocitymax="50" mincondition="15.0" maxcondition="50.0" />
+      <ParticleEmitter particle="heavysmoke" particlespersecond="2" scalemin="1.0" scalemax="2.5" anglemax="360" distancemax="60" mincondition="0.0" maxcondition="15.0" />
+      <StatusEffect type="OnFailure" target="Character" targetlimbs="LeftHand,RightHand" AllowWhenBroken="true">
+        <Sound file="Content/Items/MechanicalRepairFail.ogg" range="1000" />
+        <Affliction identifier="lacerations" strength="5" />
+        <Affliction identifier="stun" strength="4" />
+      </StatusEffect>
+    </Repairable>
+
+    <ItemContainer capacity="2" maxstacksize="1" canbeselected="true" hideitems="true" hudpos="0.6,0.4" slotsperrow="2" uilabel="enchantingstation.input" allowuioverlap="true">
+      <Containable items="weapon,tool,equipment,diving,medical,smallitem" />
+    </ItemContainer>
+
+    <ItemContainer capacity="3" maxstacksize="1" canbeselected="true" hideitems="true" hudpos="0.5,0.65" slotsperrow="3" uilabel="enchantingstation.output" allowuioverlap="true">
+      <Containable items="weapon,tool,equipment,diving,medical,smallitem" />
+    </ItemContainer>
+  </Item>
+    
+	<Item name="" identifier="affixes_1" category="Material" subcategory="Touhou" Tags="smallitem,affixes_material_1" maxstacksize="32" maxstacksizecharacterinventory="8" canbepicked="true" description="" cargocontaineridentifier="metalcrate" scale="0.5" impactsoundtag="impact_metal_light">
+		<PreferredContainer primary="mineralcab" secondary="storagecab" />
+        <PreferredContainer primary="ruinstorage,ruinstoragesmall" amount="2" spawnprobability="0.05"/>
+        <PreferredContainer primary="ruinstoragelarge" minamount="1" maxamount="3" spawnprobability="0.1"/>
+        <PreferredContainer primary="ruintreasure" minamount="2" maxamount="3" spawnprobability="0.12"/>
+		<Price baseprice="1000" sold="false">
+			<Price storeidentifier="merchantoutpost" multiplier="2.1" />
+			<Price storeidentifier="merchantcity" multiplier="2.25" />
+			<Price storeidentifier="merchantresearch" multiplier="2.1" />
+			<Price storeidentifier="merchantmilitary" multiplier="2.1" />
+			<Price storeidentifier="merchantmine" multiplier="1.75" />
+            <Price storeidentifier="Merchant_Kawasiro_Nitori" multiplier="1.2" maxavailable="3" sold="true"/>
+		</Price>
+		<Deconstruct time="5">
+			<Item identifier="iron" />
+		</Deconstruct>
+		<!-- TODO: sprite and inventory icon -->
+		<LightComponent lightcolor="160,175,187,225" range="100" powerconsumption="0" flicker="0.0" flickerspeed="0.5" pulsefrequency="0.4" pulseamount="0" ison="true" drawbehindsubs="true">
+			<LightTexture texture="Content/Lights/pointlight_rays.png" origin="0.5,0.5" />
+		</LightComponent>
+		<ContainedSprite texture="%ModDir%/Items/affixes_1.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Sprite texture="%ModDir%/Items/affixes_1.png" depth="0.3" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Body radius="40" width="20" density="25" />
+		<Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgUsePlasmaCutter" handle1="0,0" pickingtime="5.0" attachable="true" reattachable="false" />
+	</Item>
+	<Item name="" identifier="affixes_2" category="Material" subcategory="Touhou" Tags="smallitem,affixes_material_2" maxstacksize="32" maxstacksizecharacterinventory="8" canbepicked="true" description="" cargocontaineridentifier="metalcrate" scale="0.5" impactsoundtag="impact_metal_light">
+		<PreferredContainer primary="mineralcab" secondary="storagecab" />
+		<Price baseprice="100" sold="false">
+			<Price storeidentifier="merchantoutpost" multiplier="1.1" />
+			<Price storeidentifier="merchantcity" multiplier="1.25" />
+			<Price storeidentifier="merchantresearch" />
+			<Price storeidentifier="merchantmilitary" />
+			<Price storeidentifier="merchantmine" multiplier="0.75" />
+		</Price>
+		<Deconstruct time="5">
+			<Item identifier="iron" />
+		</Deconstruct>
+        <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" amount="2">
+            <RequiredSkill identifier="Touhou_Magic" level="20"/>
+            <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+            <RequiredItem identifier="iron" amount="2" />
+            <RequiredItem identifier="Touhou_Base_Metal" />
+            <RequiredItem identifier="Magic_Material" amount="3" />
+        </Fabricate>
+		<!-- TODO: sprite and inventory icon -->
+		<LightComponent lightcolor="160,175,187,225" range="100" powerconsumption="0" flicker="0.0" flickerspeed="0.5" pulsefrequency="0.4" pulseamount="0" ison="true" drawbehindsubs="true">
+			<LightTexture texture="Content/Lights/pointlight_rays.png" origin="0.5,0.5" />
+		</LightComponent>
+		<ContainedSprite texture="%ModDir%/Items/affixes_2.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Sprite texture="%ModDir%/Items/affixes_2.png" depth="0.3" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Body radius="40" width="20" density="25" />
+		<Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgUsePlasmaCutter" handle1="0,0" pickingtime="5.0" attachable="true" reattachable="false" />
+	</Item>
+	<Item name="" identifier="affixes_3" category="Material" subcategory="Touhou" Tags="smallitem,affixes_material_3" maxstacksize="32" maxstacksizecharacterinventory="8" canbepicked="true" description="" cargocontaineridentifier="metalcrate" scale="0.5" impactsoundtag="impact_metal_light">
+		<PreferredContainer primary="mineralcab" secondary="storagecab" />
+		<Price baseprice="25" sold="false">
+			<Price storeidentifier="merchantoutpost" multiplier="1.1" />
+			<Price storeidentifier="merchantcity" multiplier="1.25" />
+			<Price storeidentifier="merchantresearch" />
+			<Price storeidentifier="merchantmilitary" />
+			<Price storeidentifier="merchantmine" multiplier="0.75" />
+		</Price>
+		<Deconstruct time="5">
+			<Item identifier="iron" />
+		</Deconstruct>
+        <Fabricate suitablefabricators="Magic_Altar" requiredtime="3">
+            <RequiredSkill identifier="Touhou_Magic" level="10"/>
+            <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+            <RequiredItem identifier="iron" amount="2" />
+            <RequiredItem identifier="silicon" amount="2" />
+            <RequiredItem identifier="carbon" amount="2" />
+        </Fabricate>
+		<!-- TODO: sprite and inventory icon -->
+		<LightComponent lightcolor="160,175,187,225" range="100" powerconsumption="0" flicker="0.0" flickerspeed="0.5" pulsefrequency="0.4" pulseamount="0" ison="true" drawbehindsubs="true">
+			<LightTexture texture="Content/Lights/pointlight_rays.png" origin="0.5,0.5" />
+		</LightComponent>
+		<ContainedSprite texture="%ModDir%/Items/affixes_3.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Sprite texture="%ModDir%/Items/affixes_3.png" depth="0.3" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Body radius="40" width="20" density="25" />
+		<Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgUsePlasmaCutter" handle1="0,0" pickingtime="5.0" attachable="true" reattachable="false" />
+	</Item>
+</Items>

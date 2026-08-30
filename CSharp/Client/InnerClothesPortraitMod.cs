@@ -1,6 +1,7 @@
 using System;
 using Barotrauma;
 using Barotrauma.Extensions;
+using Barotrauma.LuaCs;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;

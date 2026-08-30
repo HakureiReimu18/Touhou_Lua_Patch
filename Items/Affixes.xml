@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ItemAffixes>
+  <!--
+    词缀平衡版 v4.1
+    词缀属性（代码层实现，见 Mod.cs / HarmonyPatches.cs）：
+      damagemult          伤害倍率（近战乘 Attack.DamageMultiplier，枪械乘投射物 damageMultiplier，常驻不受冷却影响）
+      fireratemult        射速/挥速倍率（Reload /= 倍率）
+      damagetakenmult     穿戴者受到攻击伤害的倍率（>1 易伤 / <1 减伤，近战与子弹通用）
+      fuelconsumemult     工具耗材消耗倍率（按引擎实际消耗量的百分比增减）
+      repairbonuspercent  修理成功时按目标最大耐久额外恢复的比例/秒
+      spreadmult          枪械散布倍率（RangedWeapon.Spread/UnskilledSpread × 倍率，<1 更精准）
+      skillreqmult        使用所需技能等级倍率（组件实例 RequiredSkills.Level × 倍率，不动 prefab 共享数据）
+    命中特效：
+      OnUse = 近战命中（引擎触发），OnImpact = 枪械命中（投射物补丁从发射器读取触发）
+      interval = 冷却秒数（按每把武器独立计时），概率写在 Affliction 子元素上
+      肢体类 affliction（burn/bleeding/internaldamage）均带 dividebylimbcount，防止按肢体数放大
+  -->
+
+  <!-- === BROKEN (灰色 128,128,128) === -->
+  <!-- 武器：伤害 ×0.94；护甲：穿戴者受伤 +5% -->
+  <Affix identifier="brittle" tier="Broken" nameprefix="‖color:128,128,128,255‖脆弱‖color:end‖‖color:255,255,255,255‖" applicable="weapon,armor" damagemult="0.94" damagetakenmult="1.05" desc="伤害 -6%" descarmor="受到的伤害 +5%" />
+  <Affix identifier="dull" tier="Broken" nameprefix="‖color:128,128,128,255‖钝拙‖color:end‖‖color:255,255,255,255‖" applicable="meleeweapon" damagemult="0.92" fireratemult="0.96" desc="伤害 -8%，挥速 -4%" />
+  <!-- 耗材消耗 +20%（按实际消耗量比例） -->
+  <Affix identifier="rusty" tier="Broken" nameprefix="‖color:128,128,128,255‖锈蚀‖color:end‖‖color:255,255,255,255‖" applicable="tool" fuelconsumemult="1.2" desc="耗材消耗 +20%" />
+  <Affix identifier="cursed" tier="Broken" nameprefix="‖color:128,128,128,255‖诅咒‖color:end‖‖color:255,255,255,255‖" applicable="all" damagemult="0.96" desc="伤害 -4%；使用时自身流血 +0.5、精神 +0.3" descarmor="穿戴时持续微量流血/内脏损伤/精神紧张">
+    <!-- 使用：自身流血 +1.5、精神病 +0.3 -->
+    <StatusEffect type="OnUse" target="Character">
+      <Affliction identifier="bleeding" strength="1.5" dividebylimbcount="true" />
+      <Affliction identifier="psychosis" strength="0.3" />
+    </StatusEffect>
+    <!-- 穿戴：流血 +0.05/s、内脏损伤 +0.05/s、精神病 +0.15/s -->
+    <StatusEffect type="OnWearing" target="Character">
+      <Affliction identifier="bleeding" strength="0.05" dividebylimbcount="true" />
+      <Affliction identifier="organdamage" strength="0.05" dividebylimbcount="true" />
+      <Affliction identifier="psychosis" strength="0.15" />
+    </StatusEffect>
+  </Affix>
+
+  <!-- === NORMAL === -->
+  <!-- 护甲：穿戴者受伤 -3% -->
+  <Affix identifier="sturdy" tier="Normal" nameprefix="‖color:255,255,255,255‖坚固‖color:end‖‖color:255,255,255,255‖" applicable="armor" damagetakenmult="0.97" desc="受到的伤害 -3%" />
+  <Affix identifier="keen" tier="Normal" nameprefix="‖color:255,255,255,255‖锐利‖color:end‖‖color:255,255,255,255‖" applicable="meleeweapon" damagemult="1.05" desc="伤害 +5%" />
+  <Affix identifier="steady" tier="Normal" nameprefix="‖color:255,255,255,255‖稳手‖color:end‖‖color:255,255,255,255‖" applicable="rangedweapon" fireratemult="1.06" desc="射速 +6%" />
+  <Affix identifier="balanced" tier="Normal" nameprefix="‖color:255,255,255,255‖均衡‖color:end‖‖color:255,255,255,255‖" applicable="weapon" damagemult="1.03" fireratemult="1.03" desc="伤害 +3%，射速 +3%" />
+  <!-- 修理时目标额外恢复最大耐久的 10%/秒 -->
+  <Affix identifier="repairman" tier="Normal" nameprefix="‖color:255,255,255,255‖巧匠‖color:end‖‖color:255,255,255,255‖" applicable="tool" repairbonuspercent="0.10" desc="修理时每秒额外恢复目标 10% 最大耐久" />
+  <Affix identifier="insulated" tier="Normal" nameprefix="‖color:255,255,255,255‖绝缘‖color:end‖‖color:255,255,255,255‖" applicable="armor,wearable" desc="穿戴时眩晕 -0.1/秒">
+    <StatusEffect type="OnWearing" target="Character">
+      <Affliction identifier="stun" strength="-0.1" />
+    </StatusEffect>
+  </Affix>
+
+  <!-- === RARE (蓝色 74,144,255) === -->
+  <Affix identifier="flame" tier="Rare" nameprefix="‖color:74,144,255,255‖火焰‖color:end‖‖color:255,255,255,255‖" applicable="weapon" desc="命中 50% 概率附加 8 点烧伤（每把武器 2 秒冷却）">
+    <StatusEffect type="OnUse" target="UseTarget" interval="2">
+      <Affliction identifier="burn" strength="8" probability="0.5" dividebylimbcount="true" />
+    </StatusEffect>
+    <StatusEffect type="OnImpact" target="UseTarget" interval="2">
+      <Affliction identifier="burn" strength="8" probability="0.5" dividebylimbcount="true" />
+    </StatusEffect>
+  </Affix>
+  <Affix identifier="shock" tier="Rare" nameprefix="‖color:74,144,255,255‖电击‖color:end‖‖color:255,255,255,255‖" applicable="weapon" desc="命中 50% 概率附加 0.2 秒眩晕与 12 点电击（每把武器 3 秒冷却）">
+    <StatusEffect type="OnUse" target="UseTarget" interval="3">
+      <Affliction identifier="stun" strength="0.2" probability="0.5" />
+      <Affliction identifier="electricshock" strength="12" probability="0.5" />
+    </StatusEffect>
+    <StatusEffect type="OnImpact" target="UseTarget" interval="3">
+      <Affliction identifier="stun" strength="0.2" probability="0.5" />
+      <Affliction identifier="electricshock" strength="12" probability="0.5" />
+    </StatusEffect>
+  </Affix>
+  <Affix identifier="accurate" tier="Rare" nameprefix="‖color:74,144,255,255‖精准‖color:end‖‖color:255,255,255,255‖" applicable="rangedweapon" spreadmult="0.85" desc="散布 -15%" />
+  <Affix identifier="intuitive" tier="Rare" nameprefix="‖color:74,144,255,255‖顺手‖color:end‖‖color:255,255,255,255‖" applicable="weapon" skillreqmult="0.7" desc="使用所需技能等级 -30%" />
+  <Affix identifier="medics_touch" tier="Rare" nameprefix="‖color:74,144,255,255‖医者‖color:end‖‖color:255,255,255,255‖" applicable="medical" desc="使用时额外治疗 5 点内脏损伤与流血">
+    <!-- ReduceAffliction：只削减实际存在的创伤（健康肢体不浪费），引擎按匹配数均摊，无肢体放大问题 -->
+    <StatusEffect type="OnUse" target="UseTarget">
+      <ReduceAffliction identifier="internaldamage" amount="5" />
+      <ReduceAffliction type="bleeding" amount="5" />
+    </StatusEffect>
+    <!-- 健康界面用药走 OnSuccess（原版药品同款路径），捅人注射走 OnUse -->
+    <StatusEffect type="OnSuccess" target="UseTarget">
+      <ReduceAffliction identifier="internaldamage" amount="5" />
+      <ReduceAffliction type="bleeding" amount="5" />
+    </StatusEffect>
+  </Affix>
+  <!-- 护甲：穿戴者受伤 -5% -->
+  <Affix identifier="fortified" tier="Rare" nameprefix="‖color:74,144,255,255‖强化‖color:end‖‖color:255,255,255,255‖" applicable="armor" damagetakenmult="0.95" desc="受到的伤害 -5%" />
+  <!-- 耗材消耗 -20% -->
+  <Affix identifier="efficient" tier="Rare" nameprefix="‖color:74,144,255,255‖节能‖color:end‖‖color:255,255,255,255‖" applicable="tool" fuelconsumemult="0.8" desc="耗材消耗 -20%" />
+
+  <!-- === EPIC (紫色 192,64,255) === -->
+  <Affix identifier="inferno" tier="Epic" nameprefix="‖color:192,64,255,255‖炼狱‖color:end‖‖color:255,255,255,255‖" applicable="weapon" damagemult="1.06" desc="伤害 +6%；命中 50% 概率附加 14 点烧伤（2 秒冷却）">
+    <StatusEffect type="OnUse" target="UseTarget" interval="2">
+      <Affliction identifier="burn" strength="14" probability="0.5" dividebylimbcount="true" />
+    </StatusEffect>
+    <StatusEffect type="OnImpact" target="UseTarget" interval="2">
+      <Affliction identifier="burn" strength="14" probability="0.5" dividebylimbcount="true" />
+    </StatusEffect>
+  </Affix>
+  <Affix identifier="lightning" tier="Epic" nameprefix="‖color:192,64,255,255‖雷霆‖color:end‖‖color:255,255,255,255‖" applicable="weapon" desc="命中 50% 概率附加 0.3 秒眩晕与 30 点电击（4 秒冷却）">
+    <StatusEffect type="OnUse" target="UseTarget" interval="4">
+      <Affliction identifier="stun" strength="0.3" probability="0.5" />
+      <Affliction identifier="electricshock" strength="30" probability="0.5" />
+    </StatusEffect>
+    <StatusEffect type="OnImpact" target="UseTarget" interval="4">
+      <Affliction identifier="stun" strength="0.3" probability="0.5" />
+      <Affliction identifier="electricshock" strength="30" probability="0.5" />
+    </StatusEffect>
+  </Affix>
+  <Affix identifier="vampiric" tier="Epic" nameprefix="‖color:192,64,255,255‖吸血‖color:end‖‖color:255,255,255,255‖" applicable="weapon" damagemult="1.04" desc="伤害 +4%；命中附加 6 点流血并回复自身 0.5 点物理伤害（1 秒冷却）">
+    <StatusEffect type="OnUse" target="UseTarget" interval="1">
+      <Affliction identifier="bleeding" strength="6" dividebylimbcount="true" />
+    </StatusEffect>
+    <StatusEffect type="OnImpact" target="UseTarget" interval="1">
+      <Affliction identifier="bleeding" strength="6" dividebylimbcount="true" />
+    </StatusEffect>
+    <StatusEffect type="OnUse" target="Character" interval="1">
+      <ReduceAffliction type="damage" amount="0.5" />
+    </StatusEffect>
+    <StatusEffect type="OnImpact" target="Character" interval="1">
+      <ReduceAffliction type="damage" amount="0.5" />
+    </StatusEffect>
+  </Affix>
+  <!-- 护甲：受伤 -6%，眩晕 -0.2/s，流血 -0.1/s -->
+  <Affix identifier="guardian" tier="Epic" nameprefix="‖color:192,64,255,255‖守护‖color:end‖‖color:255,255,255,255‖" applicable="armor" damagetakenmult="0.94" desc="受到的伤害 -6%；穿戴时眩晕 -0.2/秒、流血 -0.1/秒">
+    <StatusEffect type="OnWearing" target="Character">
+      <Affliction identifier="stun" strength="-0.2" />
+      <Affliction identifier="bleeding" strength="-0.1" dividebylimbcount="true" />
+    </StatusEffect>
+  </Affix>
+  <Affix identifier="masterwork" tier="Epic" nameprefix="‖color:192,64,255,255‖大师‖color:end‖‖color:255,255,255,255‖" applicable="weapon" damagemult="1.07" fireratemult="1.05" desc="伤害 +7%，射速 +5%" />
+
+  <!-- === LEGENDARY (橙色 255,140,0) === -->
+  <!-- 常驻 ×1.14 增伤不受冷却影响；特效每 3 秒一波 -->
+  <Affix identifier="ragnarok" tier="Legendary" nameprefix="‖color:255,140,0,255‖诸神黄昏‖color:end‖‖color:255,255,255,255‖" applicable="weapon" damagemult="1.14" desc="伤害 +14%；每 3 秒一波：50% 概率 12 烧伤+12 流血，30% 概率 0.5 秒眩晕">
+    <StatusEffect type="OnUse" target="UseTarget" interval="3">
+      <Affliction identifier="burn" strength="12" probability="0.5" dividebylimbcount="true" />
+      <Affliction identifier="bleeding" strength="12" probability="0.5" dividebylimbcount="true" />
+      <Affliction identifier="stun" strength="0.5" probability="0.3" />
+    </StatusEffect>
+    <StatusEffect type="OnImpact" target="UseTarget" interval="3">
+      <Affliction identifier="burn" strength="12" probability="0.5" dividebylimbcount="true" />
+      <Affliction identifier="bleeding" strength="12" probability="0.5" dividebylimbcount="true" />
+      <Affliction identifier="stun" strength="0.5" probability="0.3" />
+    </StatusEffect>
+  </Affix>
+  <!-- 护甲：受伤 -8% + 低速再生（内脏损伤 -0.05/s ≈ 33 分钟回 100，不取代药物） -->
+  <Affix identifier="immortal" tier="Legendary" nameprefix="‖color:255,140,0,255‖不朽‖color:end‖‖color:255,255,255,255‖" applicable="armor" damagetakenmult="0.92" desc="受到的伤害 -8%；穿戴时缓慢持续回复内脏损伤/流血/缺氧">
+    <StatusEffect type="OnWearing" target="Character">
+      <Affliction identifier="internaldamage" strength="-0.05" dividebylimbcount="true" />
+      <Affliction identifier="bleeding" strength="-0.15" dividebylimbcount="true" />
+      <Affliction identifier="stun" strength="-0.3" />
+      <Affliction identifier="oxygenlow" strength="-0.5" />
+    </StatusEffect>
+  </Affix>
+  <!-- 命中给予东方模组 debuff「梦消失」：每层受伤 +0.4%，自然衰减 -1.5/s，实战维持 5~15 层 -->
+  <Affix identifier="abyssal" tier="Legendary" nameprefix="‖color:255,140,0,255‖深渊‖color:end‖‖color:255,255,255,255‖" applicable="weapon" damagemult="1.10" fireratemult="1.06" desc="伤害 +10%，射速 +6%；命中 50% 概率附加 10 层「梦消失」（每层受伤 +0.4%，4 秒冷却）">
+    <StatusEffect type="OnUse" target="UseTarget" interval="4">
+      <Affliction identifier="Touhou_Lost_Dream" strength="10" probability="0.5" />
+    </StatusEffect>
+    <StatusEffect type="OnImpact" target="UseTarget" interval="4">
+      <Affliction identifier="Touhou_Lost_Dream" strength="10" probability="0.5" />
+    </StatusEffect>
+  </Affix>
+
+  <!-- === SPECIAL (红色 255,64,64) === -->
+  <Affix identifier="euphoria" tier="Special" nameprefix="‖color:255,64,64,255‖亢奋‖color:end‖‖color:255,255,255,255‖" applicable="medical" desc="使用后目标 45 秒内移速 +35%，持续恢复内脏损伤并止血，附加 10 醉酒与 5 精神病">
+    <!-- 目标 45 秒移速 ×1.35（逐帧 setvalue，结束后自动恢复） -->
+    <StatusEffect type="OnUse" target="UseTarget" duration="45" SpeedMultiplier="1.35" setvalue="true" disabledeltatime="true" />
+    <!-- 45 秒持续恢复：内脏损伤 -0.3/s、流血 -0.15/s -->
+    <StatusEffect type="OnUse" target="UseTarget" duration="45">
+      <ReduceAffliction type="damage" strength="-0.3" />
+      <ReduceAffliction type="bleeding" strength="-0.15" />
+    </StatusEffect>
+    <StatusEffect type="OnUse" target="UseTarget">
+      <Affliction identifier="drunk" strength="10" />
+      <Affliction identifier="psychosis" strength="5" />
+    </StatusEffect>
+    <!-- 健康界面用药走 OnSuccess，与捅人注射（OnUse）等效 -->
+    <StatusEffect type="OnSuccess" target="UseTarget" duration="45" SpeedMultiplier="1.35" setvalue="true" disabledeltatime="true" />
+    <StatusEffect type="OnSuccess" target="UseTarget" duration="45">
+      <ReduceAffliction type="damage" strength="-0.3" />
+      <ReduceAffliction type="bleeding" strength="-0.15" />
+    </StatusEffect>
+    <StatusEffect type="OnSuccess" target="UseTarget">
+      <Affliction identifier="drunk" strength="10" />
+      <Affliction identifier="psychosis" strength="5" />
+    </StatusEffect>
+  </Affix>
+  <!-- 移速 ×1.3 + 受伤 -5% + 眩晕积累 -0.05/s：轻量化特种装备 -->
+  <Affix identifier="weightless" tier="Special" nameprefix="‖color:255,64,64,255‖失重‖color:end‖‖color:255,255,255,255‖" applicable="armor,wearable" damagetakenmult="0.95" desc="穿戴时移速 +30%，受伤 -5%，眩晕积累 -0.05/s">
+    <StatusEffect type="OnWearing" target="Character" SpeedMultiplier="1.3" setvalue="true" disabledeltatime="true" />
+    <StatusEffect type="OnWearing" target="Character">
+      <Affliction identifier="stun" strength="-0.05" />
+    </StatusEffect>
+  </Affix>
+</ItemAffixes>

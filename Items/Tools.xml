@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Override>
   <Items>
     <!--零点时刻项链-->
@@ -37,32 +37,7 @@
         </StatusEffect>
       </Wearable>
     </Item>
-    <Item name="Touhou_Renamer" identifier="Touhou_Renamer" tags="smallitem" spritecolor="255,100,100,255" subcategory="Touhou" category="Equipment" scale="0.5">
-      <InventoryIcon texture="Content/Items/Alien/AlienRuins_Items.png" sourcerect="806,103,124,100" origin="0.5,0.5" />
-      <Sprite texture="Content/Items/Alien/AlienRuins_Items.png" sourcerect="806,2,124,100" depth="0.6" />
-      <Body width="124" height="95" density="20" />
-      <Holdable slots="Any,RightHand+LeftHand" msg="ItemMsgDetach" MsgWhenDropped="ItemMsgPickupSelect" selectkey="Select" pickkey="Use" pickingtime="2.0" attachable="true" />
-      <ItemContainer capacity="1" maxstacksize="1" canbeselected="true" hideitems="true" keepopenwhenequipped="true" movableframe="true" QuickUseMovesItemsInside="false">
-        <GuiFrame relativesize="0.1,0.15" anchor="Center" style="ItemUI" />
-      </ItemContainer>
-      <CustomInterface canbeselected="true" drawhudwhenequipped="true">
-        <GuiFrame relativesize="0.25,0.2" anchor="BottomCenter" style="ItemUI" />
-        <TextBox text="Name:" propertyname="notnull" maxtextlength="32" />
-        <Button text="rename">
-          <StatusEffect type="OnUse" target="This">
-            <LuaHook name="Touhou_Renamer_Rename" />
-            <Sound file="%ModDir%/Sounds/Tools/Touhou_Renamer_Anvil.ogg" range="500" />
-          </StatusEffect>
-        </Button>
-        <Button text="reset name">
-          <StatusEffect type="OnUse" target="This">
-            <LuaHook name="Touhou_Renamer_Resetname" />
-            <Sound file="%ModDir%/Sounds/Tools/Touhou_Renamer_Anvil.ogg" range="500" />
-          </StatusEffect>
-        </Button>
-      </CustomInterface>
-      <LightComponent canbeselected="true" color="255,255,255,255" ison="false" />
-    </Item>
+    <!-- 改名台（Touhou_Renamer）已下线，物品定义归档至 _Archive/Items/Tools_Renamer_Item.xml -->
 <!--
       &lt;!&ndash;物品信息展示器&ndash;&gt;
       <Item name="物品信息展示器" identifier="Touhou_Item_Message_Display" tags="mediumitem" subcategory="Touhou"

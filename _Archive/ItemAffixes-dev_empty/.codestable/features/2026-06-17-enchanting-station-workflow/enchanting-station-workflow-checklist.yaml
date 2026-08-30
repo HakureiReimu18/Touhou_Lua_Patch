@@ -1,0 +1,68 @@
+feature: 2026-06-17-enchanting-station-workflow
+created: 2026-06-17
+
+steps:
+  - action: "材料识别+权重配置：在 Mod.cs 新增 TierWeights 结构体 + MaterialTiers 字典 + TryGetEnchantingTarget 方法"
+    exit_signal: "编译通过，TryGetEnchantingTarget 能通过 tag 识别材料并返回正确 TierWeights"
+    status: done
+
+  - action: "重写 EnchantingStationPatch.Prefix：IsClient 守卫 + 权重随机 + ApplyAffix + 输出转移(TryPutItem) + 材料清理(AddItemToRemoveQueue) + return false + 边界处理(无材料正常分解、输出满拒绝等)"
+    exit_signal: "附魔台进度条完成后武器出现在输出槽且带有词缀前缀；客户端日志确认走 IsClient 快速路径；无材料时正常分解不受影响"
+    status: done
+
+checks:
+  - item: "T1附魔：affixes_1+武器 → 输出附魔武器，词缀等级按权重分布"
+    source: 验收场景
+    status: passed
+
+  - item: "T2附魔：affixes_2+武器 → Rare概率30%"
+    source: 验收场景
+    status: passed
+
+  - item: "T3附魔：affixes_3+武器 → Rare45%+Epic25%+Legendary15%"
+    source: 验收场景
+    status: passed
+
+  - item: "正常分解：纯武器无材料 → 正常分解为原材料"
+    source: 验收场景
+    status: passed
+
+  - item: "效果生效：附魔后武器攻击产生 StatusEffect"
+    source: 验收场景
+    status: passed
+
+  - item: "多种材料仅消耗最高级"
+    source: 验收场景
+    status: passed
+
+  - item: "输出满时材料不消耗"
+    source: 验收场景
+    status: passed
+
+  - item: "不可附魔物品+材料 → 正常分解"
+    source: 验收场景
+    status: passed
+
+  - item: "客户端 IsClient 守卫：Prefix 在客户端快速 return true，不做物品操作"
+    source: 流程级约束
+    status: passed
+
+  - item: "服务端 return false 正确跳过 ProcessItem 原生分解逻辑"
+    source: 编排骨架
+    status: passed
+
+  - item: "单机附魔后前缀即时可见（Item 共享 Tags）"
+    source: 验收场景
+    status: failed
+
+  - item: "不修改 Barotrauma 核心程序集"
+    source: 范围守护
+    status: passed
+
+  - item: "FixedAffix 扩展点已留"
+    source: 名词契约
+    status: passed
+
+  - item: "Deconstructor 原生行为（无材料时）不受影响"
+    source: 流程级约束
+    status: passed

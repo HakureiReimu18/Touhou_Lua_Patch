@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Override>
+  <Items>
+    <!--
+      探索海图仪（手持屏幕物品）
+      持续记录持有者周围地形与航线，把本区域的"已探索海图"实时绘制在屏幕上。
+      组件契约（C# 侧依赖，改动需同步）：
+        - ExploredMapComponent = 自定义组件（CSharp/Shared + CSharp/Client），
+          继承 Powered，电池仓的 Voltage 信号直接喂给它（与原版手持声呐同一模式）
+        - ItemContainer 第 1 槽 = 电池槽（mobilebattery），OnContaining 持续写入 Voltage=1.0
+        - 贴图/图标复用原版手持声呐（tools.png），青色染色区分，无新美术
+      扫描逻辑（半径/间隔等）全部在 CSharp/Client/ExploredMapTracker.cs 顶部常量区调整。
+    -->
+    <Item name="探索海图仪" identifier="Touhou_ExploredMap" category="Equipment,Diving" tags="smallitem,sonar"
+          description="持续扫描周围地形并记录持有者的航线，将本区域的已探索海图绘制在屏幕上。需要装入电池供电。"
+          health="10" damagedbymonsters="true" cargocontaineridentifier="metalcrate" Scale="0.5" impactsoundtag="impact_metal_light">
+      <Price baseprice="400" minavailable="1">
+        <Price storeidentifier="merchantoutpost" />
+        <Price storeidentifier="merchantcity" multiplier="0.9" minavailable="1" />
+        <Price storeidentifier="merchantresearch" multiplier="1.25" minavailable="1" />
+        <Price storeidentifier="merchantmilitary" multiplier="1.25" />
+        <Price storeidentifier="merchantmine" />
+        <Price storeidentifier="merchantengineering" multiplier="0.9" minavailable="1" />
+      </Price>
+      <PreferredContainer secondary="divingcab" amount="1" spawnprobability="0.3" />
+      <Deconstruct time="15">
+        <Item identifier="copper" />
+        <Item identifier="plastic" amount="2" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="fabricator" requiredtime="30">
+        <RequiredSkill identifier="electrical" level="40" />
+        <RequiredItem identifier="fpgacircuit" />
+        <RequiredItem identifier="plastic" amount="2" />
+      </Fabricate>
+      <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="64,0,64,64" origin="0.5,0.5" spritecolor="150,230,255,255" />
+      <Sprite texture="Content/Items/Tools/tools.png" sourcerect="227,163,48,24" depth="0.55" origin="0.5,0.5" spritecolor="150,230,255,255" />
+      <Body width="40" height="22" density="12" />
+      <Holdable slots="Any,RightHand,LeftHand" holdangle="30" handle1="-25,0" msg="ItemMsgPickUpSelect" />
+
+      <!-- 自定义地图组件：继承 Powered，Voltage 由下方电池槽 StatusEffect 写入；
+           ScanRange = 手持扫描半径（世界单位，100=1米），ScreenScale = 设备屏幕贴图占比 -->
+      <ExploredMapComponent powerconsumption="10" ScanRange="6000" ScreenScale="0.9" />
+
+      <!-- 屏幕冷光（纯装饰，不耗电） -->
+      <LightComponent range="25" lightcolor="120,220,255,255" powerconsumption="0" IsOn="true" castshadows="false" alphablend="true"
+                      allowingameediting="false" canbeselected="false" />
+
+      <!-- 电池槽：装入电池即供电（Voltage=1.0，与原版手持声呐同模式） -->
+      <ItemContainer capacity="1" maxstacksize="1" hideitems="true" containedstateindicatorstyle="battery">
+        <SlotIcon slotindex="0" texture="Content/UI/StatusMonitorUI.png" sourcerect="128,448,64,64" origin="0.5,0.5" />
+        <Containable items="mobilebattery">
+          <StatusEffect type="OnContaining" targettype="This" Voltage="1.0" setvalue="true" />
+        </Containable>
+        <!-- 耗电：每 10 秒扣 1 点电池耐久（满电约 1000 秒续航） -->
+        <StatusEffect type="OnActive" targettype="Contained" interval="10" Condition="-1" stackable="false" disabledeltatime="true" />
+      </ItemContainer>
+    </Item>
+  </Items>
+</Override>

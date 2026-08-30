@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <infotexts language="Simplified Chinese" translatedname="中文(简体)" nowhitespace="false">
   <Override>
     <entityname.Touhou_Monarch>君王</entityname.Touhou_Monarch>
@@ -27,7 +27,64 @@
     <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier3>增加7.5%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier3>
     <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier4>增加5%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier4>
     <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier5>增加0%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier5>
-    <entityname.Touhou_Renamer>命名工具</entityname.Touhou_Renamer>
-    <entitydescription.Touhou_Renamer>重新命名一个物品。需要安装在潜艇上使用（右键+E键安装）</entitydescription.Touhou_Renamer>
+    <!-- 改名台已下线（归档至 _Archive），文本条目同步移除 -->
+    <!--自由料理台（自由搭配烹饪系统，逻辑见 Lua/Scripts/Sever/Cook.lua）-->
+    <entityname.Touhou_Cooktop03>自由料理台</entityname.Touhou_Cooktop03>
+    <entitydescription.Touhou_Cooktop03>一台不拘泥于菜谱的料理台。放入任意食材，它会根据风味搭配推断出最接近的料理；搭配得实在不像话时，就只能得到炼金术副产物了。可使用‖color:gui.yellow‖分析风味‖end‖按钮预测产出。</entitydescription.Touhou_Cooktop03>
+    <touhou.cooktop.cook>开始料理</touhou.cooktop.cook>
+    <touhou.cooktop.analyze>分析风味</touhou.cooktop.analyze>
+    <touhou.cooktop.noavailableingredients>锅内没有可用的食材</touhou.cooktop.noavailableingredients>
+    <touhou.cooktop.noavailablerecipes>当前的食材搭配做不出任何像样的料理</touhou.cooktop.noavailablerecipes>
+    <touhou.cooktop.isactive>料理台正在烹饪中</touhou.cooktop.isactive>
+    <touhou.cooktop.analyze.tooltip>锅内的食材散发着以下风味：</touhou.cooktop.analyze.tooltip>
+    <!--风味 tag 本地化（analyze 展示用，同时作为风味白名单种子集合）-->
+    <touhou.foodtag.vegetarian>素食</touhou.foodtag.vegetarian>
+    <touhou.foodtag.homecooking>家常</touhou.foodtag.homecooking>
+    <touhou.foodtag.soup>汤羹</touhou.foodtag.soup>
+    <touhou.foodtag.economical>实惠</touhou.foodtag.economical>
+    <touhou.foodtag.mild>温和</touhou.foodtag.mild>
+    <touhou.foodtag.japanese>和风</touhou.foodtag.japanese>
+    <touhou.foodtag.meat>肉食</touhou.foodtag.meat>
+    <touhou.foodtag.mountain_delicacy>山珍</touhou.foodtag.mountain_delicacy>
+    <touhou.foodtag.hot>辛辣</touhou.foodtag.hot>
+    <touhou.foodtag.strength_boosting>滋补</touhou.foodtag.strength_boosting>
+    <touhou.foodtag.fresh>鲜美</touhou.foodtag.fresh>
+    <touhou.foodtag.sweet>甘甜</touhou.foodtag.sweet>
+    <touhou.foodtag.filling>饱腹</touhou.foodtag.filling>
+    <touhou.foodtag.salty>咸香</touhou.foodtag.salty>
+    <touhou.foodtag.signature>招牌</touhou.foodtag.signature>
+    <touhou.foodtag.aquatic>水产</touhou.foodtag.aquatic>
+    <!--风味 tag 第二批（全量统计自模组 XML，2026-07-29）-->
+    <touhou.foodtag.expensive>昂贵</touhou.foodtag.expensive>
+    <touhou.foodtag.photogenic>上镜</touhou.foodtag.photogenic>
+    <touhou.foodtag.premium>高级</touhou.foodtag.premium>
+    <touhou.foodtag.greasy>油腻</touhou.foodtag.greasy>
+    <touhou.foodtag.chinese>中华</touhou.foodtag.chinese>
+    <touhou.foodtag.western>西式</touhou.foodtag.western>
+    <touhou.foodtag.cultural_heritage>文化传承</touhou.foodtag.cultural_heritage>
+    <touhou.foodtag.small_portion>小份</touhou.foodtag.small_portion>
+    <touhou.foodtag.good_w_alcohol>下酒</touhou.foodtag.good_w_alcohol>
+    <touhou.foodtag.grilled>炙烤</touhou.foodtag.grilled>
+    <touhou.foodtag.legendary>传说</touhou.foodtag.legendary>
+    <touhou.foodtag.wonderful>绝妙</touhou.foodtag.wonderful>
+    <touhou.foodtag.fungus>菌菇</touhou.foodtag.fungus>
+    <touhou.foodtag.dreamy>梦幻</touhou.foodtag.dreamy>
+    <touhou.foodtag.raw>生食</touhou.foodtag.raw>
+    <touhou.foodtag.refreshing>清爽</touhou.foodtag.refreshing>
+    <touhou.foodtag.large_portion>大份</touhou.foodtag.large_portion>
+    <touhou.foodtag.peculiar>奇特</touhou.foodtag.peculiar>
+    <touhou.foodtag.fruity>果香</touhou.foodtag.fruity>
+    <touhou.foodtag.specialty>特产</touhou.foodtag.specialty>
+    <touhou.foodtag.spicy>麻辣</touhou.foodtag.spicy>
+    <touhou.foodtag.auto_bursting>爆裂</touhou.foodtag.auto_bursting>
+    <touhou.foodtag.sea_delicacy>海味</touhou.foodtag.sea_delicacy>
+    <touhou.foodtag.sour>酸爽</touhou.foodtag.sour>
+    <touhou.foodtag.divine_punishment>天罚</touhou.foodtag.divine_punishment>
+    <touhou.foodtag.poison>有毒</touhou.foodtag.poison>
+    <!--产出预测（analyze 与技能不足提示）-->
+    <touhou.cooktop.analyze.prediction>当前搭配可能做出：</touhou.cooktop.analyze.prediction>
+    <touhou.cooktop.analyze.prediction.mush>当前的搭配恐怕只能做出炼金术副产物……</touhou.cooktop.analyze.prediction.mush>
+    <touhou.cooktop.analyze.skillshortage>（技能不足）</touhou.cooktop.analyze.skillshortage>
+    <touhou.cooktop.skillblocked>技能不足，未能做出：</touhou.cooktop.skillblocked>
   </Override>
 </infotexts>

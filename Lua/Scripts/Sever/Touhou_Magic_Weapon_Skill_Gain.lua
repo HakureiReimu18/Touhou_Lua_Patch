@@ -78,6 +78,23 @@ local function is_valid_enemy(attacker, target)
         return false, "attacker_not_player_team"
     end
 
+    -- 攻击尸体不应增长技能；但致命一击（本次伤害前仍存活）应当保留
+    local ok_corpse, is_corpse_hit = pcall(function()
+        if not target.IsDead then
+            return false
+        end
+        local last_damage = target.LastDamage
+        local damage = last_damage ~= nil and last_damage.Damage or nil
+        if damage == nil then
+            -- 无法还原本次伤害，默认保留技能增长
+            return false
+        end
+        return (target.Vitality + damage) <= 0
+    end)
+    if ok_corpse and is_corpse_hit then
+        return false, "target_dead"
+    end
+
     if target.TeamID ~= attacker.TeamID then
         return true, "enemy_team_mismatch"
     end

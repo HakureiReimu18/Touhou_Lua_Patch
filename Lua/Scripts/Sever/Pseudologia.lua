@@ -98,13 +98,25 @@ end
 
 -- 判定角色是否拥有某个天赋。
 -- 兼容两种调用方式：Identifier(...) 与 直接字符串。
+-- Identifier 对象做缓存：死亡回溯心跳每帧每角色都会调用本函数，
+-- 原实现每次都新建 Identifier(...) 对象，会持续产生堆分配并诱发 GC 尖峰
+local identifier_cache = {}
+local function cached_identifier(name)
+    local id = identifier_cache[name]
+    if id == nil then
+        id = Identifier(name)
+        identifier_cache[name] = id
+    end
+    return id
+end
+
 local function has_talent(character, talent_identifier)
     if character == nil or character.Info == nil then
         return false
     end
 
     local ok, result = pcall(function()
-        return character.HasTalent(Identifier(talent_identifier))
+        return character.HasTalent(cached_identifier(talent_identifier))
     end)
 
     if ok and result then
@@ -326,7 +338,10 @@ Hook.Add("roundStart", "Touhou.Talents.RoundReset", function()
 end)
 
 -- 统一心跳：遍历角色并检查天赋1触发条件
+-- 服务端权威：init.lua 会把本脚本同时加载进服务端和客户端两个 Lua 环境，
+-- 联机客户端重复执行 affliction 清空既浪费性能又与服务端状态冲突，直接跳过
 Hook.Add("think", "Touhou.DeathRewind.Tick", function()
+    if CLIENT and not Game.IsSingleplayer then return end
     for character in Character.CharacterList do
         if character ~= nil and not character.Removed and not character.IsDead then
             handle_death_rewind(character)

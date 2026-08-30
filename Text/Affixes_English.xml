@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="English" nowhitespace="false" translatedname="English">
+	<entityname.Touhou_Enchantingstation>Enchanting Station</entityname.Touhou_Enchantingstation>
+	<entitydescription.Touhou_Enchantingstation>Bestow affixes upon items with enchanting materials for additional effects</entitydescription.Touhou_Enchantingstation>
+	<enchantingstation.enchant>Enchant</enchantingstation.enchant>
+	<entityname.affixes_1>Enchant Core</entityname.affixes_1>
+	<entityname.affixes_2>Enchant Prism</entityname.affixes_2>
+	<entityname.affixes_3>Enchant Alloy</entityname.affixes_3>
+	<enchantingstation.input>Input</enchantingstation.input>
+	<enchantingstation.output>Output</enchantingstation.output>
+	<enchantingstation.invalidinput>Enchant</enchantingstation.invalidinput>
+	<enchantingstation.empty.infotext>Insert enchanting material</enchantingstation.empty.infotext>
+	<affixtier.broken>Broken</affixtier.broken>
+	<affixtier.normal>Normal</affixtier.normal>
+	<affixtier.rare>Rare</affixtier.rare>
+	<affixtier.epic>Epic</affixtier.epic>
+	<affixtier.legendary>Legendary</affixtier.legendary>
+	<affixtier.special>Special</affixtier.special>
+
+	<!-- ===== 词缀本地化 (English) ===== -->
+	<affix.prefix.brittle>‖color:128,128,128,255‖Brittle‖color:end‖‖color:255,255,255,255‖</affix.prefix.brittle>
+	<affix.desc.brittle>Damage -6%</affix.desc.brittle>
+	<affix.descarmor.brittle>Damage taken +5%</affix.descarmor.brittle>
+	<affix.prefix.dull>‖color:128,128,128,255‖Dull‖color:end‖‖color:255,255,255,255‖</affix.prefix.dull>
+	<affix.desc.dull>Damage -8%, swing speed -4%</affix.desc.dull>
+	<affix.prefix.rusty>‖color:128,128,128,255‖Rusty‖color:end‖‖color:255,255,255,255‖</affix.prefix.rusty>
+	<affix.desc.rusty>Consumable drain +20%</affix.desc.rusty>
+	<affix.prefix.cursed>‖color:128,128,128,255‖Cursed‖color:end‖‖color:255,255,255,255‖</affix.prefix.cursed>
+	<affix.desc.cursed>Damage -4%; on use: self bleeding +1.5, psychosis +0.3</affix.desc.cursed>
+	<affix.descarmor.cursed>While worn: slight bleeding / organdamage / psychosis over time</affix.descarmor.cursed>
+	<affix.prefix.sturdy>‖color:255,255,255,255‖Sturdy‖color:end‖‖color:255,255,255,255‖</affix.prefix.sturdy>
+	<affix.desc.sturdy>Damage taken -3%</affix.desc.sturdy>
+	<affix.prefix.keen>‖color:255,255,255,255‖Keen‖color:end‖‖color:255,255,255,255‖</affix.prefix.keen>
+	<affix.desc.keen>Damage +5%</affix.desc.keen>
+	<affix.prefix.steady>‖color:255,255,255,255‖Steady‖color:end‖‖color:255,255,255,255‖</affix.prefix.steady>
+	<affix.desc.steady>Fire rate +6%</affix.desc.steady>
+	<affix.prefix.balanced>‖color:255,255,255,255‖Balanced‖color:end‖‖color:255,255,255,255‖</affix.prefix.balanced>
+	<affix.desc.balanced>Damage +3%, fire rate +3%</affix.desc.balanced>
+	<affix.prefix.repairman>‖color:255,255,255,255‖Tinkerer‖color:end‖‖color:255,255,255,255‖</affix.prefix.repairman>
+	<affix.desc.repairman>Repairs restore +10% of target's max condition per second</affix.desc.repairman>
+	<affix.prefix.insulated>‖color:255,255,255,255‖Insulated‖color:end‖‖color:255,255,255,255‖</affix.prefix.insulated>
+	<affix.desc.insulated>While worn: stun -0.1/s</affix.desc.insulated>
+	<affix.prefix.flame>‖color:74,144,255,255‖Flaming‖color:end‖‖color:255,255,255,255‖</affix.prefix.flame>
+	<affix.desc.flame>50% chance on hit: 8 burn (2s cooldown per weapon)</affix.desc.flame>
+	<affix.prefix.shock>‖color:74,144,255,255‖Shocking‖color:end‖‖color:255,255,255,255‖</affix.prefix.shock>
+	<affix.desc.shock>50% chance on hit: 0.2s stun and 12 shock damage (3s cooldown per weapon)</affix.desc.shock>
+	<affix.prefix.medics_touch>‖color:74,144,255,255‖Medic's‖color:end‖‖color:255,255,255,255‖</affix.prefix.medics_touch>
+	<affix.desc.medics_touch>On use: heals 5 internal damage and 5 bleeding</affix.desc.medics_touch>
+	<affix.prefix.accurate>‖color:74,144,255,255‖Accurate‖color:end‖‖color:255,255,255,255‖</affix.prefix.accurate>
+	<affix.desc.accurate>Spread -15%</affix.desc.accurate>
+	<affix.prefix.intuitive>‖color:74,144,255,255‖Intuitive‖color:end‖‖color:255,255,255,255‖</affix.prefix.intuitive>
+	<affix.desc.intuitive>Required skill level -30%</affix.desc.intuitive>
+	<affix.prefix.fortified>‖color:74,144,255,255‖Fortified‖color:end‖‖color:255,255,255,255‖</affix.prefix.fortified>
+	<affix.desc.fortified>Damage taken -5%</affix.desc.fortified>
+	<affix.prefix.efficient>‖color:74,144,255,255‖Efficient‖color:end‖‖color:255,255,255,255‖</affix.prefix.efficient>
+	<affix.desc.efficient>Consumable drain -20%</affix.desc.efficient>
+	<affix.prefix.inferno>‖color:192,64,255,255‖Inferno‖color:end‖‖color:255,255,255,255‖</affix.prefix.inferno>
+	<affix.desc.inferno>Damage +6%; 50% chance on hit: 14 burn (2s cooldown)</affix.desc.inferno>
+	<affix.prefix.lightning>‖color:192,64,255,255‖Thundering‖color:end‖‖color:255,255,255,255‖</affix.prefix.lightning>
+	<affix.desc.lightning>50% chance on hit: 0.3s stun and 30 shock damage (4s cooldown)</affix.desc.lightning>
+	<affix.prefix.vampiric>‖color:192,64,255,255‖Vampiric‖color:end‖‖color:255,255,255,255‖</affix.prefix.vampiric>
+	<affix.desc.vampiric>Damage +4%; on hit: 6 bleeding and heal self 0.5 physical damage (1s cooldown)</affix.desc.vampiric>
+	<affix.prefix.guardian>‖color:192,64,255,255‖Guardian‖color:end‖‖color:255,255,255,255‖</affix.prefix.guardian>
+	<affix.desc.guardian>Damage taken -6%; while worn: stun -0.2/s, bleeding -0.1/s</affix.desc.guardian>
+	<affix.prefix.masterwork>‖color:192,64,255,255‖Masterwork‖color:end‖‖color:255,255,255,255‖</affix.prefix.masterwork>
+	<affix.desc.masterwork>Damage +7%, fire rate +5%</affix.desc.masterwork>
+	<affix.prefix.ragnarok>‖color:255,140,0,255‖Ragnarok‖color:end‖‖color:255,255,255,255‖</affix.prefix.ragnarok>
+	<affix.desc.ragnarok>Damage +14%; every 3s: 50% chance of 12 burn + 12 bleeding, 30% chance of 0.5s stun</affix.desc.ragnarok>
+	<affix.prefix.immortal>‖color:255,140,0,255‖Immortal‖color:end‖‖color:255,255,255,255‖</affix.prefix.immortal>
+	<affix.desc.immortal>Damage taken -8%; while worn: slowly regenerates internal damage / bleeding / oxygen</affix.desc.immortal>
+	<affix.prefix.abyssal>‖color:255,140,0,255‖Abyssal‖color:end‖‖color:255,255,255,255‖</affix.prefix.abyssal>
+	<affix.desc.abyssal>Damage +10%, fire rate +6%; 50% chance on hit: +10 stacks of Lost Dream (+0.4% damage taken per stack, 4s cooldown)</affix.desc.abyssal>
+	<affix.prefix.euphoria>‖color:255,64,64,255‖Euphoria‖color:end‖‖color:255,255,255,255‖</affix.prefix.euphoria>
+	<affix.desc.euphoria>On use: target gains +35% speed for 45s, slowly heals internal damage and bleeding, plus 10 drunk and 5 psychosis</affix.desc.euphoria>
+	<affix.prefix.weightless>‖color:255,64,64,255‖Weightless‖color:end‖‖color:255,255,255,255‖</affix.prefix.weightless>
+	<affix.desc.weightless>While worn: +30% speed, -5% damage taken, stun builds up 0.05/s slower</affix.desc.weightless>
+</infotexts>

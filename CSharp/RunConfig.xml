@@ -1,6 +1,7 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <RunConfig>
   <!--Options: "None" / "Forced" (always) / "Standard" (when enabled)-->
-  <Server>None</Server>
+  <!-- Shared 目录的改名台实现需要在服务端也生效（专用服务器场景） -->
+  <Server>Standard</Server>
   <Client>Standard</Client>
 </RunConfig>
