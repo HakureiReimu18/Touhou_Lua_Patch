@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Items>
+    <!--装束包：拿在手里即弹出选择窗口，任选一件普通装束换取，换取后包消失。
+        可选清单由 Lua 运行时扫描（subcategory=Touhou + clothing 标签，排除 _Plus 与潜水服），
+        新增装束无需改动本文件。逻辑在 Lua/Scripts/ 的 Touhou_Costume_Pack*.lua。-->
+    <Item identifier="Touhou_Costume_Pack" subcategory="Touhou" category="Equipment" cargocontaineridentifier="metalcrate"
+          tags="smallitem,touhou_costumepack" scale="0.1" impactsoundtag="impact_soft">
+        <Price baseprice="80" >
+            <Price storeidentifier="merchantoutpost" minavailable="1"/>
+            <Price storeidentifier="merchantcity" multiplier="0.9" minavailable="1"/>
+            <Price storeidentifier="merchantresearch" minavailable="1"/>
+            <Price storeidentifier="merchantmilitary" minavailable="1"/>
+            <Price storeidentifier="merchantmine" minavailable="1"/>
+            <Price storeidentifier="Costume_Merchant_Kawasiro_Nitori" sold="true" minavailable="2"/>
+        </Price>
+        <Deconstruct time="5">
+            <Item identifier="organicfiber"/>
+        </Deconstruct>
+        <InventoryIcon name="" texture="%ModDir%/Images/Touhou_Costume_Pack.png" sourcerect="0,0,576,576" origin="0.5,0.5"/>
+        <Sprite texture="%ModDir%/Images/Touhou_Costume_Pack.png" sourcerect="0,0,576,576" depth="0.55" origin="0.5,0.5" scale="0.13"/>
+        <Body width="90" height="60" density="15" friction="0.8" restitution="0.01"/>
+        <Holdable slots="Any,RightHand+LeftHand" controlpose="true" handle1="0,12" msg="ItemMsgPickUpSelect"/>
+    </Item>
+
+    <!--装束包+：同上，但可选清单只有装束+（identifier 以 _Plus 结尾）。-->
+    <Item identifier="Touhou_Costume_Pack_Plus" subcategory="Touhou" category="Equipment" cargocontaineridentifier="metalcrate"
+          tags="smallitem,touhou_costumepack" scale="0.1" impactsoundtag="impact_soft">
+        <Price baseprice="600" minleveldifficulty="15">
+            <Price storeidentifier="merchantoutpost" minavailable="1"/>
+            <Price storeidentifier="merchantcity" multiplier="0.9" minavailable="1"/>
+            <Price storeidentifier="merchantresearch" minavailable="1"/>
+            <Price storeidentifier="merchantmilitary" minavailable="1"/>
+            <Price storeidentifier="merchantmine" minavailable="1"/>
+            <Price storeidentifier="Costume_Merchant_Kawasiro_Nitori" sold="true" minavailable="1"/>
+        </Price>
+        <Deconstruct time="5">
+            <Item identifier="organicfiber"/>
+            <Item identifier="Magic_Material"/>
+        </Deconstruct>
+        <InventoryIcon name="" texture="%ModDir%/Images/Touhou_Costume_Pack.png" sourcerect="576,0,576,576" origin="0.5,0.5"/>
+        <Sprite texture="%ModDir%/Images/Touhou_Costume_Pack.png" sourcerect="576,0,576,576" depth="0.55" origin="0.5,0.5" scale="0.13"/>
+        <Body width="90" height="60" density="15" friction="0.8" restitution="0.01"/>
+        <Holdable slots="Any,RightHand+LeftHand" controlpose="true" handle1="0,12" msg="ItemMsgPickUpSelect"/>
+    </Item>
+
+    <!--头饰包：拿在手里即弹出选择窗口，任选一件头饰换取，换取后包消失。-->
+    <Item identifier="Touhou_Costume_Pack_Headwear" subcategory="Touhou" category="Equipment" cargocontaineridentifier="metalcrate"
+          tags="smallitem,touhou_costumepack" scale="0.1" impactsoundtag="impact_soft">
+        <Price baseprice="800">
+            <Price storeidentifier="merchantoutpost" minavailable="1"/>
+            <Price storeidentifier="merchantcity" multiplier="0.9" minavailable="1"/>
+            <Price storeidentifier="merchantresearch" minavailable="1"/>
+            <Price storeidentifier="merchantmilitary" minavailable="1"/>
+            <Price storeidentifier="merchantmine" minavailable="1"/>
+            <Price storeidentifier="Costume_Merchant_Kawasiro_Nitori" sold="true" minavailable="2"/>
+        </Price>
+        <Deconstruct time="5">
+            <Item identifier="organicfiber"/>
+        </Deconstruct>
+        <InventoryIcon name="" texture="%ModDir%/Images/Touhou_Costume_Pack_Headwear.png" sourcerect="0,0,500,528" origin="0.5,0.5"/>
+        <Sprite texture="%ModDir%/Images/Touhou_Costume_Pack_Headwear.png" sourcerect="0,0,500,528" depth="0.55" origin="0.5,0.5" scale="0.09"/>
+        <Body width="90" height="60" density="15" friction="0.8" restitution="0.01"/>
+        <Holdable slots="Any,RightHand+LeftHand" controlpose="true" handle1="0,12" msg="ItemMsgPickUpSelect"/>
+    </Item>
+</Items>

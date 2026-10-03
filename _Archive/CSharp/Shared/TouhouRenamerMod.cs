@@ -9,7 +9,7 @@
 //   - Item.AddTag / RemoveTag 补丁：改名即时生效、外部擦除自动补回、落盘随事件触发；
 //   - ConditionalWeakTable 做缓存：物品销毁后条目由 GC 自动回收，无需人工清理。
 //
-// 标签协议（与 Lua 侧 Lua/Scripts/Sever/Touhou_Renamer.lua 约定，存档兼容旧版）：
+// 标签协议（与 Lua 侧 Lua/Scripts/Server/Touhou_Renamer.lua 约定，存档兼容旧版）：
 //   threname:<转义后的名字>  —— 重命名标签（%、逗号、换行需转义）
 //   threname_cleared         —— 重置标记（见到后清缓存、删文件记录并自动移除自身）
 //

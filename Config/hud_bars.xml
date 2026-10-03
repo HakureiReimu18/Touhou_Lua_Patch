@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  HUD affliction 进度条配置（通用系统，不止能量条：正面/负面/中性 affliction 均可显示）
+
+  【跨模组联动】任何内容包（包括纯 XML 模组）只要在自己的包里放 Config/hud_bars.xml，
+  本系统就会扫描所有已启用内容包并自动加载。同一 affliction id 重复登记时先加载者生效
+  （本模组优先），重复的定义会被跳过。
+
+  每条 <Bar> 绑定一个 affliction，玩家身上的强度以竖条形式显示（默认屏幕右侧中间，
+  位置/偏移/条长可在「东方模组设置-进度条设置」里调）：
+    affliction   绑定的 affliction identifier（必填）
+    name         显示名（可省略：默认用 afflictionname.<id> 的本地化名称，缺本地化时回退显示 id；
+                 也可填任意文本标识符，按当前语言解析；填普通文字则原样显示）
+    color        进度条颜色 R,G,B（0-255）
+    maxstrength  满值强度（默认 100%）
+    enabled      默认是否显示（默认 true；玩家可在「东方模组设置-进度条设置」里改）
+    showwhenzero true 时强度为 0 也显示（默认 false：强度<=0 且无 State 命中时隐藏）
+    requireaffliction  显示条件：需带有列出的 affliction 之一（逗号分隔，强度>0 即满足），
+                       如绑定装束施加的常驻 affliction，实现「穿上装束才显示」
+    requirejob         显示条件：需为列出的职业之一（逗号分隔，填 job identifier）
+
+                       两类条件都配置时需同时满足
+
+  子元素（可选）：
+    <State affliction="..." text="..." color="R,G,B"/>
+        该 affliction 强度>=1 时，条的标题改显示 text、颜色改用它（如红美铃的姿态）；
+        text 可省略（默认 afflictionname.<id> 本地化名称），也可填文本标识符
+    <Extra affliction="..." format="...{0}..."/>
+        该 affliction 强度>0 时，在条下方追加一行文字，{0} 替换为强度值（如切换冷却）；
+        format 同样支持文本标识符
+
+  多条并存时的显示方案：竖条横排、围绕一条锚线（默认在右缘内侧 70px，可调）编组居中，
+  每条占 96px 槽位，标题在条上方居中、附加行在条下方居中，一般两条以内不会互相遮挡。
+
+  玩家的缩放/颜色/开关改动保存在存档目录 TouhouHudBarsConfig.txt（用户覆盖层，
+  按 affliction id 对应，对本模组和其他模组登记的条一视同仁）
+-->
+<HudBars>
+  <!-- 红美铃「气」（Touhou_Hong_Meirin_Character_Effect 是装束穿着期间施加的常驻 affliction，作显示门控；
+       name/State 的 text 全省略：自动用各 affliction 的本地化名称 afflictionname.<id>；
+       Extra 的 format 用文本标识符 Text.Hong_Meirin_Cooldown，多语言在本体模组文本文件里维护） -->
+  <Bar affliction="Hong_Meirin_Qi" color="140,230,140" maxstrength="100" enabled="true"
+       requireaffliction="Touhou_Hong_Meirin_Character_Effect">
+    <State affliction="Hong_Meirin_Stance_Charge" color="140,230,140"/>
+    <State affliction="Hong_Meirin_Stance_Guard" color="120,180,255"/>
+    <State affliction="Hong_Meirin_Stance_Allout" color="255,110,110"/>
+    <Extra affliction="Hong_Meirin_Stance_CD" format="Text.Hong_Meirin_Cooldown"/>
+  </Bar>
+  <!-- 以下各条省略 name：显示名自动取 afflictionname.<id> 的本地化文本（缺本地化时显示 id） -->
+  <Bar affliction="Alice_Doll_Energy" color="200,160,255" maxstrength="100" enabled="true"/>
+  <Bar affliction="Touhou_Blood_Clock_Time" color="220,60,60" maxstrength="100" enabled="true"/>
+  <Bar affliction="Blood_Needs_Remilia" color="180,30,30" maxstrength="100" enabled="true"/>
+  <Bar affliction="Touhou_Misfortune_Curse" color="68,194,0" maxstrength="100" enabled="true"/>
+  <Bar affliction="Touhou_Iroha_Fatigue" color="107,63,160" maxstrength="100" enabled="true"/>
+  <Bar affliction="EmaTalent_Witch_Transformation" color="255,140,170" maxstrength="100" enabled="true"/>
+  <Bar affliction="HiroTalent_Witch_Transformation" color="255,50,50" maxstrength="100" enabled="true"/>
+  <Bar affliction="SherryTalent_Witch_Transformation" color="60,100,220" maxstrength="100" enabled="true"/>
+  <Bar affliction="Touhou_Yousei_Power" color="220,220,220" maxstrength="100" enabled="true" requirejob="yousei"/>
+  <Bar affliction="Touhou_Cosmic_Princess_Kaguya_Character_Effect_Hungry" color="252,253,116" maxstrength="100" enabled="true"/>
+  <Bar affliction="Touhou_Magic_Overload" color="255,255,0" maxstrength="100" enabled="true"/>
+  <Bar affliction="Patchouli_Asthma" color="120,75,100" maxstrength="100" enabled="true"/>
+  <Bar affliction="FlandreTalent4_Effect_CD" color="220,55,55" maxstrength="100" enabled="true"/>
+  <Bar affliction="Touhou_Lunatic_Reisen_Effect" color="220,25,200" maxstrength="100" enabled="true"/>
+  <!-- 示例（对应 affliction ）：
+  <Bar affliction="Alice_Doll_Energy" name="人偶能量" color="200,160,255" maxstrength="100" enabled="true"/>
+  <Bar affliction="Touhou_Blood_Clock_Time" name="血之时计" color="220,60,60" maxstrength="100" enabled="true"/>
+  <Bar affliction="Remilia_Bloodlust" name="渴血" color="180,30,30" maxstrength="100" enabled="true"/>
+  -->
+</HudBars>

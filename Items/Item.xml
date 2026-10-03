@@ -72,7 +72,7 @@
           </StatusEffect>
         </Button>
       </CustomInterface>
-      <RangedWeapon barrelpos="180,10" weapondamagemodifier="1.0" spread="3" combatPriority="80" ReloadSkillRequirement="Touhou_Magic" maxchargetime="0.0" Reload="0.2" ReloadNoSkill="0.4" holdtrigger="true" drawhudwhenequipped="true" crosshairscale="0.2">
+      <RangedWeapon barrelpos="210,10" weapondamagemodifier="1.0" spread="3" combatPriority="80" ReloadSkillRequirement="Touhou_Magic" maxchargetime="0.0" Reload="0.2" ReloadNoSkill="0.4" holdtrigger="true" drawhudwhenequipped="true" crosshairscale="0.2">
         <Crosshair texture="Content/Items/Weapons/Crosshairs.png" sourcerect="0,256,256,256" />
         <CrosshairPointer texture="Content/Items/Weapons/Crosshairs.png" sourcerect="256,256,256,256" />
         <ParticleEmitter particle="muzzleflash" particleamount="1" velocitymin="0" velocitymax="0" colormultiplier="255,255,255,255" />
@@ -310,7 +310,7 @@
       <Sprite texture="%ModDir%/Images/Touhou_Monorail.png" depth="0.4" sourcerect="0,0,467,80" />
       <Body width="190" height="50" density="10" />
       <Holdable slots="Any,RightHand+LeftHand" controlpose="true" holdpos="40,-10" aimpos="55,5" handle1="-95,-16" handle2="0,0" holdangle="-40" msg="ItemMsgPickUpSelect">
-        <!-- 每帧驱动蓄力状态机（服务端权威），逻辑见 Lua/Scripts/Sever/Touhou_Monorail.lua -->
+        <!-- 每帧驱动蓄力状态机（服务端权威），逻辑见 Lua/Scripts/Server/Touhou_Monorail.lua -->
         <StatusEffect type="Always" target="This">
           <LuaHook name="Touhou_Monorail_charge" />
         </StatusEffect>
@@ -348,7 +348,7 @@
             </Button>
         </CustomInterface>
 
-      <!-- maxchargetime 仅用于驱动原生蓄力音效/粒子（音调随蓄力上扬）；实际蓄力进度、松手发射与过蓄自爆由 Lua 控制（Lua/Scripts/Sever/Touhou_Monorail.lua），Lua 会在 6 秒强制发射，原生 8 秒自动开火永远不会触发 -->
+      <!-- maxchargetime 仅用于驱动原生蓄力音效/粒子（音调随蓄力上扬）；实际蓄力进度、松手发射与过蓄自爆由 Lua 控制（Lua/Scripts/Server/Touhou_Monorail.lua），Lua 会在 6 秒强制发射，原生 8 秒自动开火永远不会触发 -->
       <RangedWeapon barrelpos="80,0" reload="2" drawhudwhenequipped="true" crosshairscale="0.15" maxchargetime="8" chargesoundwinduppitchslide="0.5,2.0">
         <Crosshair texture="Content/Items/Weapons/Crosshairs.png" sourcerect="0,256,256,256" />
         <CrosshairPointer texture="Content/Items/Weapons/Crosshairs.png" sourcerect="256,256,256,256" />

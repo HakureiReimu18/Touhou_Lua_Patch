@@ -1,16 +1,13 @@
--- 彩叶装束+：多面适配天赋模式切换
--- 条件：
--- 1) 角色拥有 Iroha_Versatile_Adaptation affliction
--- 2) 穿着指定服装（默认 Iroha_Plus）
--- 3) 根据六项技能中的最高值，激活对应模式 affliction；并列最高可同时激活
+-- 噩梦缠绕
+
+-- 彩叶装束+：身上有 Iroha_Versatile_Adaptation、穿着 Iroha_Plus 时，
+-- 六项技能里哪个最高就激活哪个模式aff，并列最高就一起激活
 
 local REQUIRED_GATE_AFFLICTION = "Iroha_Versatile_Adaptation"
 local REQUIRED_OUTFIT_IDENTIFIER = "Iroha_Plus"
 local OVERRIDE_GLASSES_IDENTIFIER = "Touhou_Tsukuyomi_Stealth_VR_Glasses"
 
--- 为了降低性能开销：
--- - 间隔检测
--- - 持续续写激活中的 aff，避免 duration 到期导致短暂中断
+-- 一秒扫一次就行；激活中的aff要不停续写，不然duration到期会闪断
 local UPDATE_INTERVAL = 1.0
 
 local MAGIC_SKILL_IDENTIFIER = "Touhou_Magic"
@@ -54,7 +51,6 @@ local function set_affliction_strength(character, affliction_identifier, strengt
     local target_strength = strength or 0
 
     if current ~= nil then
-        -- 对激活中的模式定期续写，避免 duration 倒计时到 0 造成短暂中断
         if target_strength > 0 then
             current.Strength = target_strength
         elseif math.abs((current.Strength or 0) - target_strength) > 0.0001 then
@@ -188,8 +184,8 @@ local function update_character_modes(character)
 end
 
 Hook.Add("think", "Iroha.VersatileAdaptation.Update", function(delta_time)
-    -- 服务端权威：联机客户端不执行（作为主机时本脚本会在两个 Lua 环境各加载一次，
-    -- 客户端重复施加 affliction 既浪费性能又与服务端同步冲突）
+    -- 联机时客户端别跑：当主机这脚本会在两个Lua环境各加载一遍，
+    -- 客户端重复施aff纯浪费性能，还会跟服务端同步打架
     if CLIENT and not Game.IsSingleplayer then return end
 
     elapsed = elapsed + (delta_time or 0)

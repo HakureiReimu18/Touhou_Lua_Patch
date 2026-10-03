@@ -1,4 +1,5 @@
--- 消息映射表
+-- 你是人类吗
+
 local ITEM_MESSAGES = {
     ["Hompson_Contender"] = "Hompson_Contender.Message",
     ["Touhou_Winchester"] = "Touhou_Winchester.Message",
@@ -14,7 +15,6 @@ Hook.Add("Touhou_Item_Message_Display_Oninsert", "Touhou_Item_Message_Display_On
 
     local itemId = containedItem.Prefab.Identifier.Value
 
-    -- 从表中获取对应的消息
     local messageKey = ITEM_MESSAGES[itemId] or "Touhou_Item_Message_Display.Message"
 
     local senderName = TextManager.Get("Touhou_Item_Message_Display.Sendername")
@@ -24,7 +24,6 @@ Hook.Add("Touhou_Item_Message_Display_Oninsert", "Touhou_Item_Message_Display_On
         message = string.format(message, containedItem.Name)
     end
 
-    -- 发送消息
     if not Game.IsMultiplayer then
         if Game.GameSession and Game.GameSession.CrewManager then
             Game.GameSession.CrewManager.AddSinglePlayerChatMessage(senderName, message, ChatMessageType.Radio, nil)

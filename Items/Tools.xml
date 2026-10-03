@@ -2,7 +2,7 @@
 <Override>
   <Items>
     <!--零点时刻项链-->
-    <Item name="零点时刻项链" identifier="Touhou_Zero_Moment_Pendant" tags="smallitem,mobileradio" subcategory="Touhou" category="Equipment" allowasextracargo="true" cargocontaineridentifier="metalcrate" maxstacksize="1" scale="0.15">
+    <Item name="零点时刻项链" identifier="Touhou_Zero_Moment_Pendant" tags="smallitem,mobileradio,Touhou_Wearable_Equipment,Touhou_Condition_Loss_Rate_0.1" subcategory="Touhou" category="Equipment" allowasextracargo="true" cargocontaineridentifier="metalcrate" maxstacksize="1" scale="0.15">
       <PreferredContainer primary="medcab" />
       <Price baseprice="3000" sold="false">
         <Price storeidentifier="merchantoutpost" minavailable="8" />
@@ -32,12 +32,47 @@
         <StatusEffect type="OnWearing" target="Character" Interval="15.0" disabledeltatime="true">
           <LuaHook name="Touhou_Zero_Moment_Pendant_Hook" />
         </StatusEffect>
-        <StatusEffect type="OnWearing" target="This,Character" Condition="-0.01" Interval="1.0" disabledeltatime="true">
-          <Conditional HealthPercentage="lte 85" />
-        </StatusEffect>
       </Wearable>
     </Item>
     <!-- 改名台（Touhou_Renamer）已下线，物品定义归档至 _Archive/Items/Tools_Renamer_Item.xml -->
+    <!--估价器（手持使用，扫描背包物品估价，逻辑见 Lua/Scripts/Server/Touhou_Pricer.lua；贴图为占位，沿用信息展示器）-->
+    <Item name="估价器" identifier="Touhou_Pricer" tags="smallitem" subcategory="Touhou" category="Equipment" allowasextracargo="true" cargocontaineridentifier="metalcrate" maxstacksize="1" scale="0.15">
+      <PreferredContainer primary="medcab" />
+      <Price baseprice="1200" sold="false">
+        <Price storeidentifier="Merchant_Kawasiro_Nitori" multiplier="0.7" sold="true" maxavailable="1" />
+      </Price>
+      <Sprite texture="%ModDir%/Images/Touhou_Item_Message_Display.png" sourcerect="0,0,136,200" depth="0.6" origin="0.5,0.5" />
+      <Body width="48" height="48" density="10" />
+      <Holdable slots="Any,RightHand+LeftHand" msg="ItemMsgPickUpSelect">
+        <StatusEffect type="OnBroken" target="This">
+          <Remove />
+        </StatusEffect>
+      </Holdable>
+      <!-- 估价按钮：打开物品界面（手持选中按 E / 双击背包栏位）后点击触发；左=全部物品，右=仅穿戴 -->
+      <CustomInterface canbeselected="true" drawhudwhenequipped="true">
+        <GuiFrame relativesize="0.18,0.08" anchor="TopCenter" relativeoffset="-0.11,0.25" style="ItemUI" />
+        <Button text="touhou.pricer.button.all">
+          <StatusEffect type="OnUse" target="This" disabledeltatime="true">
+            <LuaHook name="Touhou.Pricer.scanAll" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+      <CustomInterface canbeselected="true" drawhudwhenequipped="true">
+        <GuiFrame relativesize="0.18,0.08" anchor="TopCenter" relativeoffset="0.11,0.25" style="ItemUI" />
+        <Button text="touhou.pricer.button.worn">
+          <StatusEffect type="OnUse" target="This" disabledeltatime="true">
+            <LuaHook name="Touhou.Pricer.scanWorn" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+      <Deconstruct time="1">
+        <Item identifier="Magic_Material" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="fabricator" requiredtime="10">
+        <RequiredItem identifier="Magic_Material" />
+        <RequiredItem identifier="fpgacircuit" />
+      </Fabricate>
+    </Item>
 <!--
       &lt;!&ndash;物品信息展示器&ndash;&gt;
       <Item name="物品信息展示器" identifier="Touhou_Item_Message_Display" tags="mediumitem" subcategory="Touhou"

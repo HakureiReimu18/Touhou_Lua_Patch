@@ -1,44 +1,30 @@
---[[
+-- 你怎么说话的，话
 
+--[[
 AI写注释比我厉害
 那我有什么用
 
-
-天赋脚本（仅包含天赋1与天赋3）：
-1) 天赋1：死亡回溯
-   - 每巡回一次
-   - 当角色生命值 <= 1% 时触发
-   - 触发后清空角色当前所有 affliction
-   - 施加“死亡回溯”增益，并追加 20 精神病
-2) 天赋3：伪证专家
-   - 玩家按 Alt + X 主动触发
-   - 5 分钟冷却
-
+天赋1 死亡回溯：每巡回一次，血线 <= 1% 触发，清掉全身 affliction（设计里还带增益+20精神病）
+天赋3 伪证专家：Alt+X 主动触发，冷却 5 分钟
 ]]
 
--- 天赋标识符（需与人才树里定义的 identifier 完全一致）
+-- 要和人才树里定义的 identifier 一字不差
 local TALENT_DEATH_REWIND = "HiroTalent"
 local TALENT_FALSE_EVIDENCE = "HiroTalent"
 
--- 相关 affliction 标识符（需与 Afflictions.xml 完全一致）
+-- 要和 Afflictions.xml 里的一致
 local FALSE_EVIDENCE_BUFF = "Hiro_Pseudo_Buff"
 local REQUIRED_GATE_AFFLICTION = "Hiro_Executor_Of_Justice"
--- 网络消息标识符（客户端请求服务端触发“伪证专家”）
+-- 联机时客户端发请求用的消息名
 local FALSE_EVIDENCE_NETMSG = "Touhou.FalseEvidence.Request"
 
--- 伪证专家冷却：300 秒 = 5 分钟
 local FALSE_EVIDENCE_COOLDOWN = 300
 
--- 状态表：
--- 1) death_rewind_used_this_round: 本巡回是否已经有人触发过天赋1（全局锁）
--- 2) false_evidence_cooldown: 记录角色下次可用“伪证专家”的时间戳
+-- death_rewind_used_this_round 是全局锁，一巡回里不管谁触发过一次就完事
 local death_rewind_used_this_round = false
 local false_evidence_cooldown = setmetatable({}, { __mode = "k" })
 local false_evidence_key_was_down = false
 
--- 向对应玩家提示：
--- - 客户端：本地 GUI 提示
--- - 服务端：定向发聊天框给该角色所属客户端
 local function notify_local_player(message, character)
     if SERVER then
         local ok = pcall(function()
@@ -64,7 +50,6 @@ local function notify_local_player(message, character)
         return
     end
 
-    -- 优先尝试 GUI 提示
     local ok, shown = pcall(function()
         if GUI ~= nil and GUI.AddMessage ~= nil and Color ~= nil then
             GUI.AddMessage(message, Color(180, 255, 180, 255))
@@ -77,13 +62,11 @@ local function notify_local_player(message, character)
         return false
     end)
 
-    -- 兜底输出到控制台
     if (not ok) or (not shown) then
         print(message)
     end
 end
 
--- 将剩余秒数格式化为“Xm Ys”便于提示
 local function format_cooldown_time(remaining_seconds)
     local total = math.max(0, math.ceil(remaining_seconds or 0))
     local minutes = math.floor(total / 60)
@@ -96,10 +79,8 @@ local function format_cooldown_time(remaining_seconds)
     return tostring(seconds) .. "秒"
 end
 
--- 判定角色是否拥有某个天赋。
--- 兼容两种调用方式：Identifier(...) 与 直接字符串。
--- Identifier 对象做缓存：死亡回溯心跳每帧每角色都会调用本函数，
--- 原实现每次都新建 Identifier(...) 对象，会持续产生堆分配并诱发 GC 尖峰
+-- 心跳每帧每个角色都要查天赋，Identifier 每次新建会不断堆分配、搞出 GC 尖峰，缓存起来
+-- HasTalent 有的版本只吃 Identifier，有的直接吃字符串，两种都喂
 local identifier_cache = {}
 local function cached_identifier(name)
     local id = identifier_cache[name]
@@ -130,7 +111,6 @@ local function has_talent(character, talent_identifier)
     return ok and result
 end
 
--- 判定角色是否拥有指定 affliction（strength > 0）。
 local function has_affliction(character, affliction_identifier)
     if character == nil or character.CharacterHealth == nil then
         return false
@@ -140,8 +120,6 @@ local function has_affliction(character, affliction_identifier)
     return affliction ~= nil and affliction.Strength ~= nil and affliction.Strength > 0
 end
 
--- 获取 affliction 施加用肢体：
--- 优先主肢体，若不可用则回退躯干。
 local function get_main_limb(character)
     if character == nil or character.AnimController == nil then
         return nil
@@ -150,7 +128,6 @@ local function get_main_limb(character)
     return character.AnimController.MainLimb or character.AnimController.GetLimb(LimbType.Torso)
 end
 
--- 对角色施加指定 affliction。
 local function apply_affliction(character, affliction_identifier, strength)
     if character == nil or character.CharacterHealth == nil then
         return
@@ -165,7 +142,6 @@ local function apply_affliction(character, affliction_identifier, strength)
     character.CharacterHealth.ApplyAffliction(limb, prefab.Instantiate(strength or 1))
 end
 
--- 清空角色当前所有 affliction。
 local function remove_all_afflictions(character)
     local health = character.CharacterHealth
     if health == nil then
@@ -186,12 +162,7 @@ local function remove_all_afflictions(character)
     end
 end
 
--- 天赋1：死亡回溯主逻辑
--- 触发条件：
--- - 拥有天赋1
--- - 拥有额外门槛 aff：Hiro_Executor_Of_Justice
--- - 当前生命 <= 最大生命的 1%
--- - 本巡回全局尚未触发过（无论谁触发）
+-- 天赋1：血线压到 1% 以下就清全身 affliction，一个巡回全局只有一次
 local function handle_death_rewind(character)
     if not has_talent(character, TALENT_DEATH_REWIND) then
         return
@@ -218,12 +189,10 @@ local function handle_death_rewind(character)
 
     death_rewind_used_this_round = true
 
-    -- 关键步骤1：清空该玩家身上所有 affliction
     remove_all_afflictions(character)
 end
 
--- 天赋3：伪证专家主动施放
--- prediction_only=true 时仅做本地冷却/提示，不施加实际效果（用于客户端多人模式提示）
+-- prediction_only=true 只走冷却和提示，不放真的（联机客户端本地预演用）
 local function try_activate_false_evidence(character, prediction_only)
     if character == nil or character.IsDead or character.Removed then
         return
@@ -245,10 +214,9 @@ local function try_activate_false_evidence(character, prediction_only)
         return
     end
 
-    -- 进入冷却
     false_evidence_cooldown[character] = now + FALSE_EVIDENCE_COOLDOWN
     if not prediction_only then
-        -- 施加“伪证”效果（持续时间由 aff 自身 duration 控制）
+        -- 实际持续多久归 aff 自己的 duration 管
         apply_affliction(character, FALSE_EVIDENCE_BUFF, 1)
     end
 
@@ -257,7 +225,7 @@ local function try_activate_false_evidence(character, prediction_only)
     return true
 end
 
--- 多人模式：客户端只发请求，服务端执行实际施放
+-- 联机：客户端只发请求，真放由服务端来
 if SERVER then
     if Networking ~= nil and Networking.Receive ~= nil then
         Networking.Receive(FALSE_EVIDENCE_NETMSG, function(message, client)
@@ -276,8 +244,7 @@ if SERVER then
     end
 end
 
--- 客户端按键监听：
--- 按下 Alt + X 且是“按下瞬间”时触发伪证专家。
+-- Alt+X 按下沿触发
 if CLIENT then
     Hook.Add("think", "Touhou.FalseEvidence.Hotkey", function()
         if Character.Controlled == nil or GUI == nil or GUI.GUI == nil then
@@ -292,7 +259,7 @@ if CLIENT then
             return
         end
 
-        -- 某些环境里 Microsoft 命名空间不可用，这里做兼容保护，避免 nil 索引报错
+        -- 有的环境没有 Microsoft 命名空间，兜一下防止 nil 索引
         local keys = Keys
         if keys == nil and Microsoft ~= nil
                 and Microsoft.Xna ~= nil
@@ -327,19 +294,14 @@ if CLIENT then
     end)
 end
 
--- 每巡回开始重置状态：
--- - 重置“死亡回溯全局已触发”标记
--- - 清空伪证冷却表
--- - 重置按键边沿状态
 Hook.Add("roundStart", "Touhou.Talents.RoundReset", function()
     death_rewind_used_this_round = false
     false_evidence_cooldown = setmetatable({}, { __mode = "k" })
     false_evidence_key_was_down = false
 end)
 
--- 统一心跳：遍历角色并检查天赋1触发条件
--- 服务端权威：init.lua 会把本脚本同时加载进服务端和客户端两个 Lua 环境，
--- 联机客户端重复执行 affliction 清空既浪费性能又与服务端状态冲突，直接跳过
+-- init.lua 会把这个脚本同时塞进服务端和客户端两个环境，联机时客户端别跟着跑，
+-- 重复清 affliction 既浪费又和服务端状态冲突，交给服务端就行
 Hook.Add("think", "Touhou.DeathRewind.Tick", function()
     if CLIENT and not Game.IsSingleplayer then return end
     for character in Character.CharacterList do

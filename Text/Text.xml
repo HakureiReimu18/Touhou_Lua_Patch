@@ -28,7 +28,7 @@
     <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier4>增加5%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier4>
     <afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier5>增加0%攻击伤害</afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier5>
     <!-- 改名台已下线（归档至 _Archive），文本条目同步移除 -->
-    <!--自由料理台（自由搭配烹饪系统，逻辑见 Lua/Scripts/Sever/Cook.lua）-->
+    <!--自由料理台（自由搭配烹饪系统，逻辑见 Lua/Scripts/Server/Cook.lua）-->
     <entityname.Touhou_Cooktop03>自由料理台</entityname.Touhou_Cooktop03>
     <entitydescription.Touhou_Cooktop03>一台不拘泥于菜谱的料理台。放入任意食材，它会根据风味搭配推断出最接近的料理；搭配得实在不像话时，就只能得到炼金术副产物了。可使用‖color:gui.yellow‖分析风味‖end‖按钮预测产出。</entitydescription.Touhou_Cooktop03>
     <touhou.cooktop.cook>开始料理</touhou.cooktop.cook>
@@ -86,5 +86,45 @@
     <touhou.cooktop.analyze.prediction.mush>当前的搭配恐怕只能做出炼金术副产物……</touhou.cooktop.analyze.prediction.mush>
     <touhou.cooktop.analyze.skillshortage>（技能不足）</touhou.cooktop.analyze.skillshortage>
     <touhou.cooktop.skillblocked>技能不足，未能做出：</touhou.cooktop.skillblocked>
+    <!--羁绊护符（伤害共担系统，逻辑见 CSharp/Shared/Bond*.cs）-->
+    <entityname.Touhou_Bond_Charm>绑定护符</entityname.Touhou_Bond_Charm>
+    <entitydescription.Touhou_Bond_Charm>一对护符之间缔结伤害共担的绑定：佩戴者受到的攻击伤害将按护符内的公式核心与调制芯片所决定的曲线，周期性划转给绑定对象。绑定严格一对一，每个巡回只能变更一次对象；单人模式下可与 AI 船员绑定。槽位：核心（决定承伤曲线）+ 芯片（决定曲线参数）。戴上护符按绑定面板键（默认 L，可在「东方-快捷键设置」中修改）打开绑定面板。</entitydescription.Touhou_Bond_Charm>
+    <entityname.Touhou_Bond_Core_Linear>公式核心·均契</entityname.Touhou_Bond_Core_Linear>
+    <entitydescription.Touhou_Bond_Core_Linear>承伤曲线：恒定五五开（f=0.5）。无论状态如何始终均摊，没有任何惊喜，也没有任何读错曲线的风险。</entitydescription.Touhou_Bond_Core_Linear>
+    <entityname.Touhou_Bond_Core_Logistic>公式核心·庇护</entityname.Touhou_Bond_Core_Logistic>
+    <entitydescription.Touhou_Bond_Core_Logistic>承伤曲线：S 型曲线——自身越健康替对方扛得越多（满血约 90%），越残扛得越少（残血约 10%）。濒死时自然让渡压力，无需任何特例代码。</entitydescription.Touhou_Bond_Core_Logistic>
+    <entityname.Touhou_Bond_Core_Sine>公式核心·潮汐</entityname.Touhou_Bond_Core_Sine>
+    <entitydescription.Touhou_Bond_Core_Sine>承伤曲线：随时间正弦摆动（默认 15 秒一个周期，10%↔90% 间呼吸）。两件潮汐护符相位错开时，任何时刻都恰好一人在高承伤相。</entitydescription.Touhou_Bond_Core_Sine>
+    <entityname.Touhou_Bond_Core_Power>公式核心·蓄能</entityname.Touhou_Bond_Core_Power>
+    <entitydescription.Touhou_Bond_Core_Power>承伤曲线：按本次结算窗口内受到的伤害总量决定承担份额——平时少扛，挨重炮时冲上去扛（反爆发专用）。</entitydescription.Touhou_Bond_Core_Power>
+    <entityname.Touhou_Bond_Chip_Amp1>振幅芯片 Mk.I</entityname.Touhou_Bond_Chip_Amp1>
+    <entityname.Touhou_Bond_Chip_Amp2>振幅芯片 Mk.II</entityname.Touhou_Bond_Chip_Amp2>
+    <entityname.Touhou_Bond_Chip_Amp3>振幅芯片 Mk.III</entityname.Touhou_Bond_Chip_Amp3>
+    <entitydescription.Touhou_Bond_Chip_Amp1>曲线摆幅 0.3（承伤范围 20%↔80%）</entitydescription.Touhou_Bond_Chip_Amp1>
+    <entitydescription.Touhou_Bond_Chip_Amp2>曲线摆幅 0.4（承伤范围 10%↔90%）</entitydescription.Touhou_Bond_Chip_Amp2>
+    <entitydescription.Touhou_Bond_Chip_Amp3>曲线摆幅 0.5（承伤范围 0%↔100%，极限型）</entitydescription.Touhou_Bond_Chip_Amp3>
+    <entityname.Touhou_Bond_Chip_K1>陡度芯片 Mk.I</entityname.Touhou_Bond_Chip_K1>
+    <entityname.Touhou_Bond_Chip_K2>陡度芯片 Mk.II</entityname.Touhou_Bond_Chip_K2>
+    <entityname.Touhou_Bond_Chip_K3>陡度芯片 Mk.III</entityname.Touhou_Bond_Chip_K3>
+    <entitydescription.Touhou_Bond_Chip_K1>S 曲线陡度 2（平滑过渡）</entitydescription.Touhou_Bond_Chip_K1>
+    <entitydescription.Touhou_Bond_Chip_K2>S 曲线陡度 3（标准）</entitydescription.Touhou_Bond_Chip_K2>
+    <entitydescription.Touhou_Bond_Chip_K3>S 曲线陡度 5（接近阶跃，满血几乎全扛/残血几乎不扛）</entitydescription.Touhou_Bond_Chip_K3>
+    <entityname.Touhou_Bond_Chip_T1>周期芯片 Mk.I</entityname.Touhou_Bond_Chip_T1>
+    <entityname.Touhou_Bond_Chip_T2>周期芯片 Mk.II</entityname.Touhou_Bond_Chip_T2>
+    <entityname.Touhou_Bond_Chip_T3>周期芯片 Mk.III</entityname.Touhou_Bond_Chip_T3>
+    <entitydescription.Touhou_Bond_Chip_T1>潮汐周期 10 秒（急促）</entitydescription.Touhou_Bond_Chip_T1>
+    <entitydescription.Touhou_Bond_Chip_T2>潮汐周期 15 秒（标准）</entitydescription.Touhou_Bond_Chip_T2>
+    <entitydescription.Touhou_Bond_Chip_T3>潮汐周期 25 秒（缓慢）</entitydescription.Touhou_Bond_Chip_T3>
+    <!--估价器（手持估价道具，逻辑见 Lua/Scripts/Server/Touhou_Pricer.lua）-->
+    <entityname.Touhou_Pricer>估价器</entityname.Touhou_Pricer>
+    <entitydescription.Touhou_Pricer>河童出品的手持估价装置。打开它的界面，点击「估价全部」扫描背包内所有物品，或点击「估价穿戴」只统计穿在身上的装备。估价规则：优先取物品售价，无售价按合成材料成本折算，再不行按分解产物估值，皆无则按 500 mk 计。</entitydescription.Touhou_Pricer>
+    <touhou.pricer.button.all>估价全部</touhou.pricer.button.all>
+    <touhou.pricer.button.worn>估价穿戴</touhou.pricer.button.worn>
+    <touhou.pricer.sendername>估价器</touhou.pricer.sendername>
+    <touhou.pricer.empty>背包里没有什么值得估价的东西。</touhou.pricer.empty>
+    <touhou.pricer.line>%s×%d≈%dmk</touhou.pricer.line>
+    <touhou.pricer.more>……</touhou.pricer.more>
+    <touhou.pricer.summary>背包估价合计约 %d mk（%d 种 / 共 %d 件）</touhou.pricer.summary>
+    <touhou.pricer.summary.worn>穿戴装备估价合计约 %d mk（%d 种 / 共 %d 件）</touhou.pricer.summary.worn>
   </Override>
 </infotexts>

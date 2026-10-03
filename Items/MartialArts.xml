@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Override>
+  <Items>
+    <!-- ============================================================
+         武术武器制作说明
+         ============================================================
+         一件武术武器 = 普通近战武器结构（MeleeWeapon 数据）+ 动作组件（MartialArtsWeapon）。
+
+         操作（玩家）：右键按住 = 架势（拳架/持握），瞄准中左键 = 出招。
+         连击：上一招结束 1 秒内再出招——双持自动换另一件武器的手，踢腿自动换脚。
+
+         ── MartialArtsWeapon 全部可写属性 ─────────────────────────
+         strike   : 招式类型，必填。
+                    "punch" = 拳类（道具沿瞄准方向直线伸缩，手臂打直；
+                              行走/水中可用）
+                    "kick"  = 踢腿（原生攻击力驱动的正蹬；
+                              必须站定（陆地上不动）才能踢，水中禁用）
+         reach    : 攻击点前伸距离（米，相对瞄准方向）。拳类≈臂展（0.8~0.9 手
+                    臂才打直），踢腿 1.0 上下。默认 punch 0.85 / kick 1.0。
+         height   : 攻击点高度偏置（米，正值向上）。拳类一般 0，踢腿 -0.35
+                    （腰胯高度）。默认 punch 0 / kick -0.35。
+         duration : 动作时长（秒）。快拳 0.3~0.35，重拳 0.45，踢腿 0.4~0.5。
+                    同时也是冷却下限：实际冷却 = max(本值+0.35, MeleeWeapon
+                    的 reload) ÷ 攻速公式（见下）。
+         force    : 仅 kick 用——蹬腿的肢体驱动力（每帧冲量系数，60次/秒，
+                    个位数；默认 6）。太大会把人带跑，太小蹬不出去。
+         torque   : 仅 kick 用——肢体转向扭矩。强烈建议保持 0（非 0 会注入
+                    自旋）。组件默认 2.5，踢腿内部已强制按 0 处理。
+
+         ── MeleeWeapon 侧调参（原版语义，直接生效）────────────────
+         reload             : 攻速基数。实际冷却 = max(reload, duration+0.35)
+                              ÷ (1+MeleeAttackSpeed) ÷ (1+品质攻速)
+         <attack> 内：
+           Affliction       : 伤害/异常（原版格式）。internaldamage=内伤主伤害，
+                              stun=眩晕秒数，blunttrauma=钝伤。probability=概率
+           targetimpulseworld : 击退冲量（X 自动乘朝向，Y 正=向上）
+           targetimpulse    : 径向击退（从命中点向外）
+           penetration      : 护甲穿透 0~1
+           structuredamage  : 对船体/门伤害（踢门用）
+           severlimbsprobability : 断肢概率（对怪物，给一点点很带感）
+         伤害结算公式（自动执行）：(1+MeleeAttackMultiplier) × (1+品质威力)，
+         词缀系统的近战词缀同样生效（就走这个入口）。
+
+         其余注意：
+         - slots 建议 "Any,RightHand,LeftHand"（单手，可双持换手）
+         - swing="false" 必写（关闭原版挥舞）
+         - requireaimtouse 默认 true 即可（右键瞄准本来就是操作的一部分）
+         - <Body> 只影响物品物理存在感，与命中范围无关（命中体是出招肢体，
+           命中半径 0.4m 在代码里）
+         ============================================================ -->
+
+    <!--测试拳套：直拳（快而轻）-->
+    <Item name="测试拳套" identifier="ma_glove_test" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.5" impactsoundtag="impact_metal_light">
+      <Sprite texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon name="" texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" origin="0.5,0.5"/>
+      <Body width="24" height="16" density="5"/>
+      <MeleeWeapon slots="Any,RightHand,LeftHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.1" swing="false" msg="ItemMsgPickUpSelect">
+        <attack targetimpulseworld="4,1">
+          <Affliction identifier="blunttrauma" strength="9" />
+          <Affliction identifier="internaldamage" strength="3"  />
+          <Affliction identifier="stun" strength="0.2" probability="0.1" />
+        </attack>
+      </MeleeWeapon>
+      <MartialArtsWeapon strike="punch" force="4" torque="2.5" duration="0.3" reach="0.95" height="0"/>
+    </Item>
+
+    <!--测试护手：重拳（慢而重，直拳机制的数值变体）-->
+    <Item name="测试护手" identifier="ma_gauntlet_test" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.5" impactsoundtag="impact_metal_light">
+      <Sprite texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon name="" texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" origin="0.5,0.5"/>
+      <Body width="26" height="18" density="5"/>
+      <MeleeWeapon slots="Any,RightHand,LeftHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.15" swing="false" msg="ItemMsgPickUpSelect">
+        <attack targetimpulseworld="6,3">
+          <Affliction identifier="blunttrauma" strength="14" />
+          <Affliction identifier="internaldamage" strength="6" />
+          <Affliction identifier="stun" strength="0.3" probability="0.3" />
+        </attack>
+      </MeleeWeapon>
+      <MartialArtsWeapon strike="punch" force="4" torque="2.5" duration="0.3" reach="0.9" height="0"/>
+    </Item>
+
+    <!--测试护腿：正蹬腿-->
+    <Item name="测试护腿" identifier="ma_legguard_test" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.5" impactsoundtag="impact_metal_light">
+      <Sprite texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon name="" texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" origin="0.5,0.5"/>
+      <Body width="30" height="20" density="5"/>
+      <MeleeWeapon slots="Any,RightHand,LeftHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.9" swing="false" msg="ItemMsgPickUpSelect">
+        <attack targetimpulseworld="12,4">
+          <Affliction identifier="blunttrauma" strength="36" />
+          <Affliction identifier="internaldamage" strength="6" />
+          <Affliction identifier="stun" strength="0.6" probability="0.6" />
+        </attack>
+      </MeleeWeapon>
+      <MartialArtsWeapon strike="kick" force="14" torque="0" duration="0.3" reach="1.0" height="-0.35"/>
+    </Item>
+
+  </Items>
+</Override>

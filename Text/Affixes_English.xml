@@ -6,6 +6,8 @@
 	<entityname.affixes_1>Enchant Core</entityname.affixes_1>
 	<entityname.affixes_2>Enchant Prism</entityname.affixes_2>
 	<entityname.affixes_3>Enchant Alloy</entityname.affixes_3>
+	<entityname.affixes_stone>Enchantment Stone</entityname.affixes_stone>
+	<entitydescription.affixes_stone>A universal affix vessel. Enchant it with any affix first, then place it in the enchanting station together with a target item: the stone is consumed and its affix is transferred onto the target.</entitydescription.affixes_stone>
 	<enchantingstation.input>Input</enchantingstation.input>
 	<enchantingstation.output>Output</enchantingstation.output>
 	<enchantingstation.invalidinput>Enchant</enchantingstation.invalidinput>
@@ -37,7 +39,7 @@
 	<affix.prefix.balanced>‖color:255,255,255,255‖Balanced‖color:end‖‖color:255,255,255,255‖</affix.prefix.balanced>
 	<affix.desc.balanced>Damage +3%, fire rate +3%</affix.desc.balanced>
 	<affix.prefix.repairman>‖color:255,255,255,255‖Tinkerer‖color:end‖‖color:255,255,255,255‖</affix.prefix.repairman>
-	<affix.desc.repairman>Repairs restore +10% of target's max condition per second</affix.desc.repairman>
+	<affix.desc.repairman>Hull repair speed +25%, device repair speed +20%</affix.desc.repairman>
 	<affix.prefix.insulated>‖color:255,255,255,255‖Insulated‖color:end‖‖color:255,255,255,255‖</affix.prefix.insulated>
 	<affix.desc.insulated>While worn: stun -0.1/s</affix.desc.insulated>
 	<affix.prefix.flame>‖color:74,144,255,255‖Flaming‖color:end‖‖color:255,255,255,255‖</affix.prefix.flame>
@@ -57,21 +59,70 @@
 	<affix.prefix.inferno>‖color:192,64,255,255‖Inferno‖color:end‖‖color:255,255,255,255‖</affix.prefix.inferno>
 	<affix.desc.inferno>Damage +6%; 50% chance on hit: 14 burn (2s cooldown)</affix.desc.inferno>
 	<affix.prefix.lightning>‖color:192,64,255,255‖Thundering‖color:end‖‖color:255,255,255,255‖</affix.prefix.lightning>
-	<affix.desc.lightning>50% chance on hit: 0.3s stun and 30 shock damage (4s cooldown)</affix.desc.lightning>
+	<affix.desc.lightning>Damage +4%; 50% chance on hit: 0.3s stun and 30 shock damage (4s cooldown)</affix.desc.lightning>
 	<affix.prefix.vampiric>‖color:192,64,255,255‖Vampiric‖color:end‖‖color:255,255,255,255‖</affix.prefix.vampiric>
 	<affix.desc.vampiric>Damage +4%; on hit: 6 bleeding and heal self 0.5 physical damage (1s cooldown)</affix.desc.vampiric>
 	<affix.prefix.guardian>‖color:192,64,255,255‖Guardian‖color:end‖‖color:255,255,255,255‖</affix.prefix.guardian>
-	<affix.desc.guardian>Damage taken -6%; while worn: stun -0.2/s, bleeding -0.1/s</affix.desc.guardian>
+	<affix.desc.guardian>Damage taken -7%; while worn: stun -0.2/s, bleeding -0.1/s</affix.desc.guardian>
 	<affix.prefix.masterwork>‖color:192,64,255,255‖Masterwork‖color:end‖‖color:255,255,255,255‖</affix.prefix.masterwork>
-	<affix.desc.masterwork>Damage +7%, fire rate +5%</affix.desc.masterwork>
+	<affix.desc.masterwork>Damage +9%, fire rate +5%</affix.desc.masterwork>
+	<affix.prefix.swift>‖color:74,144,255,255‖Swift‖color:end‖‖color:255,255,255,255‖</affix.prefix.swift>
+	<affix.desc.swift>Fire/swing rate +8%</affix.desc.swift>
+	<affix.prefix.heavy>‖color:74,144,255,255‖Heavy‖color:end‖‖color:255,255,255,255‖</affix.prefix.heavy>
+	<affix.desc.heavy>Damage +10%, swing speed -4%</affix.desc.heavy>
+	<affix.prefix.deadeye>‖color:74,144,255,255‖Deadeye‖color:end‖‖color:255,255,255,255‖</affix.prefix.deadeye>
+	<affix.desc.deadeye>Damage +5%, spread -10%</affix.desc.deadeye>
+	<affix.prefix.resilient>‖color:74,144,255,255‖Resilient‖color:end‖‖color:255,255,255,255‖</affix.prefix.resilient>
+	<affix.desc.resilient>Damage taken -4%; while worn: stun -0.05/s</affix.desc.resilient>
+	<affix.prefix.first_aid>‖color:74,144,255,255‖First Aid‖color:end‖‖color:255,255,255,255‖</affix.prefix.first_aid>
+	<affix.desc.first_aid>On use: heals 8 burn and 10 oxygen deprivation (requires durability above 20%)</affix.desc.first_aid>
+	<affix.prefix.void>‖color:255,64,64,255‖Void‖color:end‖‖color:255,255,255,255‖</affix.prefix.void>
+	<affix.desc.void>25% chance per shot to not consume ammo</affix.desc.void>
+	<affix.prefix.reflux>‖color:255,64,64,255‖Reflux‖color:end‖‖color:255,255,255,255‖</affix.prefix.reflux>
+	<affix.desc.reflux>30% chance on use to not consume durability (excludes single-use drugs)</affix.desc.reflux>
+	<affix.dormantline>(Affix dormant: durability too low)</affix.dormantline>
+	<affix.prefix.goldencrown>‖color:255,140,0,255‖Golden Crown‖color:end‖‖color:255,255,255,255‖</affix.prefix.goldencrown>
+	<affix.desc.goldencrown>On hit: that attack deals +25% damage, then a 10s cooldown (missing does not trigger)</affix.desc.goldencrown>
+	<affix.prefix.crown>‖color:255,64,64,255‖Crown‖color:end‖‖color:255,255,255,255‖</affix.prefix.crown>
+	<affix.desc.crown>The last round in the magazine deals +30% damage</affix.desc.crown>
+	<affix.prefix.devoted>‖color:255,64,64,255‖Devoted‖color:end‖‖color:255,255,255,255‖</affix.prefix.devoted>
+	<affix.desc.devoted>Becomes two-handed; damage +60%</affix.desc.devoted>
 	<affix.prefix.ragnarok>‖color:255,140,0,255‖Ragnarok‖color:end‖‖color:255,255,255,255‖</affix.prefix.ragnarok>
 	<affix.desc.ragnarok>Damage +14%; every 3s: 50% chance of 12 burn + 12 bleeding, 30% chance of 0.5s stun</affix.desc.ragnarok>
 	<affix.prefix.immortal>‖color:255,140,0,255‖Immortal‖color:end‖‖color:255,255,255,255‖</affix.prefix.immortal>
-	<affix.desc.immortal>Damage taken -8%; while worn: slowly regenerates internal damage / bleeding / oxygen</affix.desc.immortal>
+	<affix.desc.immortal>Damage taken -10%; while worn: slowly regenerates internal damage / bleeding / oxygen</affix.desc.immortal>
 	<affix.prefix.abyssal>‖color:255,140,0,255‖Abyssal‖color:end‖‖color:255,255,255,255‖</affix.prefix.abyssal>
 	<affix.desc.abyssal>Damage +10%, fire rate +6%; 50% chance on hit: +10 stacks of Lost Dream (+0.4% damage taken per stack, 4s cooldown)</affix.desc.abyssal>
 	<affix.prefix.euphoria>‖color:255,64,64,255‖Euphoria‖color:end‖‖color:255,255,255,255‖</affix.prefix.euphoria>
 	<affix.desc.euphoria>On use: target gains +35% speed for 45s, slowly heals internal damage and bleeding, plus 10 drunk and 5 psychosis</affix.desc.euphoria>
 	<affix.prefix.weightless>‖color:255,64,64,255‖Weightless‖color:end‖‖color:255,255,255,255‖</affix.prefix.weightless>
-	<affix.desc.weightless>While worn: +30% speed, -5% damage taken, stun builds up 0.05/s slower</affix.desc.weightless>
+	<affix.desc.weightless>While worn: +40% speed, -8% damage taken, stun builds up 0.1/s slower</affix.desc.weightless>
+	<affix.prefix.priority>‖color:192,64,255,255‖Priority‖color:end‖‖color:255,255,255,255‖</affix.prefix.priority>
+	<affix.desc.priority> Placed in the leftmost (Slot 1) quick slot: Damage +6%, Fire/Swing Speed +6%</affix.desc.priority>
+	<affix.prefix.calm>‖color:192,64,255,255‖Calm‖color:end‖‖color:255,255,255,255‖</affix.prefix.calm>
+	<affix.desc.calm>Noise -80%, damage +5%</affix.desc.calm>
+	<affix.descarmor.calm>Noise -80%, damage taken -5%</affix.descarmor.calm>
+	<affix.prefix.fury>‖color:192,64,255,255‖Fury‖color:end‖‖color:255,255,255,255‖</affix.prefix.fury>
+	<affix.desc.fury>Damage +13%; on use: self takes 3 bleeding and 1 organ damage (1s cooldown)</affix.desc.fury>
+	<affix.prefix.steadfast>‖color:192,64,255,255‖Steadfast‖color:end‖‖color:255,255,255,255‖</affix.prefix.steadfast>
+	<affix.desc.steadfast>While held: injured arms no longer cause aim wobble</affix.desc.steadfast>
+	<affix.prefix.thorns>‖color:192,64,255,255‖Thorns‖color:end‖‖color:255,255,255,255‖</affix.prefix.thorns>
+	<affix.descarmor.thorns>Damage taken -5%; when hit, retaliates: attacker suffers +5 bleeding and +3 lacerations (1s cooldown, does not affect teammates)</affix.descarmor.thorns>
+	<affix.prefix.striding>‖color:74,144,255,255‖Striding‖color:end‖‖color:255,255,255,255‖</affix.prefix.striding>
+	<affix.desc.striding>Damage taken -4%; while worn, injured legs no longer slow you down</affix.desc.striding>
+	<affix.descarmor.striding>Damage taken -4%; while worn, injured legs no longer slow you down</affix.descarmor.striding>
+	<affix.prefix.giantslayer>‖color:192,64,255,255‖Giant Slayer‖color:end‖‖color:255,255,255,255‖</affix.prefix.giantslayer>
+	<affix.desc.giantslayer>+15% damage against large creatures (mass 100+)</affix.desc.giantslayer>
+	<affix.prefix.tense>‖color:192,64,255,255‖Tense‖color:end‖‖color:255,255,255,255‖</affix.prefix.tense>
+	<affix.desc.tense>Charge weapons charge 35% faster</affix.desc.tense>
+	<affix.prefix.leading>‖color:192,64,255,255‖Leading‖color:end‖‖color:255,255,255,255‖</affix.prefix.leading>
+	<affix.desc.leading>First shot fired from a fully-loaded magazine deals +22% damage</affix.desc.leading>
+	<affix.prefix.focus>‖color:255,140,0,255‖Focus‖color:end‖‖color:255,255,255,255‖</affix.prefix.focus>
+	<affix.desc.focus>One-handed ranged weapons become two-handed, damage +30%</affix.desc.focus>
+	<affix.prefix.waiting>‖color:255,140,0,255‖Waiting‖color:end‖‖color:255,255,255,255‖</affix.prefix.waiting>
+	<affix.desc.waiting>Charge weapons charge 20% slower, damage +20% (only works on weapons that actually charge)</affix.desc.waiting>
+	<affix.prefix.lonewolf>‖color:255,140,0,255‖Lone Wolf‖color:end‖‖color:255,255,255,255‖</affix.prefix.lonewolf>
+	<affix.desc.lonewolf>+18% damage while this is the only affixed weapon in your quick slots</affix.desc.lonewolf>
+	<affix.prefix.miracle>‖color:255,64,64,255‖Miracle‖color:end‖‖color:255,255,255,255‖</affix.prefix.miracle>
+	<affix.desc.miracle>Allows the item to hold one extra affix of Epic-or-lower tier and one extra affix of any tier (applied via enchantment stone transfer); run the enchanting station with no material to strip the extra affixes</affix.desc.miracle>
 </infotexts>

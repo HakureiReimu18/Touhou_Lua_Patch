@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+  <Items>
+    <!-- ============================================================
+         羁绊护符（伤害共担系统）
+         逻辑全部在 CSharp/Shared/Bond*.cs（服务端权威）：
+           穿戴检测 = 任意装备槽内带 Bond_Charm 标签的物品（不限槽位）
+           容器槽 0 = 公式核心（Bond_Core，决定承伤曲线函数族）
+           容器槽 1 = 调制芯片（Bond_Chip，决定曲线参数档位）
+         ============================================================ -->
+    <Item name="绑定护符" identifier="Touhou_Bond_Charm" category="Equipment" subcategory="Touhou"
+          tags="Bond_Charm,smallitem,Touhou_Wearable_Equipment,Touhou_Condition_Loss_Rate_0.1" Scale="0.25" impactsoundtag="impact_metal_light">
+      <PreferredContainer primary="generalstore" secondary="merchantoutpost,merchantcity" />
+      <Price baseprice="400" sold="true">
+        <Price storeidentifier="merchantgeneral" multiplier="1.0" />
+        <Price storeidentifier="merchantoutpost" multiplier="1.0" />
+        <Price storeidentifier="merchantcity" multiplier="0.9" />
+      </Price>
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" amount="2" />
+        <RequiredItem identifier="Touhou_Base_Metal" />
+        <RequiredItem identifier="Magic_Material" amount="3" />
+      </Fabricate>
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Charm.png" sourcerect="0,0,116,160" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Charm.png" depth="0.55" sourcerect="0,0,116,160" origin="0.5,0.5" />
+      <Body width="116" height="116" density="10" />
+      <WifiComponent range="65000.0" LinkToChat="true" MinChatMessageInterval="0.0" />
+      <!-- 耳机槽/头饰槽皆可佩戴；Any 让其可被拿在手中与放入背包 -->
+      <Wearable type="Wearable" slots="Headset,Any" msg="ItemMsgPickUpSelect" />
+      <!-- 槽 0：公式核心；槽 1：调制芯片。白名单写死 identifier，防止塞入无关物品 -->
+      <ItemContainer capacity="1" maxstacksize="1" hideitems="false" >
+        <Containable items="Bond_Core" />
+        <SubContainer capacity="1" maxstacksize="1">
+          <Containable items="Bond_Chip" />
+        </SubContainer>
+      </ItemContainer>
+    </Item>
+
+    <!-- ============ 公式核心 ×4（tags="Bond_Core"，决定函数族）============ -->
+    <Item name="公式核心·均契" identifier="Touhou_Bond_Core_Linear" category="Equipment" subcategory="Touhou"
+          tags="Bond_Core,smallitem" Scale="0.2" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Core.png" sourcerect="0,1,255,277" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Core.png" depth="0.56" sourcerect="0,1,255,277" origin="0.5,0.5" />
+      <Body width="256" height="256" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Touhou_Base_Metal" />
+      </Fabricate>
+    </Item>
+    <Item name="公式核心·庇护" identifier="Touhou_Bond_Core_Logistic" category="Equipment" subcategory="Touhou"
+          tags="Bond_Core,smallitem" Scale="0.2" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Core.png" sourcerect="279,0,267,273" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Core.png" depth="0.56" sourcerect="279,0,267,273" origin="0.5,0.5" />
+      <Body width="256" height="256" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Touhou_Base_Metal" />
+      </Fabricate>
+    </Item>
+    <Item name="公式核心·潮汐" identifier="Touhou_Bond_Core_Sine" category="Equipment" subcategory="Touhou"
+          tags="Bond_Core,smallitem" Scale="0.2" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Core.png" sourcerect="570,0,271,272" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Core.png" depth="0.56" sourcerect="570,0,271,272" origin="0.5,0.5" />
+      <Body width="256" height="256" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Touhou_Base_Metal" />
+      </Fabricate>
+    </Item>
+    <Item name="公式核心·蓄能" identifier="Touhou_Bond_Core_Power" category="Equipment" subcategory="Touhou"
+          tags="Bond_Core,smallitem" Scale="0.2" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Core.png" sourcerect="865,1,266,287" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Core.png" depth="0.56" sourcerect="865,1,266,287" origin="0.5,0.5" />
+      <Body width="256" height="256" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Touhou_Base_Metal" />
+      </Fabricate>
+    </Item>
+
+    <!-- ============ 调制芯片 ×9（tags="Bond_Chip"，决定参数档位）============
+         振幅 amp：Mk.I/II/III = 0.3/0.4/0.5（曲线摆幅）
+         陡度 k  ：Mk.I/II/III = 2/3/5（庇护 S 曲线陡峭程度）
+         周期 T  ：Mk.I/II/III = 10s/15s/25s（潮汐正弦周期）
+         代码按 identifier 尾号解析档位，勿改命名规则 -->
+    <Item name="振幅芯片 Mk.I" identifier="Touhou_Bond_Chip_Amp1" category="Equipment" subcategory="Touhou"
+          tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="0,0,120,89" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="0,0,120,89" origin="0.5,0.5" />
+      <Body width="120" height="89" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Magic_Material" />
+      </Fabricate>
+    </Item>
+    <Item name="振幅芯片 Mk.II" identifier="Touhou_Bond_Chip_Amp2" category="Equipment" subcategory="Touhou"
+          tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="129,0,120,89" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="129,0,120,89" origin="0.5,0.5" />
+      <Body width="120" height="89" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Magic_Material" />
+      </Fabricate>
+    </Item>
+    <Item name="振幅芯片 Mk.III" identifier="Touhou_Bond_Chip_Amp3" category="Equipment" subcategory="Touhou"
+          tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="258,0,120,89" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="258,0,120,89" origin="0.5,0.5" />
+      <Body width="120" height="89" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Magic_Material" />
+      </Fabricate>
+    </Item>
+    <Item name="陡度芯片 Mk.I" identifier="Touhou_Bond_Chip_K1" category="Equipment" subcategory="Touhou"
+          tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="0,99,120,90" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="0,99,120,90" origin="0.5,0.5" />
+      <Body width="120" height="90" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Magic_Material" />
+      </Fabricate>
+    </Item>
+    <Item name="陡度芯片 Mk.II" identifier="Touhou_Bond_Chip_K2" category="Equipment" subcategory="Touhou"
+          tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="120,99,120,90" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="120,99,120,90" origin="0.5,0.5" />
+      <Body width="120" height="90" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Magic_Material" />
+      </Fabricate>
+    </Item>
+    <Item name="陡度芯片 Mk.III" identifier="Touhou_Bond_Chip_K3" category="Equipment" subcategory="Touhou"
+          tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="258,99,120,90" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="258,99,120,90" origin="0.5,0.5" />
+      <Body width="120" height="90" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Magic_Material" />
+      </Fabricate>
+    </Item>
+    <Item name="周期芯片 Mk.I" identifier="Touhou_Bond_Chip_T1" category="Equipment" subcategory="Touhou"
+          tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="0,199,120,87" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="0,199,120,87" origin="0.5,0.5" />
+      <Body width="120" height="87" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Magic_Material" />
+      </Fabricate>
+    </Item>
+    <Item name="周期芯片 Mk.II" identifier="Touhou_Bond_Chip_T2" category="Equipment" subcategory="Touhou"
+          tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="129,199,120,87" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="129,199,120,87" origin="0.5,0.5" />
+      <Body width="120" height="87" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Magic_Material" />
+      </Fabricate>
+    </Item>
+    <Item name="周期芯片 Mk.III" identifier="Touhou_Bond_Chip_T3" category="Equipment" subcategory="Touhou"
+          tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="258,199,120,87" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="258,199,120,87" origin="0.5,0.5" />
+      <Body width="120" height="87" density="10" />
+      <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
+      <Deconstruct time="5">
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="3" >
+        <RequiredSkill identifier="Touhou_Magic" level="20"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="Magic_Material" />
+      </Fabricate>
+    </Item>
+  </Items>

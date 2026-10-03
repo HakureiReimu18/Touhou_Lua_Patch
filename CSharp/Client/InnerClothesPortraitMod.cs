@@ -6,6 +6,8 @@ using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+// U R MY SPECIAL
+
 namespace Touhou.InnerClothesPortrait;
 
 public sealed class InnerClothesPortraitPlugin : IAssemblyPlugin
@@ -41,7 +43,10 @@ public sealed class InnerClothesPortraitPlugin : IAssemblyPlugin
             return;
         }
 
-        harmony?.PatchAll();
+        // 别用无参 PatchAll()：所有插件编译在同一个程序集里，那样会把词缀/Bond/MartialArts
+        // 的补丁类也打一遍，双倍执行。只按类型打自己的两个，跟 BondPlugin 一样。
+        harmony?.PatchAll(typeof(InnerClothesPortraitHudPatch));
+        harmony?.PatchAll(typeof(InnerClothesPortraitHudDrawPatch));
         patched = true;
     }
 }
@@ -129,6 +134,8 @@ internal static class InnerClothesPortraitHudDrawPatch
 
 internal static class InnerClothesPortraitHelpers
 {
+    static readonly Identifier TouhouClothesTag = "Touhou_Clothes".ToIdentifier();
+
     internal static bool TryGetTaggedClothing(Character character, out Item clothing)
     {
         clothing = null;
@@ -193,15 +200,14 @@ internal static class InnerClothesPortraitHelpers
             return null;
         }
 
-        var tag = "Touhou_Clothes".ToIdentifier();
         Item outer = inventory.GetItemInLimbSlot(InvSlotType.OuterClothes);
-        if (HasTouhouTag(outer, tag))
+        if (HasTouhouTag(outer, TouhouClothesTag))
         {
             return outer;
         }
 
         Item inner = inventory.GetItemInLimbSlot(InvSlotType.InnerClothes);
-        if (HasTouhouTag(inner, tag))
+        if (HasTouhouTag(inner, TouhouClothesTag))
         {
             return inner;
         }
@@ -215,7 +221,7 @@ internal static class InnerClothesPortraitHelpers
             }
 
             Item item = inventory.GetItemAt(i);
-            if (HasTouhouTag(item, tag))
+            if (HasTouhouTag(item, TouhouClothesTag))
             {
                 return item;
             }

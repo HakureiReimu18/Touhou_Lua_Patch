@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================
+     装束包·扩展收录表
+     作用：不改 Lua 文件，把拓展模组（或其他来源）的装束加进三个装束包。
+     格式：每个 <Item> 一条，category 取值：
+       basic    = 装束包（普通装束）
+       plus     = 装束包+（强化装束）
+       headwear = 头饰包（头饰）
+     identifier 必须和物品 XML 里的一致；与主表重复的 id 自动忽略。
+     ============================================================ -->
+<CostumePackExtras>
+  <!-- 示例：
+  <Item category="basic" identifier="SomeExpansionMod_NewOutfit" />
+  <Item category="plus" identifier="SomeExpansionMod_NewOutfit_Plus" />
+  <Item category="headwear" identifier="SomeExpansionMod_NewHat" />
+  -->
+</CostumePackExtras>

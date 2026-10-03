@@ -1,3 +1,4 @@
+-- 好可怕
 
 TLE.Preapply = {}
 TLE.Postapply = {}
@@ -49,7 +50,7 @@ Hook.Add("character.applyDamage", "Touhou_Hisoutensoku_Amor.OnDamage", function 
         Entity.Spawner.AddEntityToRemoveQueue(armor)
     end
     if armor.Condition <= 0 then
-        armor.Condition = 0 -- 确保 Condition 不为负值
+        armor.Condition = 0
         Entity.Spawner.AddEntityToRemoveQueue(armor)
     end
 end)

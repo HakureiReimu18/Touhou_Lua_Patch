@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Items>
   <Item
     name=""
@@ -91,11 +91,11 @@
     </Repairable>
 
     <ItemContainer capacity="2" maxstacksize="1" canbeselected="true" hideitems="true" hudpos="0.6,0.4" slotsperrow="2" uilabel="enchantingstation.input" allowuioverlap="true">
-      <Containable items="weapon,tool,equipment,diving,medical,smallitem" />
+      <Containable items="weapon,tool,equipment,diving,medical,smallitem,Touhou_Divinggear" />
     </ItemContainer>
 
     <ItemContainer capacity="3" maxstacksize="1" canbeselected="true" hideitems="true" hudpos="0.5,0.65" slotsperrow="3" uilabel="enchantingstation.output" allowuioverlap="true">
-      <Containable items="weapon,tool,equipment,diving,medical,smallitem" />
+      <Containable items="weapon,tool,equipment,diving,medical,smallitem,Touhou_Divinggear" />
     </ItemContainer>
   </Item>
     
@@ -104,13 +104,13 @@
         <PreferredContainer primary="ruinstorage,ruinstoragesmall" amount="2" spawnprobability="0.05"/>
         <PreferredContainer primary="ruinstoragelarge" minamount="1" maxamount="3" spawnprobability="0.1"/>
         <PreferredContainer primary="ruintreasure" minamount="2" maxamount="3" spawnprobability="0.12"/>
-		<Price baseprice="1000" sold="false">
+		<Price baseprice="800" sold="false">
 			<Price storeidentifier="merchantoutpost" multiplier="2.1" />
 			<Price storeidentifier="merchantcity" multiplier="2.25" />
 			<Price storeidentifier="merchantresearch" multiplier="2.1" />
 			<Price storeidentifier="merchantmilitary" multiplier="2.1" />
 			<Price storeidentifier="merchantmine" multiplier="1.75" />
-            <Price storeidentifier="Merchant_Kawasiro_Nitori" multiplier="1.2" maxavailable="3" sold="true"/>
+            <Price storeidentifier="Merchant_Kawasiro_Nitori" multiplier="1.2" maxavailable="4" sold="true"/>
 		</Price>
 		<Deconstruct time="5">
 			<Item identifier="iron" />
@@ -119,9 +119,9 @@
 		<LightComponent lightcolor="160,175,187,225" range="100" powerconsumption="0" flicker="0.0" flickerspeed="0.5" pulsefrequency="0.4" pulseamount="0" ison="true" drawbehindsubs="true">
 			<LightTexture texture="Content/Lights/pointlight_rays.png" origin="0.5,0.5" />
 		</LightComponent>
-		<ContainedSprite texture="%ModDir%/Items/affixes_1.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,96,96" origin="0.5,0.5" />
-		<Sprite texture="%ModDir%/Items/affixes_1.png" depth="0.3" sourcerect="0,0,96,96" origin="0.5,0.5" />
-		<Body radius="40" width="20" density="25" />
+		<ContainedSprite texture="%ModDir%/Images/affixes_1.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Sprite texture="%ModDir%/Images/affixes_1.png" depth="0.3" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Body radius="40" width="20" density="10" />
 		<Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgUsePlasmaCutter" handle1="0,0" pickingtime="5.0" attachable="true" reattachable="false" />
 	</Item>
 	<Item name="" identifier="affixes_2" category="Material" subcategory="Touhou" Tags="smallitem,affixes_material_2" maxstacksize="32" maxstacksizecharacterinventory="8" canbepicked="true" description="" cargocontaineridentifier="metalcrate" scale="0.5" impactsoundtag="impact_metal_light">
@@ -147,9 +147,9 @@
 		<LightComponent lightcolor="160,175,187,225" range="100" powerconsumption="0" flicker="0.0" flickerspeed="0.5" pulsefrequency="0.4" pulseamount="0" ison="true" drawbehindsubs="true">
 			<LightTexture texture="Content/Lights/pointlight_rays.png" origin="0.5,0.5" />
 		</LightComponent>
-		<ContainedSprite texture="%ModDir%/Items/affixes_2.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,96,96" origin="0.5,0.5" />
-		<Sprite texture="%ModDir%/Items/affixes_2.png" depth="0.3" sourcerect="0,0,96,96" origin="0.5,0.5" />
-		<Body radius="40" width="20" density="25" />
+		<ContainedSprite texture="%ModDir%/Images/affixes_2.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Sprite texture="%ModDir%/Images/affixes_2.png" depth="0.3" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Body radius="40" width="20" density="10" />
 		<Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgUsePlasmaCutter" handle1="0,0" pickingtime="5.0" attachable="true" reattachable="false" />
 	</Item>
 	<Item name="" identifier="affixes_3" category="Material" subcategory="Touhou" Tags="smallitem,affixes_material_3" maxstacksize="32" maxstacksizecharacterinventory="8" canbepicked="true" description="" cargocontaineridentifier="metalcrate" scale="0.5" impactsoundtag="impact_metal_light">
@@ -168,16 +168,45 @@
             <RequiredSkill identifier="Touhou_Magic" level="10"/>
             <RequiredItem identifier="Touhou_Plant_Extract" amount="2" />
             <RequiredItem identifier="iron" amount="2" />
-            <RequiredItem identifier="silicon" amount="2" />
+            <RequiredItem identifier="silicon" />
             <RequiredItem identifier="carbon" amount="2" />
         </Fabricate>
 		<!-- TODO: sprite and inventory icon -->
 		<LightComponent lightcolor="160,175,187,225" range="100" powerconsumption="0" flicker="0.0" flickerspeed="0.5" pulsefrequency="0.4" pulseamount="0" ison="true" drawbehindsubs="true">
 			<LightTexture texture="Content/Lights/pointlight_rays.png" origin="0.5,0.5" />
 		</LightComponent>
-		<ContainedSprite texture="%ModDir%/Items/affixes_3.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,96,96" origin="0.5,0.5" />
-		<Sprite texture="%ModDir%/Items/affixes_3.png" depth="0.3" sourcerect="0,0,96,96" origin="0.5,0.5" />
-		<Body radius="40" width="20" density="25" />
+		<ContainedSprite texture="%ModDir%/Images/affixes_3.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Sprite texture="%ModDir%/Images/affixes_3.png" depth="0.3" sourcerect="0,0,96,96" origin="0.5,0.5" />
+		<Body radius="40" width="20" density="10" />
+		<Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgUsePlasmaCutter" handle1="0,0" pickingtime="5.0" attachable="true" reattachable="false" />
+	</Item>
+	<!-- 附魔石：万能词缀载体。本身可被附魔任意词缀（不检查适用性）；
+	     带词缀后放入附魔台与目标物品一起，作为材料被消耗，把词缀覆盖到目标物品上。
+	     不可堆叠：词缀绑定单个物品实体，堆叠会导致一整叠共享/丢失词缀 -->
+	<Item name="" identifier="affixes_stone" category="Material" subcategory="Touhou" Tags="smallitem,affixes_stone" maxstacksize="1" maxstacksizecharacterinventory="1" canbepicked="true" description="" cargocontaineridentifier="metalcrate" scale="0.5" impactsoundtag="impact_metal_light">
+		<PreferredContainer primary="mineralcab" secondary="storagecab" />
+		<Price baseprice="250" sold="false">
+			<Price storeidentifier="merchantoutpost" multiplier="2.1" />
+			<Price storeidentifier="merchantcity" multiplier="2.25" />
+			<Price storeidentifier="merchantresearch" multiplier="2.1" />
+			<Price storeidentifier="merchantmilitary" multiplier="2.1" />
+			<Price storeidentifier="merchantmine" multiplier="1.75" />
+			<Price storeidentifier="Merchant_Kawasiro_Nitori" multiplier="1.5" maxavailable="5" sold="true"/>
+		</Price>
+		<Deconstruct time="5">
+			<Item identifier="iron" />
+		</Deconstruct>
+		<Fabricate suitablefabricators="Magic_Altar" requiredtime="3">
+			<RequiredSkill identifier="Touhou_Magic" level="35"/>
+			<RequiredItem identifier="Magic_Material" amount="3" />
+			<RequiredItem identifier="Touhou_Base_Metal" />
+		</Fabricate>
+		<LightComponent lightcolor="200,150,255,225" range="100" powerconsumption="0" flicker="0.0" flickerspeed="0.5" pulsefrequency="0.4" pulseamount="0" ison="true" drawbehindsubs="true">
+			<LightTexture texture="Content/Lights/pointlight_rays.png" origin="0.5,0.5" />
+		</LightComponent>
+		<ContainedSprite texture="%ModDir%/Images/Touhou_Enchantment_Stone.png" usewhenattached="true" decorativespritebehavior="HideWhenNotVisible" depth="0.55" sourcerect="0,0,64,64" origin="0.5,0.5" />
+		<Sprite texture="%ModDir%/Images/Touhou_Enchantment_Stone.png" depth="0.3" sourcerect="0,0,64,64" origin="0.5,0.5" />
+		<Body radius="40" width="20" density="10" />
 		<Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgUsePlasmaCutter" handle1="0,0" pickingtime="5.0" attachable="true" reattachable="false" />
 	</Item>
 </Items>

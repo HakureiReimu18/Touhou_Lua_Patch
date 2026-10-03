@@ -1,40 +1,13 @@
---[[东方-快捷键设置（武器改装 + 武器按钮 + 槽位技能 + 悬浮界面开关 + 统一设置窗口）
-    功能：
-      · 武器改装：手持带“改装”按钮（Text.Touhou_Open_Mod）的武器时，按快捷键触发改装；
-      · 武器按钮1/2：触发手持武器上除“改装”外的其他按钮（如月能步枪/湛蓝玫瑰的射击模式切换）；
-      · 装束技能1~4：触发装束槽（InnerClothes+Head）东方装束的第 1~4 个控件；
-      · 外套按钮1/2、背包按钮1/2：触发外套槽（OuterClothes，如潜水服）、背包槽（Bag）的第 1/2 个控件；
-        以上均支持按钮和复选框（复选框 = 翻转勾选状态，与鼠标点击完全一致）；
-      · 装束/外套/背包界面显示：按槽位独立隐藏/显示该格子装备的悬浮 UI，互不影响；
-      · 所有触发都走原版委托——单机直接执行；联机走原版 CreateClientEvent 通道由服务器权威执行。
+--[[东方-快捷键设置：武器/装束/外套/背包槽位的按钮触发 + 悬浮界面开关 + 统一设置窗口（K 开关）。
+    触发全走原版委托，单机直接执行，联机走 CreateClientEvent 由服务器执行。
+    配置存 TouhouModHotkeyConfig.txt，旧版自动迁移；文本走 L 表多语言，跟游戏语言走。]]
 
-    设置窗口「东方-快捷键设置」：
-      · ESC 暂停菜单底部有入口按钮；也可按“界面开关键”（默认 K）随时开关，ESC 关闭窗口；
-      · 绑定较多时分页显示（每页 5 条），底部翻页栏切换；
-      · 每条绑定可独立设置：触发键（点击进入捕获模式后按新键，Esc 取消）、
-        修饰键（Shift/Ctrl/Alt，可多选；带修饰键的绑定需按住对应修饰键才触发，
-        多余按住的修饰键不影响无修饰键绑定——按住 Shift 奔跑也能用快捷键）、清除绑定；
-      · 多条绑定允许共用同一按键（按下时同时触发，一键多用）；只有界面开关键必须唯一；
-      · 槽位组绑定行会实时显示当前检测到的控件名称，方便确认对应关系；
-      · 后续新的配置项统一在这个窗口里扩展。
-
-    槽位组编号规则：装束 = InnerClothes+Head（仅 subcategory="Touhou" 的东方装备），
-    外套 = OuterClothes（潜水服等），背包 = Bag；各组内按 XML 定义顺序编号
-    （跳过无文本的残留/装饰控件，同名控件以最新重建的为准）。
-    换装后编号自动重排，无需重新绑键。
-
-    配置保存在存档目录 TouhouModHotkeyConfig.txt，旧版配置自动迁移，工坊更新模组不会丢配置。
-
-    多语言：界面文本自动跟随游戏语言（GameSettings.CurrentConfig.Language），内置简体中文与 English；
-    添加新语言只需复制脚本中 L 表的一个语言块并翻译（键名保持一致），
-    也可用 LANGUAGE_OVERRIDE 强制指定语言。
-]]
+-- 哦哦哦！
 if not CLIENT then
     return
 end
 
--- 注册并获取静态类（部分类型必须先 RegisterType 才能 CreateStatic；
--- Barotrauma.SaveUtil 在新版 LuaCs 中被明确禁止注册，拿不到就用兜底路径）
+-- SaveUtil 在新版 LuaCs 里被禁注册，拿不到就退回下面的兜底路径
 local function register_static(type_name)
     local ok, result = pcall(function()
         local t = LuaUserData.CreateStatic(type_name)
@@ -53,28 +26,28 @@ local Path = register_static("Barotrauma.IO.Path")
 local SaveUtil = register_static("Barotrauma.SaveUtil")
 local XnaPoint = LuaUserData.CreateStatic("Microsoft.Xna.Framework.Point", true)
 
---================ 常量 ================
-local BUTTON_TEXT_TAG = "Text.Touhou_Open_Mod"  -- 武器改装按钮使用的文本标签
-local CONFIG_FILE_NAME = "TouhouModHotkeyConfig.txt"
-local DEBUG_LOG = false  -- 诊断日志开关（排障时改为 true，控制台会输出 [东方快捷键] 前缀的详细信息）
+-- ？？？？？？？？！！！！！！！
 
--- 触发枚举用的槽位组：不同格子的 UI 分开编号、互不影响
--- （模组潜水服也是 subcategory="Touhou"，所以不能靠类别区分，必须按槽位区分）
+local BUTTON_TEXT_TAG = "Text.Touhou_Open_Mod"  -- 武器改装按钮的文本标签
+local CONFIG_FILE_NAME = "TouhouModHotkeyConfig.txt"
+local DEBUG_LOG = false  -- 排障时改 true
+
+-- 触发枚举的槽位组（分开编号、互不影响）。
+-- 模组潜水服也是 subcategory="Touhou"，所以装束不能只靠类别认，必须按槽位认
 local SLOT_GROUPS = {
     wearable = { slots = { "InnerClothes", "Head" }, touhou_only = true },   -- 装束（含帽子）
     outer    = { slots = { "OuterClothes" },         touhou_only = false },  -- 外套/潜水服
     bag      = { slots = { "Bag" },                  touhou_only = false },  -- 背包
 }
 
--- 悬浮界面显示开关的槽位组：target -> 控制的槽位 + 配置字段名 + 显示名（多语言键）
+-- 悬浮界面开关：target -> 控制的槽位 + 配置字段 + 显示名
 local HUD_GROUPS = {
     toggle_hud       = { slots = { "InnerClothes", "Head" }, flag = "hud_hidden",       display_key = "hud_outfit" },
     toggle_hud_outer = { slots = { "OuterClothes" },         flag = "hud_hidden_outer", display_key = "hud_outer" },
     toggle_hud_bag   = { slots = { "Bag" },                  flag = "hud_hidden_bag",   display_key = "hud_bag" },
 }
 
--- 装束精确匹配：只认 subcategory 为 "Touhou" 的装备（东方模组装束的共同特征），
--- 避免误扫潜水服等同样带 CustomInterface 按钮的原版/其他模组服装
+-- 只认 subcategory 为 "Touhou" 的装束，免得把潜水服这类同样带按钮的服装也扫进来
 local OUTFIT_SUBCATEGORY = "Touhou"
 
 -- 可选：额外的装束 identifier / tag 白名单（subcategory 不是 Touhou 的例外装束加在这里）
@@ -85,11 +58,12 @@ local OUTFIT_TAGS = {}         -- 例如 { "Touhou_Clothes" }
 local ALLOWED_IDENTIFIERS = {}  -- 例如 { "Touhou_Monarch", "Touhou_Deceit" }
 local ALLOWED_TAGS = {}         -- 例如 { "Touhou_Mod_Weapon" }（需要 XML 里给武器加对应 tag）
 
--- 允许绑定的按键白名单（XNA Keys 枚举名称）
+-- 可绑定的按键白名单（XNA Keys 名）。Esc 留给取消/关窗，Win 系键会被系统吃掉，
+-- 媒体键太冷门，都不要；其余全放开
 local KEY_LIST = {}
 for i = 65, 90 do KEY_LIST[#KEY_LIST + 1] = string.char(i) end       -- A-Z
 for i = 0, 9 do KEY_LIST[#KEY_LIST + 1] = "D" .. i end               -- 数字键 0-9（主键盘）
-for i = 1, 12 do KEY_LIST[#KEY_LIST + 1] = "F" .. i end              -- F1-F12
+for i = 1, 24 do KEY_LIST[#KEY_LIST + 1] = "F" .. i end              -- F1-F24
 for i = 0, 9 do KEY_LIST[#KEY_LIST + 1] = "NumPad" .. i end          -- 小键盘数字 0-9
 for _, n in ipairs({ "Add", "Subtract", "Multiply", "Divide", "Decimal" }) do
     KEY_LIST[#KEY_LIST + 1] = n                                       -- 小键盘运算符 + - * / .
@@ -97,26 +71,41 @@ end
 for _, n in ipairs({ "Up", "Down", "Left", "Right", "Insert", "Delete", "Home", "End", "PageUp", "PageDown" }) do
     KEY_LIST[#KEY_LIST + 1] = n                                       -- 方向键与编辑键
 end
+for _, n in ipairs({
+    "Space", "Tab", "Enter",                                          -- 空格 / Tab / 回车
+    "CapsLock", "NumLock", "PrintScreen", "Scroll", "Pause",          -- 锁定与系统键
+    "OemComma", "OemPeriod", "OemQuestion", "OemSemicolon", "OemColon",
+    "OemPlus", "OemMinus", "OemOpenBrackets", "OemCloseBrackets",
+    "OemPipe", "OemQuotes", "OemTilde", "OemBackslash",               -- 标点符号键（, . / ; : = - [ ] \ ' `）
+}) do
+    KEY_LIST[#KEY_LIST + 1] = n
+end
 
-local MODIFIER_NAMES = { "LeftShift", "LeftControl", "LeftAlt" }
-local MODIFIER_DISPLAY = { LeftShift = "Shift", LeftControl = "Ctrl", LeftAlt = "Alt" }
+-- 鼠标键（自定义名字，不在 XNA Keys 里，走 raw_mouse_down 检测）。
+-- 左右键是攻击/瞄准，绑了容易误触；滚轮跟背包滚轮冲突，都不给绑
+local MOUSE_BUTTONS = { "MouseMiddle", "MouseSide1", "MouseSide2" }
 
---================ 多语言文本 ================
--- 语言自动跟随游戏设置（GameSettings.CurrentConfig.Language）；
--- 也可用 LANGUAGE_OVERRIDE 强制指定（填语言名如 "English"，nil = 自动跟随）。
--- 添加新语言：复制一个语言块并翻译所有值，键名保持一致即可，无需改动其他代码。
+local MODIFIER_NAMES = { "LeftShift", "LeftControl", "LeftAlt", "RightShift", "RightControl", "RightAlt" }
+local MODIFIER_DISPLAY = { LeftShift = "Shift", LeftControl = "Ctrl", LeftAlt = "Alt",
+                           RightShift = "R-Shift", RightControl = "R-Ctrl", RightAlt = "R-Alt" }
+
+-- 语言跟游戏设置走，LANGUAGE_OVERRIDE 可强制。加语言就复制一个块改值，键名别动
 local LANGUAGE_OVERRIDE = nil
 
 local L = {
     ["Simplified Chinese"] = {
         log_prefix = "[东方快捷键] ",
-        window_title = "东方-快捷键设置",
+        window_title = "东方模组设置",
         menukey_name = "界面开关键",
         menukey_hint = "用于开关本窗口",
-        capturing = "按任意键…(Esc取消)",
+        capturing = "按任意键或鼠标键…(Esc取消)",
         unbound = "未绑定",
         not_detected = "（未检测到）",
-        hint_line = "点击按键后按新键绑定（Esc取消）；多条绑定可共用同一按键，按下时同时触发。",
+        key_mouse_middle = "鼠标中键",
+        key_mouse_side1 = "侧键1",
+        key_mouse_side2 = "侧键2",
+        mouse_unavailable = "鼠标键 %s 无法检测（LuaCs 未开放对应输入接口），该绑定不会生效",
+        hint_line = "点击按键后按新键或鼠标键绑定（Esc取消）；多条绑定可共用同一按键，按下时同时触发。",
         prev_page = "上一页",
         next_page = "下一页",
         page_format = "第 %d / %d 页",
@@ -128,6 +117,7 @@ local L = {
         bd_wearable4 = "装束技能4",
         bd_weapon_btn1 = "武器按钮1",
         bd_weapon_btn2 = "武器按钮2",
+        bd_weapon_btn3 = "武器按钮3",
         bd_toggle_outfit = "装束界面显示",
         bd_toggle_outer = "外套界面显示",
         bd_toggle_bag = "背包界面显示",
@@ -135,6 +125,65 @@ local L = {
         bd_outer2 = "外套按钮2",
         bd_bag1 = "背包按钮1",
         bd_bag2 = "背包按钮2",
+        bd_bond_panel = "绑定面板",
+        bd_desc_toggle = "描述详略切换",
+        desc_detailed_on = "描述显示：详细版",
+        desc_detailed_off = "描述显示：简短版",
+        bond_settings = "绑定系统设置",
+        condloss_settings = "耐久损耗设置",
+        hudbar_settings = "进度条设置",
+        hb_scale = "整体缩放",
+        hb_height = "条长度",
+        hb_offset_y = "垂直偏移",
+        hb_side_right = "显示在：右侧",
+        hb_side_left = "显示在：左侧",
+        hb_margin = "边距 ",
+        hb_loading = "（未检测到进度条模块，请确认 Lua 补丁的 C# 部分已加载）",
+        hb_empty = "（暂无进度条配置）",
+        hb_select_hint = "（点击上方列表选择一条）",
+        hb_enable = "显示该条",
+        hb_reset = "重置为默认值",
+        hb_r = "红",
+        hb_g = "绿",
+        hb_b = "蓝",
+        bs_interval = "结算间隔（秒）",
+        bs_resist = "转移抗性折算系数（0-1）",
+        bs_distance = "链接距离上限（0 = 不限）",
+        bs_types = "计入的 affliction 类型（逗号分隔）",
+        bs_hint = "保存后即时生效；多人模式需要作弊权限（enablecheats）",
+        bs_module_missing = "（未检测到绑定系统模块）",
+        bs_denied_prefix = "⚠ ",
+        cd_mult = "受击耐久损耗全局倍率（0 = 关闭）",
+        cd_hint = "曲线：损耗 = 10 × (伤害/48)² × tag倍率 × 全局倍率（默认 1）；配置方式：给任意可穿戴物品加 tag Touhou_Condition_Loss_Rate_X",
+        menu_hotkey = "快捷键设置",
+        cl_settings = "装束锁定设置",
+        cl_enable = "启用装束锁定",
+        cl_lock_bots = "锁定AI船员",
+        cl_lock_time = "锁定时长",
+        cl_save = "保存设置",
+        cl_reset = "重置默认",
+        cl_reset_done = "装束锁定已重置为默认值：开启，120 秒",
+        cl_no_permission = "修改需要控制台指令权限（ConsoleCommands）",
+        cl_locked_list = "已锁定玩家",
+        cl_total_suffix = "（共 %d 人，仅显示前 3 个）",
+        cl_refresh = "刷新",
+        cl_none = "（当前没有被锁定的玩家）",
+        cl_unlock = "解锁",
+        cl_unlock_all = "全部解锁",
+        cl_unlock_all_confirm = "确认全部解锁？",
+        cl_loading = "正在从服务器获取状态…",
+        cl_module_missing = "装束锁定客户端模块未加载",
+        cl_invalid_time = "锁定时长输入无效：请输入 10~600 的数字",
+        back = "返回",
+        double_press = "双击",
+        reset_default = "重置为默认值",
+        reset_done = "已重置为默认值：界面开关键 K、绑定面板 L，其余绑定未绑定（修饰键/双击已清空）",
+        pg_weapons = "武器",
+        pg_wearable = "装束",
+        pg_outer = "界面与外套",
+        pg_bag = "背包",
+        pg_desc = "描述详略",
+        page_external = "拓展模组",
         hud_outfit = "装束",
         hud_outer = "外套",
         hud_bag = "背包",
@@ -151,13 +200,17 @@ local L = {
     },
     ["English"] = {
         log_prefix = "[TouhouHotkey] ",
-        window_title = "Touhou - Hotkey Settings",
+        window_title = "Touhou Mod Settings",
         menukey_name = "Menu toggle key",
         menukey_hint = "Opens/closes this window",
-        capturing = "Press any key… (Esc cancels)",
+        capturing = "Press any key or mouse button… (Esc cancels)",
         unbound = "Unbound",
         not_detected = " (not detected)",
-        hint_line = "Click a key button, then press a new key (Esc cancels). Multiple bindings may share one key and trigger together.",
+        key_mouse_middle = "Mouse middle",
+        key_mouse_side1 = "Mouse side 1",
+        key_mouse_side2 = "Mouse side 2",
+        mouse_unavailable = "Mouse button %s cannot be detected (LuaCs input API unavailable); binding will not fire",
+        hint_line = "Click a key button, then press a new key or mouse button (Esc cancels). Multiple bindings may share one key and trigger together.",
         prev_page = "Prev",
         next_page = "Next",
         page_format = "Page %d / %d",
@@ -169,6 +222,7 @@ local L = {
         bd_wearable4 = "Outfit skill 4",
         bd_weapon_btn1 = "Weapon button 1",
         bd_weapon_btn2 = "Weapon button 2",
+        bd_weapon_btn3 = "Weapon button 3",
         bd_toggle_outfit = "Outfit UI visibility",
         bd_toggle_outer = "Outerwear UI visibility",
         bd_toggle_bag = "Backpack UI visibility",
@@ -176,6 +230,65 @@ local L = {
         bd_outer2 = "Outerwear button 2",
         bd_bag1 = "Backpack button 1",
         bd_bag2 = "Backpack button 2",
+        bd_bond_panel = "Bond panel",
+        bd_desc_toggle = "Description toggle",
+        desc_detailed_on = "Descriptions: detailed",
+        desc_detailed_off = "Descriptions: short",
+        bond_settings = "Bond system settings",
+        condloss_settings = "Durability loss settings",
+        hudbar_settings = "Progress bar settings",
+        hb_scale = "Global scale",
+        hb_height = "Bar length",
+        hb_offset_y = "Vertical offset",
+        hb_side_right = "Side: Right",
+        hb_side_left = "Side: Left",
+        hb_margin = "Margin ",
+        hb_loading = "(Progress bar module not detected - is the Lua patch's C# part loaded?)",
+        hb_empty = "(No progress bars configured)",
+        hb_select_hint = "(Select a bar above)",
+        hb_enable = "Show this bar",
+        hb_reset = "Reset to defaults",
+        hb_r = "R",
+        hb_g = "G",
+        hb_b = "B",
+        bs_interval = "Settle interval (seconds)",
+        bs_resist = "Resistance scale on transfer (0-1)",
+        bs_distance = "Max link distance (0 = unlimited)",
+        bs_types = "Counted affliction types (comma separated)",
+        bs_hint = "Applies immediately on save; multiplayer requires cheat permissions (enablecheats)",
+        bs_module_missing = "(Bond system module not detected)",
+        bs_denied_prefix = "⚠ ",
+        cd_mult = "Global durability loss multiplier on hit (0 = off)",
+        cd_hint = "Curve: loss = 10 × (damage/48)² × tag multiplier × global multiplier (default 1); configure by adding tag Touhou_Condition_Loss_Rate_X to any wearable item",
+        menu_hotkey = "Hotkey settings",
+        cl_settings = "Costume Lock Settings",
+        cl_enable = "Enable costume lock",
+        cl_lock_bots = "Lock AI crew",
+        cl_lock_time = "Lock time",
+        cl_save = "Save settings",
+        cl_reset = "Reset to default",
+        cl_reset_done = "Costume lock reset to default: enabled, 120s",
+        cl_no_permission = "Requires ConsoleCommands permission",
+        cl_locked_list = "Locked players",
+        cl_total_suffix = " (%d total, showing first 3)",
+        cl_refresh = "Refresh",
+        cl_none = "(no locked players)",
+        cl_unlock = "Unlock",
+        cl_unlock_all = "Unlock all",
+        cl_unlock_all_confirm = "Confirm unlock all?",
+        cl_loading = "Fetching state from server…",
+        cl_module_missing = "Costume lock client module not loaded",
+        cl_invalid_time = "Invalid lock time: enter a number between 10 and 600",
+        back = "Back",
+        double_press = "Dbl",
+        reset_default = "Reset to defaults",
+        reset_done = "Reset to defaults: menu key K, bond panel L, others unbound (modifiers/double cleared)",
+        pg_weapons = "Weapons",
+        pg_wearable = "Outfit",
+        pg_outer = "UI & Outerwear",
+        pg_bag = "Backpack",
+        pg_desc = "Descriptions",
+        page_external = "External mods",
         hud_outfit = "Outfit",
         hud_outer = "Outerwear",
         hud_bag = "Backpack",
@@ -192,7 +305,6 @@ local L = {
     },
 }
 
--- 确定当前语言：手动强制 > 游戏设置 > 默认简体中文
 local LANGUAGE = LANGUAGE_OVERRIDE
 if LANGUAGE == nil or L[LANGUAGE] == nil then
     local ok, lang = pcall(function() return tostring(GameSettings.CurrentConfig.Language) end)
@@ -203,7 +315,6 @@ if LANGUAGE == nil or L[LANGUAGE] == nil then
     end
 end
 
--- 取文本：当前语言缺失时回退到简体中文，再缺失回退键名本身
 local function T(key)
     local pack = L[LANGUAGE]
     if pack ~= nil and pack[key] ~= nil then return pack[key] end
@@ -214,7 +325,16 @@ local function dbg(msg)
     if DEBUG_LOG then print(T("log_prefix") .. msg) end
 end
 
+local function is_mouse_button(name)
+    for _, n in ipairs(MOUSE_BUTTONS) do
+        if n == name then return true end
+    end
+    return false
+end
+
 local function valid_key(name)
+    if name == nil then return false end
+    if is_mouse_button(name) then return true end
     for _, n in ipairs(KEY_LIST) do
         if n == name then return true end
     end
@@ -228,21 +348,19 @@ local function is_modifier_name(name)
     return false
 end
 
---================ 配置（绑定列表模型） ================
--- 每条绑定：{ name=显示名, key=触发键(""表示未绑定), modifiers={修饰键}, target=目标 }
--- target: "weapon" = 手持武器改装按钮；"weapon:N" = 手持武器第 N 个其他按钮（排除改装）；
---         "wearable:N" = 装束按钮列表第 N 个；"toggle_hud" = 装束按钮显示开关
--- 默认全部不绑定（留空），由玩家自行设置，避免与默认键冲突导致设置失败
--- 注意：新增绑定只能追加在末尾，顺序改变会破坏已保存配置（配置文件按 binding.N 存取）
+-- 绑定模型：{ name=显示名, key=触发键(""=未绑定), modifiers={}, target=目标 }
+-- target: weapon:N = 手持武器第 N 个按钮；wearable/outer/bag:N = 对应槽位组第 N 个控件；toggle_hud* = 界面开关
+-- 默认全空，交给玩家自己绑。新增只能往末尾追加——配置文件按 binding.N 存的，动顺序会炸老档；
+-- v1 老档靠 load_config 里的 cfgver 迁移重排
 local function default_bindings()
     return {
-        { name = "bd_weapon_mod",   key = "", modifiers = {}, target = "weapon" },
+        { name = "bd_weapon_btn1", key = "", modifiers = {}, target = "weapon:1" },
+        { name = "bd_weapon_btn2", key = "", modifiers = {}, target = "weapon:2" },
+        { name = "bd_weapon_btn3", key = "", modifiers = {}, target = "weapon:3" },
         { name = "bd_wearable1", key = "", modifiers = {}, target = "wearable:1" },
         { name = "bd_wearable2", key = "", modifiers = {}, target = "wearable:2" },
         { name = "bd_wearable3", key = "", modifiers = {}, target = "wearable:3" },
         { name = "bd_wearable4", key = "", modifiers = {}, target = "wearable:4" },
-        { name = "bd_weapon_btn1", key = "", modifiers = {}, target = "weapon:1" },
-        { name = "bd_weapon_btn2", key = "", modifiers = {}, target = "weapon:2" },
         { name = "bd_toggle_outfit", key = "", modifiers = {}, target = "toggle_hud" },
         { name = "bd_toggle_outer", key = "", modifiers = {}, target = "toggle_hud_outer" },
         { name = "bd_toggle_bag", key = "", modifiers = {}, target = "toggle_hud_bag" },
@@ -250,6 +368,10 @@ local function default_bindings()
         { name = "bd_outer2", key = "", modifiers = {}, target = "outer:2" },
         { name = "bd_bag1", key = "", modifiers = {}, target = "bag:1" },
         { name = "bd_bag2", key = "", modifiers = {}, target = "bag:2" },
+        -- 绑定面板：Lua 调不动 C# 程序集，键位只存这，触发由 BondGui.cs 读 bondpanel.key 自己轮询
+        { name = "bd_bond_panel", key = "L", modifiers = {}, target = "bondpanel" },
+        -- 描述详略：按住≥0.3s 临时切简短版，轻点切锁定模式（C# 轮询 desc.detailed 行）
+        { name = "bd_desc_toggle", key = "", modifiers = {}, target = "desc_toggle" },
     }
 end
 
@@ -259,10 +381,39 @@ local config = {
     hud_hidden = false,        -- 装束槽位悬浮界面是否隐藏（随配置持久化）
     hud_hidden_outer = false,  -- 外套/潜水服槽位
     hud_hidden_bag = false,    -- 背包槽位
+    desc_detailed = true,      -- 描述详略：true = 详细版（默认），false = 简短版（锁定模式）
 }
 
--- 绑定匹配顺序缓存（修饰键多的优先），nil 表示需要重建。
--- 原实现每帧都新建 order 表并 table.sort，产生持续的堆分配
+-- 外部模组注册层（v3：id 制，纯增量，内置行为不变）。
+-- 别的模组调 TouhouHotkey.RegisterBinding 注册，改键/持久化/双击/冲突检测都白拿
+local extra_bindings = {}   -- id → 条目
+local extra_order = {}      -- 注册顺序的 id 列表（分页与保存用）
+local combined_cache = nil  -- 内置+外部合并视图缓存（注册时失效重建）
+
+-- 合并视图：内置在前（索引与老语义一致），外部按注册顺序追加
+local function get_combined()
+    if combined_cache == nil then
+        combined_cache = {}
+        for _, b in ipairs(config.bindings) do combined_cache[#combined_cache + 1] = b end
+        for _, id in ipairs(extra_order) do combined_cache[#combined_cache + 1] = extra_bindings[id] end
+    end
+    return combined_cache
+end
+
+-- 描述详略的按住/轻点状态（think 里维护）
+local DESC_HOLD_SECONDS = 0.3  -- 按住超过此时长 = 临时简短版（松开恢复）；更短 = 轻点，切换锁定模式
+local desc_press_time = nil    -- 描述切换键按下的时刻（os.clock），nil = 未按住
+local desc_tapped = false      -- 本帧发生了一次“轻点”（守卫通过后消费）
+local desc_last_eff = nil      -- 上次写入配置的实际模式（详细版=true），用于检测变化
+
+local function desc_file_value()
+    if desc_press_time ~= nil and os.clock() - desc_press_time >= DESC_HOLD_SECONDS then
+        return "0"
+    end
+    return config.desc_detailed and "1" or "0"
+end
+
+-- 绑定匹配顺序缓存（修饰键多的优先）。不缓存的话每帧都得新建表再 sort，白扔一堆分配
 local sorted_binding_order = nil
 
 local function get_config_path()
@@ -288,13 +439,25 @@ local function save_config()
     end
     -- 配置已变化，绑定匹配顺序需要重建
     sorted_binding_order = nil
-    local lines = { "menukey=" .. config.menukey }
+    local lines = { "cfgver=2", "menukey=" .. config.menukey }
     lines[#lines + 1] = "hud_hidden=" .. (config.hud_hidden and "1" or "0")
     lines[#lines + 1] = "hud_hidden_outer=" .. (config.hud_hidden_outer and "1" or "0")
     lines[#lines + 1] = "hud_hidden_bag=" .. (config.hud_hidden_bag and "1" or "0")
+    lines[#lines + 1] = "desc.detailed=" .. desc_file_value()  -- C# 描述切换（TalentDescToggle.cs）读取此行；按住期间写 0
     for i, b in ipairs(config.bindings) do
         lines[#lines + 1] = "binding." .. i .. ".key=" .. b.key
         lines[#lines + 1] = "binding." .. i .. ".modifiers=" .. table.concat(b.modifiers, ",")
+        lines[#lines + 1] = "binding." .. i .. ".double=" .. (b.double and "1" or "0")
+        if b.target == "bondpanel" then
+            lines[#lines + 1] = "bondpanel.key=" .. b.key  -- C# 绑定面板（BondGui.cs）读取此行
+        end
+    end
+    -- 外部注册绑定（id 制，增删/重排永不错位）
+    for _, id in ipairs(extra_order) do
+        local b = extra_bindings[id]
+        lines[#lines + 1] = "bind." .. id .. ".key=" .. (b.key or "")
+        lines[#lines + 1] = "bind." .. id .. ".modifiers=" .. table.concat(b.modifiers, ",")
+        lines[#lines + 1] = "bind." .. id .. ".double=" .. (b.double and "1" or "0")
     end
     local path = get_config_path()
     local ok, err = pcall(function()
@@ -350,14 +513,30 @@ local function load_config()
     config.hud_hidden = kv["hud_hidden"] == "1"
     config.hud_hidden_outer = kv["hud_hidden_outer"] == "1"
     config.hud_hidden_bag = kv["hud_hidden_bag"] == "1"
+    -- 缺行时保持默认详细版（旧配置无此行）
+    config.desc_detailed = kv["desc.detailed"] ~= "0"
 
-    -- 旧版配置迁移：hotkey/modifiers → 绑定1（武器改装）
+    -- v1 → v2：老档把"武器改装"单列在最前，v2 并进武器按钮 1-3。remap 把老索引挪到新位置：
+    -- 旧 1改装→新 1，旧 6/7 武器按钮→新 2/3，装束/界面等其余顺移
+    if kv["cfgver"] ~= "2" then
+        local remap = { [1] = 1, [2] = 6, [3] = 7, [4] = 2, [5] = 3, [6] = 4, [7] = 5 }
+        local migrated = {}
+        for new_i = 1, 15 do
+            local old_i = remap[new_i] or new_i
+            local k = kv["binding." .. old_i .. ".key"]
+            local m = kv["binding." .. old_i .. ".modifiers"]
+            if k ~= nil then migrated["binding." .. new_i .. ".key"] = k end
+            if m ~= nil then migrated["binding." .. new_i .. ".modifiers"] = m end
+        end
+        for k, v in pairs(migrated) do kv[k] = v end
+    end
+
+    -- 旧版配置迁移：hotkey/modifiers → 绑定1（武器按钮1，原武器改装）
     if valid_key(kv["hotkey"]) then
         config.bindings[1].key = kv["hotkey"]
         config.bindings[1].modifiers = parse_modifiers(kv["modifiers"])
     end
 
-    -- 新版绑定格式
     for i, b in ipairs(config.bindings) do
         local key = kv["binding." .. i .. ".key"]
         local mods = kv["binding." .. i .. ".modifiers"]
@@ -369,10 +548,21 @@ local function load_config()
                 b.modifiers = parse_modifiers(mods)
             end
         end
+        local dbl = kv["binding." .. i .. ".double"]  -- 旧文件无此行，默认单击（false）
+        if dbl ~= nil then b.double = dbl == "1" end
+    end
+
+    for _, id in ipairs(extra_order) do
+        local b = extra_bindings[id]
+        local k = kv["bind." .. id .. ".key"]
+        if k ~= nil and (k == "" or valid_key(k)) then b.key = k end
+        local m = kv["bind." .. id .. ".modifiers"]
+        if m ~= nil then b.modifiers = parse_modifiers(m) end
+        local d = kv["bind." .. id .. ".double"]
+        if d ~= nil then b.double = d == "1" end
     end
 end
 
---================ 绑定工具函数 ================
 local function has_modifier(modifiers, name)
     for _, n in ipairs(modifiers) do
         if n == name then return true end
@@ -380,21 +570,68 @@ local function has_modifier(modifiers, name)
     return false
 end
 
---================ 原始按键检测 ================
--- 不用 PlayerInput.KeyHit/KeyDown：它们被游戏内部的 AllowInput 门控，
--- 且“上一帧”状态由游戏自己的更新节奏管理——按住移动键等操作时按键事件可能被吞。
--- 这里直接读原始键盘状态，自己维护“上一帧”记录做边沿检测，
--- 保证无论玩家是否在移动/操作，按下绑定键就能触发。
+-- 鼠标键不在 XNA Keys 里，得单独搞。LuaCs 每个版本开放的输入接口不一样，
+-- 所以每个键备了几个候选检测器，挨个试、缓存第一个能用的，全废就报一次错不刷屏
+local XnaMouse = register_static("Microsoft.Xna.Framework.Input.Mouse")
+
+-- 由 XNA Mouse.GetState() 的按钮属性构造检测器（属性值与 ButtonState.Pressed 比较）
+local function make_state_detector(prop)
+    return function()
+        if XnaMouse == nil then error("XNA Mouse unavailable") end
+        return tostring(XnaMouse.GetState()[prop]) == "Pressed"
+    end
+end
+
+local MOUSE_DETECTORS = {
+    MouseMiddle = {
+        function() return PlayerInput.MiddleMouseButtonHeld() end,
+        make_state_detector("MiddleButton"),
+    },
+    MouseSide1  = { make_state_detector("XButton1") },
+    MouseSide2  = { make_state_detector("XButton2") },
+}
+
+local mouse_detector_cache = {}   -- 按钮名 -> 可用的检测器函数
+local mouse_detector_failed = {}  -- 按钮名 -> 全部检测器均不可用
+
+local function resolve_mouse_detector(name)
+    if mouse_detector_cache[name] ~= nil then return mouse_detector_cache[name] end
+    if mouse_detector_failed[name] then return nil end
+    for _, det in ipairs(MOUSE_DETECTORS[name]) do
+        local ok, result = pcall(det)
+        if ok and type(result) == "boolean" then
+            mouse_detector_cache[name] = det
+            return det
+        end
+    end
+    mouse_detector_failed[name] = true
+    print(T("log_prefix") .. string.format(T("mouse_unavailable"), name))
+    return nil
+end
+
+local function raw_mouse_down(name)
+    local det = resolve_mouse_detector(name)
+    if det == nil then return false end
+    local ok, result = pcall(det)
+    return ok and result == true
+end
+
+-- 不用 PlayerInput.KeyHit/KeyDown：那套被 AllowInput 门控，按住移动键时事件可能被吞。
+-- 直接读原始键盘状态、自己记上一帧做边沿检测，边跑边按也能稳定触发
 local key_was_down = {}  -- 按键名 -> 上一帧是否按下
+local double_last_press = {}  -- 按键名 -> 上一次按下的时刻（双击检测用）
 
 local function raw_key_down(name)
+    if is_mouse_button(name) then
+        return raw_mouse_down(name)
+    end
     local ok, down = pcall(function()
         return PlayerInput.GetKeyboardState.IsKeyDown(Keys[name])
     end)
     return ok and down == true
 end
 
--- 每帧调用一次：当前帧按下且上一帧未按下 = 触发（同时刷新上一帧记录）
+-- 每帧调一次：本帧按下、上帧没按 = 触发
 local function poll_key_hit(name)
     local down = raw_key_down(name)
     local hit = down and not key_was_down[name]
@@ -405,16 +642,15 @@ end
 -- 把“上一帧”记录同步为当前真实状态（退出按键捕获后调用，防止松手前被误判为新按下）
 local function sync_key_states()
     key_was_down[config.menukey] = raw_key_down(config.menukey)
-    for _, b in ipairs(config.bindings) do
+    for _, b in ipairs(get_combined()) do
         if b.key ~= "" then
             key_was_down[b.key] = raw_key_down(b.key)
         end
     end
 end
 
--- 触发条件：绑定要求的修饰键全部按住即可。
--- 多余按住的修饰键不阻止触发（例如按住 Shift 奔跑时，无修饰键的绑定照常生效）；
--- 分发顺序是“修饰键多的优先”，所以 J 与 Shift+J 共存时，按 Shift+J 会优先命中带修饰键的绑定
+-- 要求的修饰键都按住就行，多按的不碍事（按住 Shift 奔跑照触发）。
+-- 分发时修饰键多的先匹配，所以 J 和 Shift+J 并存时按 Shift+J 命中带修饰那条
 local function modifiers_satisfied(modifiers)
     for _, name in ipairs(modifiers) do
         if not raw_key_down(name) then
@@ -433,8 +669,7 @@ local function binding_signature(key, modifiers)
     return key .. "|" .. table.concat(mods, ",")
 end
 
--- 冲突规则：普通绑定之间允许共用按键（按下时同时触发）；
--- 只有“界面开关键”必须唯一——绑定不能占用它，它也不能与任何绑定重复
+-- 冲突规则：普通绑定互相撞键无所谓（一起触发），只有界面开关键必须唯一，双向都不许撞
 local function conflicts_with_menukey(key, modifiers)
     if key == "" then return false end
     return binding_signature(key, modifiers) == binding_signature(config.menukey, {})
@@ -442,12 +677,24 @@ end
 
 local function menukey_conflicts_with_bindings(key)
     local sig = binding_signature(key, {})
-    for _, b in ipairs(config.bindings) do
+    for _, b in ipairs(get_combined()) do
         if b.key ~= "" and binding_signature(b.key, b.modifiers) == sig then
             return true, b.name
         end
     end
     return false
+end
+
+local MOUSE_DISPLAY_KEYS = {
+    MouseMiddle = "key_mouse_middle",
+    MouseSide1 = "key_mouse_side1", MouseSide2 = "key_mouse_side2",
+}
+
+local function key_display_name(name)
+    local dk = MOUSE_DISPLAY_KEYS[name]
+    if dk ~= nil then return T(dk) end
+    if is_modifier_name(name) then return MODIFIER_DISPLAY[name] end
+    return name
 end
 
 local function binding_display(b)
@@ -456,14 +703,15 @@ local function binding_display(b)
     for _, name in ipairs(MODIFIER_NAMES) do
         if has_modifier(b.modifiers, name) then table.insert(parts, MODIFIER_DISPLAY[name]) end
     end
-    table.insert(parts, b.key)
-    return table.concat(parts, " + ")
+    table.insert(parts, key_display_name(b.key))
+    local s = table.concat(parts, " + ")
+    if b.double then s = "2× " .. s end  -- 双击绑定的显示前缀
+    return s
 end
 
--- 脏配置自愈：只处理与界面开关键重复的绑定（清空该绑定，由玩家重新指定）；
--- 绑定之间共用按键是合法特性，不做干预
+-- 脏配置自愈：只清跟界面开关键撞车的绑定（绑定之间共用按键是特性，不管）
 local function sanitize_config()
-    for _, b in ipairs(config.bindings) do
+    for _, b in ipairs(get_combined()) do
         if conflicts_with_menukey(b.key, b.modifiers) then
             b.key = ""
             b.modifiers = {}
@@ -471,7 +719,7 @@ local function sanitize_config()
     end
 end
 
---================ GUI 控件识别（LuaCs 禁止反射，用属性探测做 duck-typing） ================
+-- 不能反射，靠 pcall 探测属性认控件类型
 local function is_gui_button(component)
     -- OnClicked 是 GUIButton 特有字段
     return pcall(function() return component.OnClicked end)
@@ -487,18 +735,10 @@ local function is_layout_group(component)
     return pcall(function() return component.AbsoluteSpacing end)
 end
 
--- 按钮的 UserData（CustomInterfaceElement）是 internal 嵌套类，LuaCs 读不出其字段，
--- 因此无法可靠判断按钮是否带 StatusEffects——枚举时一律不按效果过滤（见 find_buttons 注释）
-
---================ 按钮/复选框枚举与触发 ================
--- 枚举物品 CustomInterface 上的可点击控件（按钮 + 复选框）
--- 返回数组 { control=控件, kind="button"|"tick", label=文本, item=物品 }，顺序与 XML 定义顺序一致
--- 注意：
---  · 不能用 UserData.StatusEffects 过滤——CustomInterfaceElement 是 internal 类，
---    LuaCs 读不出它的字段，会把所有真按钮误判为“无效果”；
---  · 官方 CreateGUI 重建 UI 时旧容器不销毁，GuiFrame 里会残留失效控件，
---    因此按文本去重，后出现的（最新重建的）覆盖先前的；
---  · 无文本的控件（残留/装饰控件）直接跳过
+-- 枚举物品 CustomInterface 上的可点控件（按钮+复选框），顺序跟 XML 一致。三个坑：
+--  · UserData.StatusEffects 读不出（internal 类），真按钮会被误判成"无效果"，不能拿它过滤；
+--  · 官方重建 UI 不销毁旧容器，GuiFrame 里会留失效控件，按文本去重、后到的覆盖先到的；
+--  · 没文本的（残留/装饰）直接跳过
 local function find_buttons(item)
     local buttons = {}
     local seen = {}  -- label -> buttons 数组下标
@@ -544,9 +784,8 @@ local function find_buttons(item)
     return buttons
 end
 
--- 触发单个控件，与鼠标点击完全一致：
--- 按钮 = 调用原版点击委托（C# 委托必须用 Invoke）；
--- 复选框 = 翻转 Selected，setter 会自动触发原版 OnSelected 委托（含联机 CreateClientEvent 同步）
+-- 跟鼠标点一下完全等价：按钮直接 Invoke 原版委托（C# 委托必须 Invoke），
+-- 复选框翻 Selected，setter 自己会触发原版 OnSelected（联机同步也走里面）
 local function click_button(entry)
     if entry.kind == "tick" then
         entry.control.Selected = not entry.control.Selected
@@ -566,26 +805,6 @@ local function is_mod_weapon(item)
     return false
 end
 
--- 武器改装：优先按“改装”文本匹配按钮，兜底取第一个按钮
-local function try_trigger_mod(item)
-    if not is_mod_weapon(item) then return false end
-    local buttons = find_buttons(item)
-    if #buttons == 0 then return false end
-
-    local mod_text = tostring(TextManager.Get(BUTTON_TEXT_TAG))
-    for _, entry in ipairs(buttons) do
-        if entry.label == mod_text then
-            click_button(entry)
-            dbg("已点击「" .. tostring(item.Name) .. "」的改装按钮（需耐久充满效果才会生效）")
-            return true
-        end
-    end
-    click_button(buttons[1])
-    dbg("已点击「" .. tostring(item.Name) .. "」的第一个按钮（未按文本匹配到“改装”）")
-    return true
-end
-
--- 判断物品是否为东方装束：subcategory == "Touhou"，或在额外白名单中
 local function is_touhou_outfit(item)
     local ok, sub = pcall(function() return tostring(item.Prefab.Subcategory) end)
     if ok and sub ~= nil and string.lower(sub) == string.lower(OUTFIT_SUBCATEGORY) then
@@ -600,8 +819,8 @@ local function is_touhou_outfit(item)
     return false
 end
 
--- 枚举指定槽位组当前装备上的全部可点击控件（按组内槽位顺序 + XML 定义顺序）
--- group_name: "wearable"（装束，仅东方装备）/ "outer"（外套/潜水服）/ "bag"（背包）
+-- 枚举指定槽位组当前装备上的可点控件（组内槽位顺序 + XML 定义顺序）
+-- group_name: wearable = 装束（仅东方装备）；outer = 外套/潜水服；bag = 背包
 local function get_group_buttons(character, group_name)
     local list = {}
     local group = SLOT_GROUPS[group_name]
@@ -617,25 +836,18 @@ local function get_group_buttons(character, group_name)
     return list
 end
 
--- 装束按钮枚举（装束技能1~4 用）
 local function get_wearable_buttons(character)
     return get_group_buttons(character, "wearable")
 end
 
--- 触发手持武器上除“改装”外的第 N 个按钮（射击模式切换等）
+-- 触发手持武器上的第 N 个按钮（按 XML 定义顺序枚举全部按钮，含"改装"——v2 合并后改装不再单列）
 local function try_trigger_weapon_button(character, n)
-    local mod_text = tostring(TextManager.Get(BUTTON_TEXT_TAG))
     for item in character.HeldItems do
         if is_mod_weapon(item) then
-            local others = {}
-            for _, entry in ipairs(find_buttons(item)) do
-                if entry.label ~= mod_text then
-                    others[#others + 1] = entry
-                end
-            end
-            if n <= #others then
-                click_button(others[n])
-                dbg("已触发武器按钮「" .. others[n].label .. "」（来自「" .. tostring(item.Name) .. "」）")
+            local buttons = find_buttons(item)
+            if n <= #buttons then
+                click_button(buttons[n])
+                dbg("已触发武器按钮「" .. buttons[n].label .. "」（来自「" .. tostring(item.Name) .. "」）")
                 return true
             end
         end
@@ -643,13 +855,9 @@ local function try_trigger_weapon_button(character, n)
     return false
 end
 
---================ 悬浮界面显示开关 ================
--- DrawHudWhenEquipped 属性是 protected set，LuaCs 改不了；
--- 但 CharacterHUD 绘制/注册悬浮界面前都会检查 GuiFrame.Visible（false 直接跳过），
--- 且 GUIComponent.Visible 是公开可写的——因此用切换 GuiFrame.Visible 实现同样的效果。
--- 注意：游戏在 UI 重建（分辨率/UI 缩放变化）时会把 Visible 重置回 true，
--- 因此隐藏状态需要周期性重新强制（见 think 钩子）。
--- 按槽位组分别控制：装束（InnerClothes+Head）、外套（OuterClothes）、背包（Bag）互不影响
+-- DrawHudWhenEquipped 是 protected set，改不了；但 CharacterHUD 画悬浮界面前会查
+-- GuiFrame.Visible（false 就跳过），而 Visible 是公开可写的，所以靠切 Visible 达到同样效果。
+-- 坑：UI 重建（分辨率/缩放变化）会把 Visible 重置回 true，所以隐藏状态得周期性重新压回去（见 think）
 local function set_slots_hud_visible(slots, visible)
     local character = Character.Controlled
     if character == nil or character.Inventory == nil then return end
@@ -712,15 +920,12 @@ end
 
 -- 执行一条绑定
 local function execute_binding(b, character)
-    if b.target == "weapon" then
-        for item in character.HeldItems do
-            if try_trigger_mod(item) then return true end
-        end
-        dbg(T(b.name) .. "：双手没有找到可改装的武器")
-        return false
-    end
+    -- 绑定面板只存键位，触发在 C# 端（BondGui.cs 轮询 bondpanel.key）
+    if b.target == "bondpanel" then return true end
 
-    -- 悬浮界面显示开关（按槽位组：装束/外套/背包，不依赖当前装备，随时可切换）
+    -- desc_toggle 不走这边，由 think 每帧跟按住/轻点（见 DESC_HOLD_SECONDS）
+
+    -- 悬浮界面开关（装束/外套/背包，不依赖当前装备，随时可切）
     local hud_group = HUD_GROUPS[b.target]
     if hud_group ~= nil then
         config[hud_group.flag] = not config[hud_group.flag]
@@ -757,8 +962,8 @@ local function execute_binding(b, character)
     return false
 end
 
---================ 设置界面 ================
 local menu_frame = nil
+local menu_page = "hub"      -- 多级菜单当前页："hub" = 主菜单入口页，"bindings" = 快捷键设置页
 local capturing = nil        -- 绑定索引（数字）或 "menukey" 或 nil
 local capture_ignored = {}   -- 进入捕获模式时已按住的键（防止被立即误捕获）
 local menukey_button = nil
@@ -766,22 +971,63 @@ local binding_buttons = {}   -- 每条绑定的按键按钮
 local detect_labels = {}     -- 装束技能行的“检测到的技能名”标签
 local frame_counter = 0
 local hud_enforce_counter = 0  -- 装束悬浮界面隐藏状态的强制刷新计数
-local BINDINGS_PER_PAGE = 5  -- 设置窗口每页显示的绑定条数，超出翻页
+local pause_toggle_probe = nil  -- GUI.PreventPauseMenuToggle 属性存在性探测结果（nil = 未探测）
+-- 内置分页（按功能分组；索引跟 default_bindings 顺序一致）
+local BUILTIN_PAGES = {
+    { first = 1,  last = 3,  label_key = "pg_weapons"  },   -- 武器按钮 1-3
+    { first = 4,  last = 7,  label_key = "pg_wearable" },   -- 装束技能 1-4
+    { first = 8,  last = 12, label_key = "pg_outer"    },   -- 界面显示 3 + 外套按钮 2
+    { first = 13, last = 15, label_key = "pg_bag"      },   -- 背包按钮 2 + 绑定面板
+    { first = 16, last = 16, label_key = "pg_desc"     },   -- 描述详略切换
+}
+
+local function get_pages()
+    local pages = {}
+    for _, p in ipairs(BUILTIN_PAGES) do
+        local items = {}
+        for i = p.first, math.min(p.last, #config.bindings) do items[#items + 1] = i end
+        if #items > 0 then
+            pages[#pages + 1] = { label = T(p.label_key), items = items }
+        end
+    end
+    local by_mod = {}
+    local base = #config.bindings
+    for pos, id in ipairs(extra_order) do
+        local b = extra_bindings[id]
+        local m = b.mod or T("page_external")
+        if by_mod[m] == nil then
+            by_mod[m] = { label = m, items = {} }
+            pages[#pages + 1] = by_mod[m]
+        end
+        by_mod[m].items[#by_mod[m].items + 1] = base + pos
+    end
+    return pages
+end
+
 local current_page = 1
+local flag_poll_counter = 0  -- C# 设置窗口「返回」标记的轮询节流计数
+-- 装束锁定设置页状态（数据来自 Touhou_Costume_Lock_Client.lua 的 TLE.CostumeLockClient 缓存）
+local cl_pending_enabled = nil  -- 编辑中的启用开关（nil = 未改动，跟随服务器值）
+local cl_pending_time = nil     -- 编辑中的锁定时长（秒）
+local cl_pending_bots = nil     -- 编辑中的 AI 船员锁定开关
+local cl_dirty = false          -- 有未保存的编辑（状态刷新重建页面时保留暂存值）
+local cl_skip_request = false   -- OnState 重建页面时置真，避免"请求→重建→再请求"循环
+local cl_unlockall_confirm = nil  -- 全部解锁的二击确认时刻（os.clock）
+local cl_time_box = nil      -- 锁定时长输入框（GUITextBox；构造失败时为 nil，退回纯步进按钮）
 
 local function refresh_binding_texts()
     if menukey_button ~= nil then
         if capturing == "menukey" then
             menukey_button.Text = RawLString(T("capturing"))
         else
-            menukey_button.Text = RawLString(config.menukey)
+            menukey_button.Text = RawLString(key_display_name(config.menukey))
         end
     end
     for i, btn in pairs(binding_buttons) do
         if capturing == i then
             btn.Text = RawLString(T("capturing"))
         else
-            btn.Text = RawLString(binding_display(config.bindings[i]))
+            btn.Text = RawLString(binding_display(get_combined()[i]))
         end
     end
 end
@@ -791,7 +1037,7 @@ local function refresh_detected_labels()
     if menu_frame == nil then return end
     local group_lists = {}  -- 组名 -> 控件列表（每组只枚举一次）
     for i, label in pairs(detect_labels) do
-        local b = config.bindings[i]
+        local b = get_combined()[i]
         local group_name, idx_text = string.match(b.target, "^(%a+):(%d+)$")
         local n = tonumber(idx_text)
         local text = T(b.name)
@@ -817,6 +1063,12 @@ local function start_capture(target)
     for key in PlayerInput.GetKeyboardState.GetPressedKeys() do
         capture_ignored[tostring(key)] = true
     end
+    -- 鼠标键同理：点击进入捕获时的那一下点击不能算数，等松开
+    for _, name in ipairs(MOUSE_BUTTONS) do
+        if raw_mouse_down(name) then
+            capture_ignored[name] = true
+        end
+    end
     refresh_binding_texts()
 end
 
@@ -828,6 +1080,7 @@ local function stop_capture()
 end
 
 local function close_menu()
+    -- 别在这重置 menu_page：open_menu 开头会调本函数，一重置子页就永远进不去了
     capturing = nil
     capture_ignored = {}
     sync_key_states()
@@ -838,27 +1091,184 @@ local function close_menu()
         menukey_button = nil
         binding_buttons = {}
         detect_labels = {}
+        cl_time_box = nil
     end
 end
 
 local function add_row(layout, height)
+    -- 间距收紧：6 个修饰键复选框 + 双击框的行不再超出窗口
     local row = GUI.LayoutGroup(GUI.RectTransform(Vector2(1, height), layout.RectTransform), true, GUI.Anchor.CenterLeft)
-    row.RelativeSpacing = 0.015
+    row.RelativeSpacing = 0.006
     return row
+end
+
+-- ==================== 进度条设置页（hudbars） ====================
+-- C# 侧（HudAfflictionBars.cs）把合并后的配置写到 TouhouHudBarsState.txt（与热键配置同目录，
+-- 只读快照，含本地化后的名称与默认值）；本页读取展示，玩家改动写 TouhouHudBarsConfig.txt，
+-- C# 每帧查 mtime 即时重载并回写状态。两边内容相同时互不触发，无回环。
+local HB_H = 0.058
+local hb_state = nil      -- 解析后的状态表
+local hb_state_raw = nil  -- 原始文本（变化检测）
+local hb_selected = nil   -- 选中的条索引
+local hb_poll_counter = 0
+local hb_pending_rebuild = false  -- 拖动滑条期间挂起的页面重建
+
+-- 鼠标左键是否按住（拖动滑条判定；pcall 兜底上下文差异）
+local function hb_mouse_held()
+    local ok, held = pcall(function() return PlayerInput.PrimaryMouseButtonHeld() end)
+    return ok and held == true
+end
+
+local function hb_dir_file(name)
+    local p = get_config_path()
+    return (string.gsub(p, "[^/\\]+$", name))
+end
+
+local function hb_parse_state(text)
+    local st = { bars = {}, order = {} }
+    for line in string.gmatch(text or "", "[^\r\n]+") do
+        local k, v = string.match(line, "^([^=]+)=(.*)$")
+        if k ~= nil then
+            if k == "scale" or k == "offsetx" or k == "offsety" or k == "barheight" then
+                st[k] = tonumber(v)
+            elseif k == "side" then
+                st.side = v
+            else
+                local idx, prop = string.match(k, "^bar%.(%d+)%.(.+)$")
+                if idx ~= nil then
+                    idx = tonumber(idx)
+                    if st.bars[idx] == nil then
+                        st.bars[idx] = {}
+                        st.order[#st.order + 1] = idx
+                    end
+                    st.bars[idx][prop] = v
+                end
+            end
+        end
+    end
+    return st
+end
+
+local function hb_load_state()
+    if File == nil then return nil end
+    local ok, text = pcall(function() return File.ReadAllText(hb_dir_file("TouhouHudBarsState.txt")) end)
+    if not ok or text == nil then return nil end
+    hb_state_raw = text
+    return hb_parse_state(text)
+end
+
+local function hb_write_config()
+    if File == nil or hb_state == nil then return end
+    local lines = {}
+    lines[#lines + 1] = "scale=" .. string.format("%.2f", hb_state.scale or 1)
+    lines[#lines + 1] = "side=" .. (hb_state.side or "right")
+    lines[#lines + 1] = "offsetx=" .. string.format("%.0f", hb_state.offsetx or 70)
+    lines[#lines + 1] = "offsety=" .. string.format("%.0f", hb_state.offsety or 0)
+    lines[#lines + 1] = "barheight=" .. string.format("%.0f", hb_state.barheight or 180)
+    for _, idx in ipairs(hb_state.order) do
+        local b = hb_state.bars[idx]
+        lines[#lines + 1] = "bar." .. tostring(b.id) .. ".enabled=" .. (b.enabled == "1" and "1" or "0")
+        lines[#lines + 1] = "bar." .. tostring(b.id) .. ".color=" .. tostring(b.color or "255,255,255")
+    end
+    pcall(function()
+        File.WriteAllText(hb_dir_file("TouhouHudBarsConfig.txt"), table.concat(lines, "\n"))
+    end)
+end
+
+local function hb_parse_color(text)
+    local r, g, b = string.match(tostring(text or ""), "(%d+),%s*(%d+),%s*(%d+)")
+    return tonumber(r) or 255, tonumber(g) or 255, tonumber(b) or 255
+end
+
+-- 与 open_menu 内的 add_text 等价（模块级复刻，hb_slider_row 在 open_menu 外定义，够不到那个 local）
+local function hb_add_text(rel_size, parent_rt, text, alignment)
+    local block = GUI.TextBlock(GUI.RectTransform(rel_size, parent_rt), RichString.Plain(RawLString(text)))
+    block.TextAlignment = alignment
+    return block
+end
+
+-- 通用滑条行：标签 + 滑条 + 值文本；宽度预算 0.21+0.57+0.20+2×0.006 ≈ 1.0
+local function hb_slider_row(layout, height, label, min, max, fmt, get, set)
+    local row = add_row(layout, height)
+    hb_add_text(Vector2(0.21, 1), row.RectTransform, label, GUI.Alignment.CenterLeft)
+    local scroll = GUI.ScrollBar(GUI.RectTransform(Vector2(0.57, 1), row.RectTransform), 0.1)
+    scroll.Range = Vector2(min, max)
+    local value_text = hb_add_text(Vector2(0.20, 1), row.RectTransform, string.format(fmt, get()), GUI.Alignment.CenterLeft)
+    scroll.BarScroll = math.min(math.max((get() - min) / (max - min), 0), 1)
+    scroll.OnMoved = function(bar, s)
+        set(min + (max - min) * s)
+        value_text.Text = RichString.Plain(RawLString(string.format(fmt, get())))
+        hb_write_config()
+        return true
+    end
+end
+
+-- ==================== 绑定/耐久设置页（bondsettings/condloss） ====================
+-- C# 侧 BondSettingsBridge（BondGui.cs）：状态快照 TouhouBondState.txt（含 denied 反馈），
+-- 本页「保存」写 TouhouBondRequest.txt，C# 每帧查 mtime 后走 BondNet 原有的网络/权限路径。
+local bond_state = nil
+local bond_state_raw = nil
+local bond_poll_counter = 0
+local bs_boxes = {}
+
+local function bond_parse_state(text)
+    local st = {}
+    for line in string.gmatch(text or "", "[^\r\n]+") do
+        local k, v = string.match(line, "^([^=]+)=(.*)$")
+        if k ~= nil then st[k] = v end
+    end
+    return st
+end
+
+local function bond_load_state()
+    if File == nil then return nil end
+    local path = hb_dir_file("TouhouBondState.txt")
+    local ok, text = pcall(function()
+        if not File.Exists(path) then return nil end
+        return File.ReadAllText(path)
+    end)
+    if not ok or text == nil then return nil end
+    bond_state_raw = text
+    return bond_parse_state(text)
+end
+
+local function bond_write_request(entries)
+    if File == nil or #entries == 0 then return end
+    pcall(function()
+        File.WriteAllText(hb_dir_file("TouhouBondRequest.txt"), table.concat(entries, "\n"))
+    end)
+end
+
+-- 文本框字段：标签单独一行 + 文本框单独一行。
+-- 对照实验证明：标签(TextBlock)和文本框(GUITextBox)在同一水平布局行里会导致行尺寸坍缩成 0
+-- （文本块照常显示、文本框不可见），两者分开成两行各自渲染正常。
+local function bs_textbox_row(layout, label, key, pending)
+    hb_add_text(Vector2(1, 0.042), layout.RectTransform, label, GUI.Alignment.CenterLeft)
+    local row = add_row(layout, 0.058)
+    local box = nil
+    local ok = pcall(function()
+        box = GUI.TextBox(GUI.RectTransform(Vector2(1, 1), row.RectTransform), RawLString(tostring(pending[key] or "")))
+    end)
+    if not ok or box == nil then
+        ok = pcall(function()
+            box = GUI.CreateTextBoxWithPlaceholder(GUI.RectTransform(Vector2(1, 1), row.RectTransform), tostring(pending[key] or ""), RawLString(""))
+        end)
+    end
+    if box ~= nil then bs_boxes[key] = box end
 end
 
 local function open_menu()
     close_menu()
 
-    menu_frame = GUI.Frame(GUI.RectTransform(Vector2(0.40, 0.70), GUI.GUI.Canvas, GUI.Anchor.Center), "ItemUI")
+    -- 加宽窗口（0.40→0.56）：容纳左右两侧修饰键复选框
+    menu_frame = GUI.Frame(GUI.RectTransform(Vector2(0.56, 0.70), GUI.GUI.Canvas, GUI.Anchor.Center), "ItemUI")
 
     local layout = GUI.LayoutGroup(GUI.RectTransform(Vector2(0.92, 0.96), menu_frame.RectTransform, GUI.Anchor.Center))
     layout.RelativeSpacing = 0.012
     layout.Stretch = true
 
-    -- 创建文本标签的辅助函数
-    -- 注意：GUITextBlock 构造函数需要 RichString（GUIButton/GUITickBox 才是 LocalizedString），
-    -- LuaCs 不做隐式类型转换，必须用 RichString.Plain 显式构造；对齐方式通过属性设置
+    -- GUITextBlock 只吃 RichString（按钮/复选框才吃 LocalizedString），LuaCs 不做隐式转换，
+    -- 必须 RichString.Plain 显式包一层；对齐靠属性设
     local function add_text(rel_size, parent_rt, text, alignment)
         local block = GUI.TextBlock(GUI.RectTransform(rel_size, parent_rt), RichString.Plain(RawLString(text)))
         block.TextAlignment = alignment
@@ -868,48 +1278,550 @@ local function open_menu()
     -- 固定 10 行布局（标题 + 界面开关键 + 每页5条绑定 + 提示 + 翻页栏 + 关闭），行高不用压缩
     local ROW_H = 0.085
 
-    -- 标题
-    add_text(Vector2(1, ROW_H), layout.RectTransform, T("window_title"), GUI.Alignment.Center)
+    if menu_page == "hub" then
+        add_text(Vector2(1, ROW_H), layout.RectTransform, T("window_title"), GUI.Alignment.Center)
 
-    -- 界面开关键
+        local btn_hotkey = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("menu_hotkey")))
+        btn_hotkey.OnClicked = function()
+            menu_page = "bindings"
+            pcall(open_menu)
+            return true
+        end
+
+        local btn_bond = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("bond_settings")))
+        btn_bond.OnClicked = function()
+            -- 绑定设置是本菜单的子页面，直接切页（数据经 TouhouBondState.txt 快照读取）
+            bond_state = nil  -- 强制重读状态快照
+            menu_page = "bondsettings"
+            pcall(open_menu)
+            return true
+        end
+
+        local btn_condloss = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("condloss_settings")))
+        btn_condloss.OnClicked = function()
+            bond_state = nil
+            menu_page = "condloss"
+            pcall(open_menu)
+            return true
+        end
+
+        local btn_hudbar = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("hudbar_settings")))
+        btn_hudbar.OnClicked = function()
+            -- 进度条设置是本菜单的子页面，直接切页（同尺寸窗口原位替换，零延迟）
+            hb_selected = nil
+            hb_state = nil  -- 强制重读状态快照
+            menu_page = "hudbars"
+            pcall(open_menu)
+            return true
+        end
+
+        local btn_costumelock = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("cl_settings")))
+        btn_costumelock.OnClicked = function()
+            -- 进入页面时重置编辑暂存（跟随服务器最新值）
+            cl_pending_enabled = nil
+            cl_pending_time = nil
+            cl_pending_bots = nil
+            cl_dirty = false
+            cl_unlockall_confirm = nil
+            menu_page = "costumelock"
+            pcall(open_menu)
+            return true
+        end
+
+        local btn_close = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("close")))
+        btn_close.OnClicked = function()
+            close_menu()
+            return true
+        end
+        return
+    end
+
+    if menu_page == "costumelock" then
+        local CL = TLE.CostumeLockClient
+        add_text(Vector2(1, ROW_H), layout.RectTransform, T("window_title") .. " - " .. T("cl_settings"), GUI.Alignment.Center)
+
+        if CL == nil then
+            add_text(Vector2(1, ROW_H), layout.RectTransform, T("cl_module_missing"), GUI.Alignment.Center)
+        else
+            -- 进入页面时向服务器请求最新状态；OnState 回调重建页面时跳过，避免"请求→重建→再请求"循环
+            if not cl_skip_request then CL.RequestState() end
+            cl_skip_request = false
+
+            if not cl_dirty then
+                cl_pending_enabled = CL.enabled
+                cl_pending_time = CL.lock_time
+                cl_pending_bots = CL.lock_bots
+            end
+            local can_edit = CL.can_edit == true
+
+            -- 启用开关 + AI 船员锁定开关（同一行并排，行数不增）
+            do
+                local row = add_row(layout, ROW_H)
+                local tick = GUI.TickBox(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), RawLString(T("cl_enable")))
+                tick.Selected = cl_pending_enabled == true
+                tick.Enabled = can_edit
+                tick.OnSelected = function(tb)
+                    cl_pending_enabled = tb.Selected
+                    cl_dirty = true
+                    return true
+                end
+                local tick_bots = GUI.TickBox(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), RawLString(T("cl_lock_bots")))
+                tick_bots.Selected = cl_pending_bots == true
+                tick_bots.Enabled = can_edit
+                tick_bots.OnSelected = function(tb)
+                    cl_pending_bots = tb.Selected
+                    cl_dirty = true
+                    return true
+                end
+            end
+
+            do
+                local row = add_row(layout, ROW_H)
+                add_text(Vector2(0.18, 1), row.RectTransform, T("cl_lock_time"), GUI.Alignment.CenterLeft)
+
+                -- 读取文本框当前输入；返回 nil 表示无输入框或内容不是数字
+                local function read_box_value()
+                    if cl_time_box == nil then return nil end
+                    local ok, text = pcall(function() return tostring(cl_time_box.Text) end)
+                    if not ok or text == nil then return nil end
+                    local n = tonumber(text)
+                    if n == nil then return nil end
+                    return math.floor(n)
+                end
+
+                -- 步进按钮：以文本框当前内容（非法时回退暂存值）为基数调节，随后重建页面刷新显示
+                local function step_btn(label, delta)
+                    local b = GUI.Button(GUI.RectTransform(Vector2(0.08, 1), row.RectTransform), RawLString(label))
+                    b.Enabled = can_edit
+                    b.OnClicked = function()
+                        local base = read_box_value() or cl_pending_time or CL.lock_time
+                        cl_pending_time = math.floor(math.min(math.max(base + delta, 10), 600))
+                        cl_dirty = true
+                        cl_skip_request = true
+                        pcall(open_menu)
+                        return true
+                    end
+                end
+                step_btn("-60", -60)
+                step_btn("-10", -10)
+
+                -- 文本输入框：直接输入秒数（构造失败时退回仅显示数值的纯步进模式）
+                cl_time_box = nil
+                local box = nil
+                local ok_box = pcall(function()
+                    box = GUI.TextBox(GUI.RectTransform(Vector2(0.13, 1), row.RectTransform), RawLString(tostring(cl_pending_time)))
+                end)
+                if not ok_box or box == nil then
+                    ok_box = pcall(function()
+                        box = GUI.CreateTextBoxWithPlaceholder(GUI.RectTransform(Vector2(0.13, 1), row.RectTransform), tostring(cl_pending_time), RawLString(""))
+                    end)
+                end
+                if ok_box and box ~= nil then
+                    cl_time_box = box
+                    box.Enabled = can_edit
+                else
+                    add_text(Vector2(0.13, 1), row.RectTransform, tostring(cl_pending_time) .. "s", GUI.Alignment.Center)
+                end
+
+                step_btn("+10", 10)
+                step_btn("+60", 60)
+
+                local save_btn = GUI.Button(GUI.RectTransform(Vector2(0.14, 1), row.RectTransform), RawLString(T("cl_save")))
+                save_btn.Enabled = can_edit
+                save_btn.OnClicked = function()
+                    local value = read_box_value()
+                    if value == nil and cl_time_box ~= nil then
+                        -- 输入框存在但内容不是数字：提示并放弃本次保存
+                        pcall(function() GUI.AddMessage(T("cl_invalid_time"), Color(255, 120, 120, 255)) end)
+                        print(T("log_prefix") .. T("cl_invalid_time"))
+                        return true
+                    end
+                    cl_pending_time = math.floor(math.min(math.max(value or cl_pending_time or CL.lock_time, 10), 600))
+                    CL.SendConfig(cl_pending_enabled == true, cl_pending_time, cl_pending_bots == true)
+                    cl_dirty = false
+                    return true
+                end
+
+                -- 重置默认：开启 + 120 秒 + 不锁 AI（立即生效并重建页面）
+                local reset_btn = GUI.Button(GUI.RectTransform(Vector2(0.14, 1), row.RectTransform), RawLString(T("cl_reset")))
+                reset_btn.Enabled = can_edit
+                reset_btn.OnClicked = function()
+                    cl_pending_enabled = true
+                    cl_pending_time = 120
+                    cl_pending_bots = false
+                    CL.SendConfig(true, 120, false)
+                    cl_dirty = false
+                    cl_skip_request = true
+                    pcall(open_menu)
+                    print(T("log_prefix") .. T("cl_reset_done"))
+                    return true
+                end
+            end
+
+            if not can_edit then
+                add_text(Vector2(1, ROW_H), layout.RectTransform, T("cl_no_permission"), GUI.Alignment.Center)
+            end
+
+            -- 已锁定玩家列表（最多显示 3 行，超出在标题行注明总人数）
+            do
+                local row = add_row(layout, ROW_H)
+                local header = T("cl_locked_list")
+                if #CL.locked > 3 then
+                    header = header .. string.format(T("cl_total_suffix"), #CL.locked)
+                end
+                add_text(Vector2(0.76, 1), row.RectTransform, header, GUI.Alignment.CenterLeft)
+                local refresh_btn = GUI.Button(GUI.RectTransform(Vector2(0.2, 1), row.RectTransform), RawLString(T("cl_refresh")))
+                refresh_btn.OnClicked = function()
+                    CL.RequestState()  -- 状态回包/单机同步回调会经 OnState 重建页面
+                    return true
+                end
+            end
+
+            if not CL.has_state then
+                add_text(Vector2(1, ROW_H), layout.RectTransform, T("cl_loading"), GUI.Alignment.Center)
+            elseif #CL.locked == 0 then
+                add_text(Vector2(1, ROW_H), layout.RectTransform, T("cl_none"), GUI.Alignment.Center)
+            else
+                for i = 1, math.min(#CL.locked, 3) do
+                    local entry = CL.locked[i]
+                    local row = add_row(layout, ROW_H)
+                    add_text(Vector2(0.76, 1), row.RectTransform,
+                        tostring(entry.char_name) .. "（" .. tostring(entry.item_name) .. "）", GUI.Alignment.CenterLeft)
+                    local un_btn = GUI.Button(GUI.RectTransform(Vector2(0.2, 1), row.RectTransform), RawLString(T("cl_unlock")))
+                    un_btn.Enabled = can_edit
+                    un_btn.OnClicked = function()
+                        CL.SendUnlock(entry.char_id)
+                        return true
+                    end
+                end
+            end
+
+            -- 全部解锁（二击确认，3 秒内再点一次生效）
+            do
+                local row = add_row(layout, ROW_H)
+                local confirming = cl_unlockall_confirm ~= nil and os.clock() - cl_unlockall_confirm < 3
+                local all_btn = GUI.Button(GUI.RectTransform(Vector2(1, 1), row.RectTransform),
+                    RawLString(confirming and T("cl_unlock_all_confirm") or T("cl_unlock_all")))
+                all_btn.Enabled = can_edit
+                all_btn.OnClicked = function()
+                    if confirming then
+                        cl_unlockall_confirm = nil
+                        CL.SendUnlock(0)
+                    else
+                        cl_unlockall_confirm = os.clock()
+                        cl_skip_request = true
+                        pcall(open_menu)
+                    end
+                    return true
+                end
+            end
+        end
+
+        do
+            local bottom_row = add_row(layout, ROW_H)
+            local back_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("back")))
+            back_btn.OnClicked = function()
+                menu_page = "hub"
+                pcall(open_menu)
+                return true
+            end
+            local close_button = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("close")))
+            close_button.OnClicked = function()
+                close_menu()
+                return true
+            end
+        end
+        return
+    end
+
+    if menu_page == "hudbars" then
+        if hb_state == nil then hb_state = hb_load_state() end
+        add_text(Vector2(1, HB_H), layout.RectTransform, T("window_title") .. " - " .. T("hudbar_settings"), GUI.Alignment.Center)
+
+        -- 页面主体用 xpcall 包住：构建出错直接显示在页面上并写 page_error.txt
+        local build_ok, build_err = xpcall(function()
+        if hb_state == nil then
+            add_text(Vector2(1, HB_H), layout.RectTransform, T("hb_loading"), GUI.Alignment.Center)
+        else
+            -- 左右排版：左列选择要调整的条，右列是全局设置 + 选中条的详细设置
+            local columns = GUI.LayoutGroup(GUI.RectTransform(Vector2(1, 0.72), layout.RectTransform), true, GUI.Anchor.CenterLeft)
+            columns.RelativeSpacing = 0.01
+
+            -- 左列：条列表
+            local left_col = GUI.LayoutGroup(GUI.RectTransform(Vector2(0.32, 1), columns.RectTransform))
+            left_col.Stretch = true
+            local list = GUI.ListBox(GUI.RectTransform(Vector2(1, 1), left_col.RectTransform))
+            if #hb_state.order == 0 then
+                hb_add_text(Vector2(1, 0.1), list.Content.RectTransform, T("hb_empty"), GUI.Alignment.Center)
+            end
+            for _, idx in ipairs(hb_state.order) do
+                local b = hb_state.bars[idx]
+                local label = (idx == hb_selected and "» " or "") .. tostring(b.name)
+                    .. (b.enabled == "1" and "" or "（隐藏）") .. (idx == hb_selected and " «" or "")
+                local btn = GUI.Button(GUI.RectTransform(Vector2(1, 0.1), list.Content.RectTransform), RawLString(label))
+                btn.OnClicked = function()
+                    hb_selected = idx
+                    pcall(open_menu)
+                    return true
+                end
+            end
+
+            -- 右列：全局设置 + 选中条详细设置（9 行 × 0.095 + 间距 ≈ 1.0）
+            local right_col = GUI.LayoutGroup(GUI.RectTransform(Vector2(0.67, 1), columns.RectTransform))
+            right_col.Stretch = true
+            right_col.RelativeSpacing = 0.015
+            local RC_H = 0.095
+
+            hb_slider_row(right_col, RC_H, T("hb_scale"), 0.5, 2, "%.2f",
+                function() return hb_state.scale or 1 end,
+                function(v) hb_state.scale = v end)
+            hb_slider_row(right_col, RC_H, T("hb_height"), 90, 270, "%.0f",
+                function() return hb_state.barheight or 180 end,
+                function(v) hb_state.barheight = v end)
+            hb_slider_row(right_col, RC_H, T("hb_offset_y"), -400, 400, "%.0f",
+                function() return hb_state.offsety or 0 end,
+                function(v) hb_state.offsety = v end)
+
+            -- 显示位置（左/右）+ 边距，同一行
+            do
+                local row = add_row(right_col, RC_H)
+                local side_btn = GUI.Button(GUI.RectTransform(Vector2(0.36, 1), row.RectTransform),
+                    RawLString(hb_state.side == "left" and T("hb_side_left") or T("hb_side_right")))
+                side_btn.OnClicked = function()
+                    hb_state.side = (hb_state.side == "left") and "right" or "left"
+                    hb_write_config()
+                    pcall(open_menu)
+                    return true
+                end
+                local scroll = GUI.ScrollBar(GUI.RectTransform(Vector2(0.4, 1), row.RectTransform), 0.1)
+                scroll.Range = Vector2(0, 400)
+                local margin_text = hb_add_text(Vector2(0.2, 1), row.RectTransform,
+                    T("hb_margin") .. string.format("%.0f", hb_state.offsetx or 70), GUI.Alignment.CenterLeft)
+                scroll.BarScroll = math.min(math.max((hb_state.offsetx or 70) / 400, 0), 1)
+                scroll.OnMoved = function(bar, s)
+                    hb_state.offsetx = 400 * s
+                    margin_text.Text = RichString.Plain(RawLString(T("hb_margin") .. string.format("%.0f", hb_state.offsetx)))
+                    hb_write_config()
+                    return true
+                end
+            end
+
+            -- 选中条：名称 + 启用开关 + 颜色预览（同一行）
+            local sel = hb_selected ~= nil and hb_state.bars[hb_selected] or nil
+            do
+                local row = add_row(right_col, RC_H)
+                hb_add_text(Vector2(0.4, 1), row.RectTransform,
+                    sel ~= nil and tostring(sel.name) or T("hb_select_hint"), GUI.Alignment.CenterLeft)
+                local tick = GUI.TickBox(GUI.RectTransform(Vector2(0.32, 1), row.RectTransform), RawLString(T("hb_enable")))
+                tick.Selected = sel ~= nil and sel.enabled == "1"
+                tick.Enabled = sel ~= nil
+                tick.OnSelected = function(tb)
+                    if sel == nil then return true end
+                    sel.enabled = tb.Selected and "1" or "0"
+                    hb_write_config()
+                    pcall(open_menu)
+                    return true
+                end
+                local preview = GUI.Frame(GUI.RectTransform(Vector2(0.24, 1), row.RectTransform), nil)
+                if sel ~= nil then
+                    local pr, pg, pb = hb_parse_color(sel.color)
+                    preview.Color = Color(pr, pg, pb, 255)
+                end
+            end
+
+            -- RGB 滑条
+            local channels = { { T("hb_r"), 1 }, { T("hb_g"), 2 }, { T("hb_b"), 3 } }
+            for _, ch in ipairs(channels) do
+                hb_slider_row(right_col, RC_H, ch[1], 0, 255, "%.0f",
+                    function()
+                        if sel == nil then return 0 end
+                        return select(ch[2], hb_parse_color(sel.color))
+                    end,
+                    function(v)
+                        if sel == nil then return end
+                        local r, g, b = hb_parse_color(sel.color)
+                        local nv = math.floor(math.min(math.max(v, 0), 255) + 0.5)
+                        if ch[2] == 1 then r = nv elseif ch[2] == 2 then g = nv else b = nv end
+                        sel.color = r .. "," .. g .. "," .. b
+                    end)
+            end
+
+            -- 重置（选中条 + 全局布局一起）
+            do
+                local row = add_row(right_col, RC_H)
+                local reset_btn = GUI.Button(GUI.RectTransform(Vector2(1, 1), row.RectTransform), RawLString(T("hb_reset")))
+                reset_btn.OnClicked = function()
+                    hb_state.scale = 1
+                    hb_state.side = "right"
+                    hb_state.offsetx = 70
+                    hb_state.offsety = 0
+                    hb_state.barheight = 180
+                    if sel ~= nil then
+                        sel.color = sel.defaultcolor or sel.color
+                        sel.enabled = sel.defaultenabled or "1"
+                    end
+                    hb_write_config()
+                    pcall(open_menu)
+                    return true
+                end
+            end
+        end
+        end, function(e) return tostring(e) end)
+        if not build_ok then
+            add_text(Vector2(1, HB_H), layout.RectTransform, "页面构建出错: " .. tostring(build_err), GUI.Alignment.Center)
+            pcall(function() File.WriteAllText(hb_dir_file("page_error.txt"), tostring(build_err)) end)
+        end
+        -- 返回主菜单 / 关闭（与其他页同款）
+        do
+            local bottom_row = add_row(layout, HB_H)
+            local back_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("back")))
+            back_btn.OnClicked = function()
+                menu_page = "hub"
+                pcall(open_menu)
+                return true
+            end
+            local close_button = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("close")))
+            close_button.OnClicked = function()
+                close_menu()
+                return true
+            end
+        end
+        return
+    end
+
+    if menu_page == "bondsettings" or menu_page == "condloss" then
+        if bond_state == nil then bond_state = bond_load_state() end
+        local is_bond = menu_page == "bondsettings"
+        add_text(Vector2(1, ROW_H), layout.RectTransform,
+            T("window_title") .. " - " .. T(is_bond and "bond_settings" or "condloss_settings"), GUI.Alignment.Center)
+
+        -- 页面主体用 xpcall 包住：构建出错直接显示在页面上并写 page_error.txt，不再被静默吞掉
+        local build_ok, build_err = xpcall(function()
+            if bond_state == nil then
+                add_text(Vector2(1, ROW_H), layout.RectTransform, T("bs_module_missing"), GUI.Alignment.Center)
+            else
+                -- 暂存值每次重建页面时从状态快照初始化；输入框聚焦期间不重建（见 think 轮询）
+                local pending = {
+                    settleinterval = bond_state.settleinterval,
+                    resistancescale = bond_state.resistancescale,
+                    maxlinkdistance = bond_state.maxlinkdistance,
+                    countedtypes = bond_state.countedtypes,
+                    condlossmult = bond_state.condlossmult,
+                }
+                bs_boxes = {}
+
+                if is_bond then
+                    bs_textbox_row(layout, T("bs_interval"), "settleinterval", pending)
+                    bs_textbox_row(layout, T("bs_resist"), "resistancescale", pending)
+                    bs_textbox_row(layout, T("bs_distance"), "maxlinkdistance", pending)
+                    bs_textbox_row(layout, T("bs_types"), "countedtypes", pending)
+                    add_text(Vector2(1, ROW_H), layout.RectTransform, T("bs_hint"), GUI.Alignment.Center)
+                else
+                    bs_textbox_row(layout, T("cd_mult"), "condlossmult", pending)
+                    add_text(Vector2(1, ROW_H), layout.RectTransform, T("cd_hint"), GUI.Alignment.Center)
+                end
+
+                -- 拒绝反馈（C# 侧已做 10 秒新鲜度判断，非空即新鲜）
+                local denied = bond_state.denied or ""
+                if denied ~= "" then
+                    add_text(Vector2(1, ROW_H), layout.RectTransform, T("bs_denied_prefix") .. denied, GUI.Alignment.Center)
+                end
+
+                -- 保存 / 重置
+                do
+                    local row = add_row(layout, ROW_H)
+                    local save_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), RawLString(T("cl_save")))
+                    save_btn.OnClicked = function()
+                        local entries = {}
+                        local keys = is_bond
+                            and { "settleinterval", "resistancescale", "maxlinkdistance", "countedtypes" }
+                            or { "condlossmult" }
+                        for _, key in ipairs(keys) do
+                            local box = bs_boxes[key]
+                            if box ~= nil then
+                                local ok, text = pcall(function() return tostring(box.Text) end)
+                                if ok and text ~= nil and text ~= "" then
+                                    entries[#entries + 1] = key .. "=" .. text
+                                end
+                            end
+                        end
+                        bond_write_request(entries)
+                        return true
+                    end
+                    local reset_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), RawLString(T("cl_reset")))
+                    reset_btn.OnClicked = function()
+                        local entries = is_bond
+                            and { "settleinterval=1", "resistancescale=0.5", "maxlinkdistance=0", "countedtypes=damage,burn,bleeding,debuff,poison" }
+                            or { "condlossmult=1" }
+                        bond_write_request(entries)
+                        return true
+                    end
+                end
+            end
+        end, function(e) return tostring(e) end)
+        if not build_ok then
+            add_text(Vector2(1, ROW_H), layout.RectTransform, "页面构建出错: " .. tostring(build_err), GUI.Alignment.Center)
+            pcall(function() File.WriteAllText(hb_dir_file("page_error.txt"), tostring(build_err)) end)
+        end
+
+        -- 返回主菜单 / 关闭（与其他页同款）
+        do
+            local bottom_row = add_row(layout, ROW_H)
+            local back_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("back")))
+            back_btn.OnClicked = function()
+                menu_page = "hub"
+                pcall(open_menu)
+                return true
+            end
+            local close_button = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("close")))
+            close_button.OnClicked = function()
+                close_menu()
+                return true
+            end
+        end
+        return
+    end
+
+    add_text(Vector2(1, ROW_H), layout.RectTransform, T("window_title") .. " - " .. T("menu_hotkey"), GUI.Alignment.Center)
+
     do
         local row = add_row(layout, ROW_H)
-        add_text(Vector2(0.3, 1), row.RectTransform, T("menukey_name"), GUI.Alignment.CenterLeft)
-        menukey_button = GUI.Button(GUI.RectTransform(Vector2(0.22, 1), row.RectTransform), RawLString(config.menukey))
+        add_text(Vector2(0.22, 1), row.RectTransform, T("menukey_name"), GUI.Alignment.CenterLeft)
+        menukey_button = GUI.Button(GUI.RectTransform(Vector2(0.16, 1), row.RectTransform), RawLString(config.menukey))
         menukey_button.OnClicked = function()
             start_capture("menukey")
             return true
         end
-        add_text(Vector2(0.48, 1), row.RectTransform, T("menukey_hint"), GUI.Alignment.CenterLeft)
+        add_text(Vector2(0.60, 1), row.RectTransform, T("menukey_hint"), GUI.Alignment.CenterLeft)
     end
 
-    -- 各条绑定（按页切片显示）
-    local total_pages = math.max(1, math.ceil(#config.bindings / BINDINGS_PER_PAGE))
+    local pages = get_pages()
+    local total_pages = #pages
     if current_page > total_pages then current_page = total_pages end
     if current_page < 1 then current_page = 1 end
-    local first = (current_page - 1) * BINDINGS_PER_PAGE + 1
-    local last = math.min(first + BINDINGS_PER_PAGE - 1, #config.bindings)
+    local page = pages[current_page]
+    local combined = get_combined()
 
-    for i = first, last do
-        local b = config.bindings[i]
+    add_text(Vector2(1, ROW_H), layout.RectTransform, page.label, GUI.Alignment.Center)
+
+    for _, i in ipairs(page.items) do
+        local b = combined[i]
         local row = add_row(layout, ROW_H)
 
         -- 名称列：槽位组绑定行（装束技能/外套按钮/背包按钮）同时显示当前检测到的控件名称
-        local name_label = add_text(Vector2(0.3, 1), row.RectTransform, T(b.name), GUI.Alignment.CenterLeft)
+        local name_label = add_text(Vector2(0.17, 1), row.RectTransform, T(b.name), GUI.Alignment.CenterLeft)
         local group_name = string.match(b.target, "^(%a+):")
         if group_name ~= nil and SLOT_GROUPS[group_name] ~= nil then
             detect_labels[i] = name_label
         end
 
-        -- 按键按钮
-        binding_buttons[i] = GUI.Button(GUI.RectTransform(Vector2(0.22, 1), row.RectTransform), RawLString(binding_display(b)))
+        binding_buttons[i] = GUI.Button(GUI.RectTransform(Vector2(0.13, 1), row.RectTransform), RawLString(binding_display(b)))
         binding_buttons[i].OnClicked = function()
             start_capture(i)
             return true
         end
 
-        -- 清除绑定按钮
-        local clear_button = GUI.Button(GUI.RectTransform(Vector2(0.06, 1), row.RectTransform), RawLString("×"))
+        local clear_button = GUI.Button(GUI.RectTransform(Vector2(0.04, 1), row.RectTransform), RawLString("×"))
         clear_button.OnClicked = function()
             b.key = ""
             b.modifiers = {}
@@ -918,9 +1830,18 @@ local function open_menu()
             return true
         end
 
-        -- 修饰键勾选（每条绑定独立）
+        -- 双击触发勾选（双击该键才触发；可与单击绑定共用一键，双击优先占用）
+        local dbl_tick = GUI.TickBox(GUI.RectTransform(Vector2(0.06, 1), row.RectTransform), RawLString(T("double_press")))
+        dbl_tick.Selected = b.double == true
+        dbl_tick.OnSelected = function(tb)
+            b.double = tb.Selected
+            save_config()
+            return true
+        end
+
+        -- 修饰键勾选（每条绑定独立；宽度收紧，6 个复选框 + 双击框不再溢出）
         for _, name in ipairs(MODIFIER_NAMES) do
-            local tick = GUI.TickBox(GUI.RectTransform(Vector2(0.14, 1), row.RectTransform), RawLString(MODIFIER_DISPLAY[name]))
+            local tick = GUI.TickBox(GUI.RectTransform(Vector2(0.085, 1), row.RectTransform), RawLString(MODIFIER_DISPLAY[name]))
             tick.Selected = has_modifier(b.modifiers, name)
             tick.OnSelected = function(tb)
                 local new_mods = {}
@@ -943,7 +1864,6 @@ local function open_menu()
         end
     end
 
-    -- 提示
     add_text(Vector2(1, ROW_H), layout.RectTransform, T("hint_line"), GUI.Alignment.Center)
 
     -- 翻页栏（页数大于 1 时才需要，但始终显示以保持布局稳定）
@@ -967,10 +1887,41 @@ local function open_menu()
         end
     end
 
-    local close_button = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("close")))
-    close_button.OnClicked = function()
-        close_menu()
-        return true
+    do
+        local bottom_row = add_row(layout, ROW_H)
+        local back_btn = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), bottom_row.RectTransform), RawLString(T("back")))
+        back_btn.OnClicked = function()
+            menu_page = "hub"
+            pcall(open_menu)
+            return true
+        end
+        local reset_btn = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), bottom_row.RectTransform), RawLString(T("reset_default")))
+        reset_btn.OnClicked = function()
+            -- 内置绑定回出厂值（界面开关键 K、绑定面板 L，其余未绑定）；外部绑定回其注册默认键
+            local defs = default_bindings()
+            for i, b in ipairs(config.bindings) do
+                b.key = defs[i] ~= nil and defs[i].key or ""
+                b.modifiers = {}
+                b.double = false
+            end
+            for _, id in ipairs(extra_order) do
+                local b = extra_bindings[id]
+                b.key = b.reg_default_key or ""
+                b.modifiers = {}
+                b.double = false
+            end
+            config.menukey = "K"
+            save_config()
+            refresh_binding_texts()
+            refresh_detected_labels()
+            print(T("log_prefix") .. T("reset_done"))
+            return true
+        end
+        local close_button = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), bottom_row.RectTransform), RawLString(T("close")))
+        close_button.OnClicked = function()
+            close_menu()
+            return true
+        end
     end
 
     refresh_binding_texts()
@@ -978,15 +1929,26 @@ local function open_menu()
     if DEBUG_LOG then diagnose_outfit_scan(Character.Controlled) end
 end
 
--- 打开设置窗口（带错误提示，出错时打印到控制台方便排查）
+-- 打开设置窗口（出错打控制台）。外部入口打开时总是回主菜单页
 local function safe_open_menu()
+    menu_page = "hub"
     local ok, err = pcall(open_menu)
     if not ok then
         print(T("log_prefix") .. string.format(T("open_menu_fail"), tostring(err)))
     end
 end
 
---================ 暂停菜单注入 ================
+-- 装束锁定状态回调：只在设置窗口停在装束锁定页时重建页面；cl_skip_request 防"请求→重建→再请求"循环，
+-- cl_dirty 时保留没存完的编辑
+if TLE ~= nil and TLE.CostumeLockClient ~= nil then
+    TLE.CostumeLockClient.OnState = function()
+        if menu_frame == nil or menu_page ~= "costumelock" then return end
+        cl_unlockall_confirm = nil
+        cl_skip_request = true
+        pcall(open_menu)
+    end
+end
+
 local PAUSE_BUTTON_FLAG = "touhou_hotkey_settings_button"
 
 -- 在暂停菜单（ESC 菜单）的按钮列表底部追加「东方-快捷键设置」按钮
@@ -1045,32 +2007,184 @@ local function update_pause_menu_button()
     end
 end
 
---================ 主逻辑 ================
+-- 注册一个新快捷键绑定（给别的模组用）。def = { id=全局唯一, name=显示名, mod=分页名, default_key=默认键, on_trigger=function(character, binding) }
+-- 返回 true/false（失败原因打控制台）
+local function register_binding(def)
+    if type(def) ~= "table" or type(def.id) ~= "string" or def.id == "" then
+        print(T("log_prefix") .. "RegisterBinding: 无效 id（需要非空字符串）")
+        return false
+    end
+    for _, b in ipairs(config.bindings) do
+        if b.target == def.id then
+            print(T("log_prefix") .. "RegisterBinding: id 与内置绑定冲突：" .. def.id)
+            return false
+        end
+    end
+    if extra_bindings[def.id] ~= nil then
+        print(T("log_prefix") .. "RegisterBinding: id 重复注册：" .. def.id)
+        return false
+    end
+    if type(def.on_trigger) ~= "function" then
+        print(T("log_prefix") .. "RegisterBinding: " .. def.id .. " 缺少 on_trigger 回调")
+        return false
+    end
+    local b = {
+        id = def.id,
+        name = def.name or def.id,
+        mod = def.mod or T("page_external"),
+        key = (def.default_key ~= nil and valid_key(def.default_key)) and def.default_key or "",
+        reg_default_key = (def.default_key ~= nil and valid_key(def.default_key)) and def.default_key or "",
+        modifiers = {},
+        double = false,
+        on_trigger = def.on_trigger,
+        target = "__external__",  -- 标记：派发时不走内置 target 逻辑
+    }
+    extra_bindings[def.id] = b
+    extra_order[#extra_order + 1] = def.id
+    combined_cache = nil
+    sorted_binding_order = nil
+    print(T("log_prefix") .. "已注册快捷键绑定：" .. def.id .. "（" .. b.mod .. " / " .. b.name .. "）")
+    return true
+end
+
+TouhouHotkey = {
+    RegisterBinding = function(def)
+        if register_binding(def) then
+            save_config()  -- 立即持久化默认键
+            return true
+        end
+        return false
+    end,
+    --- 查询某 id 当前绑定的键位（"" = 未绑定；nil = 未注册）
+    GetBoundKey = function(id)
+        local b = extra_bindings[id]
+        return b ~= nil and b.key or nil
+    end,
+}
+
+-- 兼容早期注册（加载顺序无关）：别的模组先跑就把注册请求塞进 TouhouHotkeyPending，这里统一排空
+if type(TouhouHotkeyPending) == "table" then
+    for _, def in ipairs(TouhouHotkeyPending) do register_binding(def) end
+    TouhouHotkeyPending = nil
+end
+
 load_config()
 sanitize_config()
+desc_last_eff = config.desc_detailed  -- 与配置文件对齐，避免启动后误判模式变化
 
--- 获取绑定匹配顺序（修饰键多的优先）；结果缓存，仅在 save_config 后重建
 local function get_sorted_binding_order()
     if sorted_binding_order == nil then
+        local combined = get_combined()
         local order = {}
-        for i in ipairs(config.bindings) do
+        for i in ipairs(combined) do
             order[#order + 1] = i
         end
         table.sort(order, function(a, c)
-            return #config.bindings[a].modifiers > #config.bindings[c].modifiers
+            return #combined[a].modifiers > #combined[c].modifiers
         end)
         sorted_binding_order = order
     end
     return sorted_binding_order
 end
 
+local function apply_captured_key(name)
+    local conflict, who
+    if capturing == "menukey" then
+        -- 界面开关键必须唯一：不能与任何绑定重复
+        conflict, who = menukey_conflicts_with_bindings(name)
+        if not conflict then config.menukey = name end
+    else
+        -- 普通绑定之间允许共用按键，只需避开界面开关键
+        local cb = get_combined()[capturing]
+        conflict = cb ~= nil and conflicts_with_menukey(name, cb.modifiers)
+        who = "menukey_name"
+        if not conflict and cb ~= nil then cb.key = name end
+    end
+    if conflict then
+        print(T("log_prefix") .. string.format(T("bind_conflict"), T(tostring(who))))
+    else
+        save_config()
+    end
+    stop_capture()
+end
+
 Hook.Add("think", "touhou_hotkey_settings", function()
-    -- 设置窗口需要像暂停菜单一样，每帧重新加入 GUI 更新列表才会被绘制
-    -- （Barotrauma 的 GUI 控件必须每帧重新注册，否则会被移出更新列表而不显示；
-    --   因此这一步必须在所有 return 分支之前执行，包括按键捕获期间）
-    -- order=1：绘制在暂停菜单等普通界面之上，避免被遮挡
+    -- 清掉上一帧未被消费的轻点标记（被输入守卫拦截的轻点直接丢弃，不延迟触发）
+    desc_tapped = false
+
+    -- C# 设置窗口「返回」标记轮询：open_mod_settings=1 → 重新打开主菜单（0.5s 节流）
+    flag_poll_counter = flag_poll_counter + 1
+    if flag_poll_counter >= 30 then
+        flag_poll_counter = 0
+        pcall(function()
+            if File == nil then return end
+            local path = get_config_path()
+            if not File.Exists(path) then return end
+            local text = File.ReadAllText(path)
+            if text == nil then return end
+            if not string.find(text, "open_mod_settings=1", 1, true) then return end
+            local kept = {}
+            for line in string.gmatch(text, "[^\r\n]+") do
+                if line ~= "open_mod_settings=1" then kept[#kept + 1] = line end
+            end
+            File.WriteAllText(path, table.concat(kept, "\n"))
+            if menu_frame == nil then safe_open_menu() end
+        end)
+    end
+
+    -- 设置窗口得像暂停菜单一样每帧重新加入 GUI 更新列表才画得出来，所以必须放在
+    -- 所有 return 分支之前（包括捕获按键期间）；order=1 盖在暂停菜单上面
     if menu_frame ~= nil then
         menu_frame.AddToGUIUpdateList(false, 1)
+
+        -- 进度条设置页：0.5 秒轮询状态快照，C# 侧重载（其他模组配置热更新/外部改配置）时重建页面；
+        -- 本页自己的写入经 C# 回写后内容相同，文本比对一致就不重建，无回环；
+        -- 鼠标按住（拖动滑条）期间延迟重建到松开，否则拖到一半滑条被销毁
+        if menu_page == "hudbars" then
+            hb_poll_counter = hb_poll_counter + 1
+            if hb_poll_counter >= 30 then
+                hb_poll_counter = 0
+                pcall(function()
+                    if File == nil then return end
+                    local text = File.ReadAllText(hb_dir_file("TouhouHudBarsState.txt"))
+                    if text ~= nil and text ~= hb_state_raw then
+                        hb_state_raw = text
+                        hb_state = hb_parse_state(text)
+                        if hb_mouse_held() then
+                            hb_pending_rebuild = true
+                        else
+                            pcall(open_menu)
+                        end
+                    elseif hb_pending_rebuild and not hb_mouse_held() then
+                        hb_pending_rebuild = false
+                        pcall(open_menu)
+                    end
+                end)
+            end
+        end
+
+        -- 绑定/耐久设置页：0.5 秒轮询状态快照；输入框聚焦期间不重建（防打断输入）
+        if menu_page == "bondsettings" or menu_page == "condloss" then
+            bond_poll_counter = bond_poll_counter + 1
+            if bond_poll_counter >= 30 then
+                bond_poll_counter = 0
+                pcall(function()
+                    if File == nil then return end
+                    local path = hb_dir_file("TouhouBondState.txt")
+                    if not File.Exists(path) then return end
+                    local text = File.ReadAllText(path)
+                    if text ~= nil and text ~= bond_state_raw then
+                        bond_state_raw = text
+                        bond_state = bond_parse_state(text)
+                        local focused = false
+                        pcall(function()
+                            focused = GUI.KeyboardDispatcher ~= nil and GUI.KeyboardDispatcher.Subscriber ~= nil
+                        end)
+                        if not focused then pcall(open_menu) end
+                    end
+                end)
+            end
+        end
 
         -- 定期刷新装束技能行检测到的按钮名称（换装备后自动更新）
         frame_counter = frame_counter + 1
@@ -1095,11 +2209,14 @@ Hook.Add("think", "touhou_hotkey_settings", function()
     end
 
     -- 设置窗口打开期间，阻止游戏的 ESC 切换暂停菜单（改由本脚本自己处理 ESC 关窗）
-    pcall(function() GUI.PreventPauseMenuToggle = (menu_frame ~= nil) end)
+    if pause_toggle_probe == nil then
+        pause_toggle_probe = pcall(function() GUI.PreventPauseMenuToggle = (menu_frame ~= nil) end)
+    elseif pause_toggle_probe then
+        GUI.PreventPauseMenuToggle = (menu_frame ~= nil)
+    end
 
     -- 按键捕获模式：优先级最高
     if capturing ~= nil then
-        -- 先清理已经松开的忽略键
         for name in pairs(capture_ignored) do
             if not raw_key_down(name) then
                 capture_ignored[name] = nil
@@ -1115,41 +2232,59 @@ Hook.Add("think", "touhou_hotkey_settings", function()
                 key_was_down["Escape"] = true  -- 这帧的 Esc 已被捕获取消消费，避免紧接着触发关窗
                 stop_capture()
                 return
-            elseif valid_key(name) and not is_modifier_name(name) then
-                local conflict, who
-                if capturing == "menukey" then
-                    -- 界面开关键必须唯一：不能与任何绑定重复
-                    conflict, who = menukey_conflicts_with_bindings(name)
-                    if not conflict then config.menukey = name end
-                else
-                    -- 普通绑定之间允许共用按键，只需避开界面开关键
-                    conflict = conflicts_with_menukey(name, config.bindings[capturing].modifiers)
-                    who = "menukey_name"
-                    if not conflict then config.bindings[capturing].key = name end
-                end
-                if conflict then
-                    print(T("log_prefix") .. string.format(T("bind_conflict"), T(tostring(who))))
-                else
-                    save_config()
-                end
-                stop_capture()
+            elseif (valid_key(name) and not is_modifier_name(name))
+                -- 特例：描述详略切换允许直接绑修饰键（玩家想按住 Shift 看短描述）；
+                -- 其他绑定仍不允许，避免与修饰键勾选语义混淆
+                or (is_modifier_name(name) and capturing ~= "menukey"
+                    and get_combined()[capturing].target == "desc_toggle") then
+                apply_captured_key(name)
+                return
+            end
+        end
+        -- 键盘没有新输入时检查鼠标键（侧键/中键等；快速点按请按住约半秒再松开，避免帧间漏采）
+        for _, name in ipairs(MOUSE_BUTTONS) do
+            if not capture_ignored[name] and raw_mouse_down(name) then
+                apply_captured_key(name)
                 return
             end
         end
         return
     end
 
-    -- 每帧轮询按键原始状态并自维护“上一帧”记录（必须在所有 return 分支之前，
-    -- 保证任何情况下记录都是新鲜的，也不会受游戏输入门控影响）
-    -- 注意：按“唯一按键”轮询而不是按绑定轮询——多条绑定共用同一按键时，
-    -- 逐绑定轮询会让第一条绑定消费掉边沿事件，导致其后的绑定永远不触发
+    -- 每帧轮询原始状态并自己维护“上一帧”记录（必须在所有 return 分支之前）。
+    -- 注意是按唯一按键轮询而不是按绑定轮询——共用一键的多条绑定里，
+    -- 逐绑定轮询会让第一条把边沿消费掉，后面的永远不响
     local menukey_hit = poll_key_hit(config.menukey)
     local esc_hit = poll_key_hit("Escape")
     local key_hits = {}  -- 按键名 -> 本帧是否新按下
-    for _, b in ipairs(config.bindings) do
+    for _, b in ipairs(get_combined()) do
         if b.key ~= "" and key_hits[b.key] == nil then
             key_hits[b.key] = poll_key_hit(b.key)
         end
+    end
+
+    -- 描述详略切换（不走边沿分发，每帧直接跟踪按住状态）：
+    -- 按住 ≥0.3 秒 = 临时简短版（松开恢复锁定模式）；更短的轻点 = 切换锁定模式（守卫通过后消费）
+    local desc_held = false
+    for _, b in ipairs(config.bindings) do
+        if b.target == "desc_toggle" and b.key ~= ""
+            and key_was_down[b.key] == true and modifiers_satisfied(b.modifiers) then
+            desc_held = true
+            break
+        end
+    end
+    if desc_held then
+        if desc_press_time == nil then desc_press_time = os.clock() end
+    elseif desc_press_time ~= nil then
+        if os.clock() - desc_press_time < DESC_HOLD_SECONDS then desc_tapped = true end
+        desc_press_time = nil
+    end
+    -- 实际模式变化时立即写配置文件（C# 端 0.3 秒轮询生效）
+    local desc_eff = config.desc_detailed
+        and not (desc_press_time ~= nil and os.clock() - desc_press_time >= DESC_HOLD_SECONDS)
+    if desc_eff ~= desc_last_eff then
+        desc_last_eff = desc_eff
+        save_config()
     end
 
     -- 暂停菜单出现时注入「东方-快捷键设置」按钮（即便暂停菜单打开时也要执行）
@@ -1157,14 +2292,17 @@ Hook.Add("think", "touhou_hotkey_settings", function()
 
     if GUI.KeyboardDispatcher.Subscriber then return end  -- 聊天框/输入框激活时不触发
 
-    if Game.GameSession == nil then
-        if menu_frame ~= nil then close_menu() end
-        return
-    end
+    -- 无游戏会话（潜艇编辑器）：设置窗口照常可用，仅跳过触发派发
+    local no_session = Game.GameSession == nil
 
-    -- ESC 优先关闭设置窗口（窗口打开期间游戏的暂停菜单切换已被 PreventPauseMenuToggle 阻止）
+    -- ESC 优先处理设置窗口：子页返回主菜单，主菜单才关闭
     if esc_hit and menu_frame ~= nil then
-        close_menu()
+        if menu_page ~= "hub" then
+            menu_page = "hub"
+            pcall(safe_open_menu)
+        else
+            close_menu()
+        end
         return
     end
 
@@ -1180,12 +2318,20 @@ Hook.Add("think", "touhou_hotkey_settings", function()
 
     if GUI.GUI.PauseMenuOpen then return end
     if menu_frame ~= nil then return end  -- 设置界面打开时不触发技能
-    if Game.Paused then return end
+    if Game.Paused or no_session then return end  -- 暂停/编辑器无会话时不派发
 
     -- 控制台、Tab 菜单、战役界面、社交覆盖层等“阻挡输入”的界面打开时不触发技能
     -- （调试控制台打开时即视为正在输入文字；该属性也包含暂停菜单，但不会包含本脚本自己的设置窗口）
     local ok_ib, input_blocking = pcall(function() return GUI.InputBlockingMenuOpen end)
     if ok_ib and input_blocking then return end
+
+    -- 轻点「描述详略切换」= 切换锁定模式（详细/简短）
+    if desc_tapped then
+        desc_tapped = false
+        config.desc_detailed = not config.desc_detailed
+        save_config()
+        print(T("log_prefix") .. (config.desc_detailed and T("desc_detailed_on") or T("desc_detailed_off")))
+    end
 
     -- 绑定分发：修饰键多的绑定优先匹配（例如 Shift+J 优先于 J）。
     -- 签名完全相同（按键+修饰键都一样）的绑定允许共存，按下时全部触发（一键多用）；
@@ -1194,13 +2340,43 @@ Hook.Add("think", "touhou_hotkey_settings", function()
     if character == nil then return end
 
     local fired_sig = nil
+    -- 双击检测：同一键 0.35 秒内两次边沿 = 双击（三连击不重复触发）
+    local double_hits = {}
+    local double_bound_keys = {}
+    local now = os.clock()
+    for key, hit in pairs(key_hits) do
+        if hit then
+            if double_last_press[key] ~= nil and now - double_last_press[key] <= 0.35 then
+                double_hits[key] = true
+                double_last_press[key] = nil
+            else
+                double_last_press[key] = now
+            end
+        end
+    end
+    -- 有双击绑定的键，单击绑定让位（避免一键双绑时单击先抢走）
+    for _, b in ipairs(get_combined()) do
+        if b.double and b.key ~= "" then double_bound_keys[b.key] = true end
+    end
+
     for _, i in ipairs(get_sorted_binding_order()) do
-        local b = config.bindings[i]
-        if key_hits[b.key] and modifiers_satisfied(b.modifiers) then
-            local sig = binding_signature(b.key, b.modifiers)
-            if fired_sig == nil then fired_sig = sig end
-            if sig == fired_sig then
-                execute_binding(b, character)
+        local b = get_combined()[i]
+        -- desc_toggle 由按住/轻点逻辑单独处理，不参与边沿分发
+        local hit = b.target ~= "desc_toggle" and (b.double and double_hits[b.key]
+            or (not b.double and key_hits[b.key] and not double_bound_keys[b.key]))
+        if hit and modifiers_satisfied(b.modifiers) then
+            if b.on_trigger ~= nil then
+                -- 外部注册回调（pcall 隔离：模组异常不影响游戏与其他绑定）
+                local ok, err = pcall(b.on_trigger, character, b)
+                if not ok then
+                    print(T("log_prefix") .. "on_trigger 出错（" .. tostring(b.id) .. "）：" .. tostring(err))
+                end
+            else
+                local sig = binding_signature(b.key, b.modifiers)
+                if fired_sig == nil then fired_sig = sig end
+                if sig == fired_sig then
+                    execute_binding(b, character)
+                end
             end
         end
     end

@@ -3,7 +3,7 @@
   <Items>
     <!--
       自由料理台（自由搭配烹饪设备）
-      玩家放入任意食材，由 Lua 按风味画像打分决定产出，逻辑见 Lua/Scripts/Sever/Cook.lua。
+      玩家放入任意食材，由 Lua 按风味画像打分决定产出，逻辑见 Lua/Scripts/Server/Cook.lua。
       组件契约（Cook.lua 依赖，改动需同步）：
         - 第 1 个 ItemContainer = 食材输入栏，即 OwnInventory（烹饪中被 Lua 锁定）
         - 第 2 个 ItemContainer = 输出槽（不锁定，产出生成到这里，玩家直接取用）

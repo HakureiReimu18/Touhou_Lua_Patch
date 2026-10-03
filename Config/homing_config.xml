@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  通用射弹追踪配置（C# Touhou.Homing 插件读取）
+
+  ■ 让一个射弹能追踪：在下面加一行 <Projectile id="射弹的identifier"/> 即可。
+  ■ 查 identifier 的方法：开一枪，看控制台 [追踪] 探针日志里的 "首发 xxx"。
+  ■ 改完不用重开巡回：控制台执行 homing_reload 即时生效；homing_list 查看当前生效配置。
+  ■ 参数不写就回落到 <Default>，再回落到代码常量。
+
+  参数说明：
+    id / idPrefix   射弹 prefab identifier（id 精确匹配；idPrefix 前缀匹配，多个命中取最长）
+    mode            velocity（默认，沿射弹飞行方向捕获）| mouse（沿射手鼠标瞄准方向捕获）
+    range           捕获距离上限（模拟单位，约 100 = 1 米）
+    coneDeg         捕获半锥角（度），以 mode 指定的方向为锥心
+    steering        转向力度（每帧冲量）
+    minSpeed/accel  最低速度维持；minSpeed=0 关闭
+    acquireInterval 目标重捕获间隔（秒）
+    lockOn          true=锁定后不换目标 | false=每次捕获都刷新
+    maxLifetime     追踪超时（秒），防卡墙射弹永久占用名额
+    armDist         追踪解锁距离：射弹离出膛点超过该距离才开始追踪，防止贴脸敌人被立刻锁定（0=立即追踪）
+    armTime         追踪解锁时间保底（秒）：超过该时间仍未飞出 armDist 也强制解锁，防卡弹永不追踪
+                    两者任一满足即解锁；距离是主条件，时间是保底
+
+  全局属性：enabled 总开关；maxActive 活跃追踪上限；scansPerFrame 每帧目标扫描数上限。
+
+  注意：不要登记君王的 Touhou_Monarch_Round01/02 —— 它们有独立的 Lua 追踪逻辑，
+        两边同时转向会叠加。
+-->
+<HomingConfig enabled="true" maxActive="128" scansPerFrame="8">
+  <Default range="2000" coneDeg="45" mode="velocity" steering="5"
+           minSpeed="0" accel="0.25" acquireInterval="0.2" lockOn="true" maxLifetime="8"
+           armDist="100" armTime="0.2"/>
+
+  <!-- 示例（改成实际 identifier、去掉注释后生效）：
+  <Projectile id="coilgunbolt" coneDeg="20" steering="3"/>
+  <Projectile idPrefix="railgun" coneDeg="15"/>
+  -->
+  <!--炮塔-->
+  <Projectile id="Touhou_Silent_Selene_Bolt" range="5000" coneDeg="60" steering="6" armDist="500"/>
+  <Projectile id="Touhou_Royal_Flare_Bolt" range="5000" coneDeg="60" steering="6" armDist="500" armTime="0.5"/>
+  <Projectile id="Sword_Qi" coneDeg="60" range="5000" steering="6"/>
+  <Projectile id="Yin_Yang_Spirit_Orb" range="5000" coneDeg="60" steering="6" armDist="500" armTime="0.1"/>
+  
+  <!--手持武器-->
+  <Projectile id="Touhou_Homing_Amulet_Bullet" coneDeg="60" steering="6" maxLifetime="3"/>
+  <Projectile id="Touhou_Cyber_Homing_Amulet_Bolt" coneDeg="60" steering="6" maxLifetime="3"/>
+  <Projectile id="Touhou_Onmyo_Ball_Bullet" mode="mouse" coneDeg="30" steering="6" maxLifetime="3"/>
+  <Projectile id="Aya_Maple_Leaves_Bolt" mode="mouse" coneDeg="30" steering="6" maxLifetime="3"/>
+  <Projectile id="Elements_Yang_Bolt" coneDeg="30" />
+  <Projectile id="Elements_Yin_Bolt" coneDeg="30" />
+  <Projectile id="Touhou_Perfect_Snowflake_Bolt01" maxLifetime="3" />
+  <Projectile id="Touhou_Perfect_Snowflake_Bolt02" maxLifetime="3" />
+  <Projectile id="Touhou_Sakuya_Knife_Iron_Bullet" coneDeg="30" maxLifetime="3" />
+  <Projectile id="Touhou_Sakuya_Knife_Ether_Bullet" coneDeg="30" maxLifetime="3" />
+  <Projectile id="Touhou_Yukari_Folding_Fan_Bullet" coneDeg="30" maxLifetime="3" />
+  <Projectile id="Gungnier_Spear" coneDeg="30" maxLifetime="3" />
+  <Projectile id="Touhou_Rippling_Bolt" coneDeg="30" />
+  <Projectile id="Touhou_Stellar_Staff_Bullet01" mode="mouse" coneDeg="50" />
+  <Projectile id="Touhou_Stellar_Staff_Bullet02" mode="mouse" coneDeg="50" />
+  <Projectile id="Touhou_Stellar_Staff_Bullet03" mode="mouse" coneDeg="50" />
+  <Projectile id="Gungnier_Bolt" acquireInterval="0.1" maxLifetime="5" />
+</HomingConfig>

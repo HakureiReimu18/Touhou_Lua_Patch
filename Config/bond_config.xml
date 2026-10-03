@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BondConfig>
+  <settleinterval>1</settleinterval>
+  <resistancescale>0.5</resistancescale>
+  <maxlinkdistance>0</maxlinkdistance>
+  <powerdref>30</powerdref>
+  <powern>0.5</powern>
+  <minshare>0.1</minshare>
+  <maxshare>0.9</maxshare>
+  <charmgrace>15</charmgrace>
+  <condlossmult>1</condlossmult>
+  <countedtypes>damage,burn,bleeding,debuff,poison</countedtypes>
+  <debug>false</debug>
+</BondConfig>

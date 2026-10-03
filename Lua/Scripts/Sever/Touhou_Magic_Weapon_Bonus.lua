@@ -1,9 +1,10 @@
+-- 就这就这就这？
+
 local MAGIC_SKILL = "Touhou_Magic"
--- 魔法能力的上限：超过该值不会再提高伤害加成
+-- 魔法技能封顶，再高不涨
 local MAX_MAGIC_SKILL = 300
--- 非线性曲线强度：数值越大，前后段增幅越明显，中段越平缓
+-- 抖动幅度，越大两头越翘、中间越平
 local CURVE_WOBBLE = 0.15
--- 调试开关：为 true 时输出无法解析攻击者的原因
 local DEBUG_LOG = false
 
 local WEAPON_LEVELS = {
@@ -40,15 +41,13 @@ local function clamp(value, min_value, max_value)
 end
 
 local function get_skill_curve_factor(skill)
-    -- 非线性曲线：前期增长较快、中期变缓、后期再次加速
-    -- 以 0~1 的标准化技能值 t 为输入，输出同样落在 0~1 的倍率
+    -- 前期涨得快、中期放缓、后期又提速；t 和输出都归一化到 0~1
     local t = clamp(skill / MAX_MAGIC_SKILL, 0, 1)
     local curved = t + CURVE_WOBBLE * math.sin(2 * math.pi * t)
     return clamp(curved, 0, 1)
 end
 
 local function get_hand_items(character)
-    -- 获取双手物品：用于判断是否满足“双手都为魔法武器”的条件
     if character == nil or character.Inventory == nil then
         return nil, nil
     end
@@ -59,7 +58,6 @@ local function get_hand_items(character)
 end
 
 local function get_weapon_level_config(item)
-    -- 根据武器的等级标签选择对应配置
     if item == nil then
         return nil
     end
@@ -152,6 +150,7 @@ Hook.Patch("Barotrauma.Character", "ApplyAttack", function(instance, ptable)
         return
     end
 
+    -- 引擎不会自己还原倍率，先记下原值打完再恢复，不然每次都叠乘
     if attack_damage_multiplier_overrides[attack] == nil then
         attack_damage_multiplier_overrides[attack] = attack.DamageMultiplier
     end

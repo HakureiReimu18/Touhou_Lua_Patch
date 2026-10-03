@@ -1,3 +1,5 @@
+-- ！？强强？！
+
 local MAGIC_SKILL = "Touhou_Magic"
 local SKILL_GAIN_PER_DAMAGE = 0.1
 local MAX_SKILL_GAIN_PER_HIT = 1.0
@@ -78,7 +80,7 @@ local function is_valid_enemy(attacker, target)
         return false, "attacker_not_player_team"
     end
 
-    -- 攻击尸体不应增长技能；但致命一击（本次伤害前仍存活）应当保留
+    -- 鞭尸不涨技能，但这刀是致死刀的话照算
     local ok_corpse, is_corpse_hit = pcall(function()
         if not target.IsDead then
             return false
@@ -86,7 +88,7 @@ local function is_valid_enemy(attacker, target)
         local last_damage = target.LastDamage
         local damage = last_damage ~= nil and last_damage.Damage or nil
         if damage == nil then
-            -- 无法还原本次伤害，默认保留技能增长
+            -- 拿不到伤害数据就当它算数
             return false
         end
         return (target.Vitality + damage) <= 0

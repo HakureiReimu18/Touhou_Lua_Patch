@@ -1,3 +1,4 @@
+-- 嘻哈世界，安静睡觉
 
 --[[你说你不想在这里，我也不想在这里]]
 if not CLIENT then
@@ -8,8 +9,10 @@ local function Lerp(DefaultScreen, Num , OffsetNum)  --线性插值函数(改了
     return DefaultScreen * (1+ OffsetNum) + Num * OffsetNum
 end
 
-local function GetSkillLevel(character,skilltype)  --获取角色技能水平
-    return character.GetSkillLevel(Identifier(skilltype))
+local MAGIC_SKILL_ID = Identifier("Touhou_Magic")
+
+local function GetSkillLevel(character)
+    return character.GetSkillLevel(MAGIC_SKILL_ID)
 end
 
 
@@ -21,28 +24,30 @@ Hook.Patch("Barotrauma.Character", "ControlLocalPlayer", function(instance)
     if GUI.GUI.PauseMenuOpen then return end
     if GUI.KeyboardDispatcher.Subscriber then return end
     --[[slottype中2代表右手，4代表左手]]
-    if PlayerInput.SecondaryMouseButtonHeld()
+    local rmb_held = PlayerInput.SecondaryMouseButtonHeld()
+    local selected_item = character.SelectedItem
+    if rmb_held
             and (character.HasEquippedItem("Touhou_Cam_Offset_Low",true,2) or character.HasEquippedItem("Touhou_Cam_Offset_Low",true,4))
-            and not character.SelectedItem then
+            and not selected_item then
         Screen.Selected.Cam.OffsetAmount = math.min(Lerp(Screen.Selected.Cam.OffsetAmount, 0, 0.2)
-                * (1 + math.min( GetSkillLevel(character,"Touhou_Magic") * 0.001, 0.15)), 300)
+                * (1 + math.min( GetSkillLevel(character) * 0.001, 0.15)), 300)
     end
-    if PlayerInput.SecondaryMouseButtonHeld()
+    if rmb_held
             and (character.HasEquippedItem("Touhou_Cam_Offset_Normal",true,2) or character.HasEquippedItem("Touhou_Cam_Offset_Normal",true,4))
-            and not character.SelectedItem then
+            and not selected_item then
         Screen.Selected.Cam.OffsetAmount = math.min(Lerp(Screen.Selected.Cam.OffsetAmount, 0, 0.35)
-                * (1 + math.min( GetSkillLevel(character,"Touhou_Magic") * 0.001, 0.15)), 380)
+                * (1 + math.min( GetSkillLevel(character) * 0.001, 0.15)), 380)
     end
-    if PlayerInput.SecondaryMouseButtonHeld()
+    if rmb_held
             and (character.HasEquippedItem("Touhou_Cam_Offset_High",true,2) or character.HasEquippedItem("Touhou_Cam_Offset_High",true,4))
-            and not character.SelectedItem then
+            and not selected_item then
         Screen.Selected.Cam.OffsetAmount = math.min(Lerp(Screen.Selected.Cam.OffsetAmount, 0, 0.48)
-                * (1 + math.min( GetSkillLevel(character,"Touhou_Magic") * 0.001, 0.15)), 440)
+                * (1 + math.min( GetSkillLevel(character) * 0.001, 0.15)), 440)
     end
-    if PlayerInput.SecondaryMouseButtonHeld()
+    if rmb_held
             and (character.HasEquippedItem("Touhou_Cam_Offset_Sniper",true,2) or character.HasEquippedItem("Touhou_Cam_Offset_Sniper",true,4))
-            and not character.SelectedItem then
+            and not selected_item then
         Screen.Selected.Cam.OffsetAmount = math.min(Lerp(Screen.Selected.Cam.OffsetAmount, 0, 0.64)
-                * (1 + math.min( GetSkillLevel(character,"Touhou_Magic") * 0.001, 0.15)), 520)
+                * (1 + math.min( GetSkillLevel(character) * 0.001, 0.15)), 520)
     end
 end, Hook.HookMethodType.After)
