@@ -177,6 +177,7 @@ namespace Touhou.Affixes
             {
                 if (type.Namespace != "Touhou.Affixes"
                     && type.Namespace != "Touhou.DescToggle"
+                    && type.Namespace != "Touhou.WearableOrder"
                     && type.Namespace != "Touhou.RagdollScale") continue;
                 try
                 {
@@ -189,6 +190,11 @@ namespace Touhou.Affixes
                 }
             }
             LogOnce($"Patching complete: {patchedTypes} patch classes applied");
+#if CLIENT
+            // 穿戴绘制顺序修正：显式安装（非 [HarmonyPatch] 特性），目标缺失时只记日志，
+            // 不干扰本程序集里其他插件的 PatchAll（详见 WearableDrawOrder.cs）
+            Touhou.WearableOrder.WearableDrawOrderPatch.TryInstall(harmony);
+#endif
         }
 
         public void OnLoadCompleted()
@@ -230,6 +236,7 @@ namespace Touhou.Affixes
             AffixDefs.Clear();
             PendingAffixes.Clear();
             mainThreadTasks.Clear();
+            loggedOnceMessages.Clear(); // 日志去重键按物品 ID 生成，卸载后重新加载时该重新提示就重新提示
             AffixApplied = null;
             AffixRemoved = null;
             ApplicabilityOverride = null;
@@ -1006,6 +1013,7 @@ namespace Touhou.Affixes
             ItemAffixes.Clear();
             AffixEffectInjectionPatch.ClearProcTimers();
             throttledLogs.Clear(); // 节流日志键按物品 ID 生成，巡回结束清理防长期累积
+            loggedOnceMessages.Clear(); // 同上是按物品 ID 生成的键，不清的话每附魔一件就多一条
             return null;
         }
 

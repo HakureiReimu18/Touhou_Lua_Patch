@@ -5,7 +5,7 @@
 -- 其余效果（拥有奇迹时减伤/加最大生命、低生命值增伤）仍由 XML TalentsSanae.xml 实现。
 -- 奇迹本体（SanaeTalent_Effect01~07、SanaeTalent_Effect_Flag）仍由 affliction XML 定义。
 --
--- 生效判定：角色带有 Manifest_God_Of_Miracles affliction（强度>0）即视为生效，
+-- 生效判定：角色带有 Touhou_Sanae_Character_Effect affliction（强度>0）即视为生效，
 -- 不直接检查装备槽位，任何能以任意方式给予该 affliction 的模组/装束都可兼容。
 --
 -- 多人同时生效时：全船范围的降奇迹(1)只由"主祭司"（ID最小的存活生效者）结算一次；
@@ -17,7 +17,7 @@
 --   全部效果结算完毕后降至 SCAN_IDLE_INTERVAL 秒兜底。
 -- 降奇迹本身（随机抽选目标的第二次遍历）只在到点时执行。
 
-local OUTFIT_FLAG_AFFLICTION = "Manifest_God_Of_Miracles"
+local OUTFIT_FLAG_AFFLICTION = "Touhou_Sanae_Character_Effect"
 local CHARM_TAG = "Illness_Recovery_Charm"
 
 local MIRACLES = {
@@ -55,8 +55,9 @@ local FLAG_ID = Identifier(FLAG_AFFLICTION)
 
 local round_start_time = nil   -- 本巡回开始时刻(Timing.TotalTime)，nil=不在巡回中
 local crew_grants_done = 0     -- 本巡回全船降奇迹已结算次数
-local charm_granted = {}       -- character -> true，本巡回护符奇迹是否已给
+local charm_granted = setmetatable({}, { __mode = "k" }) -- character -> true，本巡回护符奇迹是否已给（弱键，角色回收后条目自动消失）
 local all_settled = false      -- 上次扫描后是否所有效果均已结算（用于降频）
+local in_fast_phase = true     -- 巡回开始后 FAST_PHASE_DURATION 秒内为 true（由 scan 按 round_time 更新）
 local elapsed = 0
 
 -- LuaCs 未把游戏内部的 Timing 类注册为 Lua 全局（Timing.TotalTime / Timing.Step 会 nil 索引），
@@ -226,7 +227,12 @@ end
 local function scan(now)
     local round_time = now - round_start_time
 
-    -- 一次遍历收集全部存活生效者（带 Manifest_God_Of_Miracles 的人类角色）
+    -- fast 阶段判定只用扫描时的 round_time，think 里不再每帧跨语言取时间
+    if in_fast_phase and round_time >= FAST_PHASE_DURATION then
+        in_fast_phase = false
+    end
+
+    -- 一次遍历收集全部存活生效者（带 Touhou_Sanae_Character_Effect 的人类角色）
     local wearers = {}
     for character in Character.CharacterList do
         if character ~= nil
@@ -256,8 +262,20 @@ local function scan(now)
         end
     end
 
+    -- 降频判据（不参与上面的发放判定，只决定扫描间隔）：
+    --   第二次降临只由主祭司结算，已过点时点且主祭司等级不足（或没有主祭司）时视为不会再发生；
+    --   无生效者时全船部分也无从结算。判为完成后仍按兜底间隔继续扫描并尝试发放，不会漏发。
+    local settled
+    if crew_grants_done >= 2 or #wearers == 0 then
+        settled = true
+    elseif crew_grants_done >= 1 and round_time >= SECOND_GRANT_DELAY then
+        local primary = get_primary_wearer(wearers)
+        settled = primary == nil or get_character_level(primary) < SECOND_GRANT_MIN_LEVEL
+    else
+        settled = false
+    end
+
     -- 2) 护符自身奇迹：每个生效者独立，每巡回一次
-    local settled = crew_grants_done >= 2
     for _, wearer in ipairs(wearers) do
         if not charm_granted[wearer] then
             if round_time >= CHARM_GRANT_DELAY and has_charm(wearer) then
@@ -275,8 +293,9 @@ end
 Hook.Add("roundStart", "Sanae.MiracleTalent.RoundStart", function()
     round_start_time = now_time()
     crew_grants_done = 0
-    charm_granted = {}
+    charm_granted = setmetatable({}, { __mode = "k" })
     all_settled = false
+    in_fast_phase = true
     elapsed = 0
 end)
 
@@ -289,9 +308,9 @@ Hook.Add("think", "Sanae.MiracleTalent.Update", function(delta_time)
     if CLIENT and not Game.IsSingleplayer then return end
     if round_start_time == nil then return end
 
-    -- 自适应扫描频率
+    -- 自适应扫描频率：fast 阶段由 scan 内维护的 in_fast_phase 判断，不再每帧取游戏时间
     local interval = SCAN_SLOW_INTERVAL
-    if now_time() - round_start_time < FAST_PHASE_DURATION then
+    if in_fast_phase then
         interval = SCAN_FAST_INTERVAL
     elseif all_settled then
         interval = SCAN_IDLE_INTERVAL

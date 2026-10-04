@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Xml.Linq;
 using Touhou.Affixes;   // ReflectionCache 定义在 Touhou.Affixes（HarmonyPatches.cs）
+using Touhou.WearableOrder; // WearableDrawOrder.SortLimb（WearableDrawOrder.cs）
 
 namespace Touhou.RagdollScale
 {
@@ -58,9 +59,6 @@ namespace Touhou.RagdollScale
         static FieldInfo wearableLimbTypesField;    // LimbType[]，与 sprites 一一对应
         static FieldInfo wearableLimbsField;        // Equip 时缓存的肢体引用
         static FieldInfo limbWearingItemsField;     // Limb.WearingItems
-        static PropertyInfo wsSpriteProp;
-        static PropertyInfo spriteDepthProp;        // WearingItems 排序依据
-        static PropertyInfo wsWearableCompProp;
         static MethodInfo updateWearableHideM;
         static Type huskAfflictionType;
         static FieldInfo huskAppendageField;
@@ -170,9 +168,6 @@ namespace Touhou.RagdollScale
                 wearableLimbsField = ReflectionCache.WearableType?.GetField("limb",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 limbWearingItemsField = typeof(Limb).GetField("WearingItems");
-                wsSpriteProp = wsType?.GetProperty("Sprite");
-                spriteDepthProp = wsSpriteProp?.PropertyType.GetProperty("Depth");
-                wsWearableCompProp = wsType?.GetProperty("WearableComponent");
                 updateWearableHideM = typeof(Limb).GetMethod("UpdateWearableTypesToHide");
                 huskAfflictionType = asm.GetType("Barotrauma.AfflictionHusk");
                 huskAppendageField = huskAfflictionType?.GetField("huskAppendage",
@@ -489,6 +484,57 @@ namespace Touhou.RagdollScale
             sourceRectScaleProp?.SetValue(copy, sourceRectScaleProp.GetValue(source));
         }
 
+        static bool deformFixWarned;    // 形变表兜底只报一次，免得每件穿脱刷屏
+        static PropertyInfo limbActiveDeformationsProp;
+        static bool deformFixUnavailable;   // 服务端程序集的 Limb 上根本没这个属性
+
+        // 重建当帧的空窗兜底：Limb.ActiveDeformations 唯一的赋值点是 RefreshDeformations()，
+        // 而它只跑在客户端每帧的 Limb.UpdateProjSpecific 里、开头还 `if (_deformSprite == null) return;`。
+        // 新肢体如果在本帧 Update 之前就被绘制，Limb.Draw 里 `DeformSprite != null && ActiveDeformations.Any()`
+        // 会因为 ActiveDeformations 还是 null 抛 ArgumentNullException，直接崩客户端（这就是"概率性"的来源：
+        // 该帧 Update 和 Draw 谁先谁后）。补个空表就安全——空表等于"没有形变"，
+        // 下一帧 UpdateProjSpecific 会照常填真数据；Draw 的不变量是"DeformSprite 非空 ⇒ 列表非空"。
+        //
+        // 走反射不是图省事：服务端程序集（DedicatedServer.dll）的 Limb 上压根没有 ActiveDeformations
+        // （连整个 Barotrauma.SpriteDeformations 命名空间都没有），直接写属性名服务端符号就编不过。
+        // 服务端本来也不绘制，取不到就永久停用，之后每次只剩一个 bool 判断。
+        static void EnsureDeformationsInitialized(Character c)
+        {
+            if (deformFixUnavailable) return;
+            try
+            {
+                if (limbActiveDeformationsProp == null)
+                {
+                    limbActiveDeformationsProp = typeof(Limb).GetProperty("ActiveDeformations",
+                        BindingFlags.Public | BindingFlags.Instance);
+                    if (limbActiveDeformationsProp == null)
+                    {
+                        deformFixUnavailable = true;
+                        return;
+                    }
+                }
+                var limbs = c?.AnimController?.Limbs;
+                if (limbs == null) return;
+                for (int i = 0; i < limbs.Length; i++)
+                {
+                    Limb limb = limbs[i];
+                    if (limb != null && limbActiveDeformationsProp.GetValue(limb) == null)
+                        limbActiveDeformationsProp.SetValue(limb,
+                            Activator.CreateInstance(limbActiveDeformationsProp.PropertyType));
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!deformFixWarned)
+                {
+                    deformFixWarned = true;
+                    RSLog.Warn($"deformations init failed, fix disabled: {ex.Message}");
+                }
+            }
+        }
+
+        static bool limbFixupWarned;    // 单根肢体的收尾失败同样只报一次
+
         static void Restore(Character c, ScaleState st)
         {
             if (!EnsureReflection() || st?.OriginalParams == null) return;
@@ -509,6 +555,9 @@ namespace Touhou.RagdollScale
         // 症状跟"重新穿一遍装备就恢复"一模一样。这里复刻 Equip 的注册/绑定动作，全部幂等。
         static void RepairAfterRecreate(Character c)
         {
+            // 两条重建路径（apply / 还原基线）都在 Invoke 之后紧接着调这里，兜底放开头就两条都盖到了
+            EnsureDeformationsInitialized(c);
+
             // 0) 穿戴贴图重注册：sprites 挂到新肢体的 WearingItems，同步 Wearable.limb[] 缓存
             //    （不然 Unequip 会从旧肢体上移除、留残影），再按 Equip 的规则排序并刷新隐藏逻辑
             if (wearableSpritesField != null && wearableLimbTypesField != null && limbWearingItemsField != null)
@@ -516,6 +565,7 @@ namespace Touhou.RagdollScale
                 try
                 {
                     var touchedLimbs = new HashSet<Limb>();
+                    int skippedUninit = 0;   // 没初始化好、被跳过重注册的贴图数（下面统一报一次）
                     if (c.Inventory is CharacterInventory inv)
                     {
                         for (int i = 0; i < inv.Capacity; i++)
@@ -534,10 +584,22 @@ namespace Touhou.RagdollScale
                                     // 只处理正穿着的贴图（limbs[k] 为 null 的就是背包里没穿的）。
                                     // 不滤掉会把没初始化的贴图塞进 WearingItems，后面 Draw 直接空引用崩
                                     if (limbs[k] == null) continue;
-                                    object ws = sprites.GetValue(k);
-                                    if (ws == null) continue;
+                                    if (sprites.GetValue(k) is not WearableSprite ws) continue;
                                     Limb newLimb = c.AnimController.GetLimb(limbTypes[k]);
                                     if (newLimb == null) continue;
+                                    // WearableSprite.HideWearablesOfType 只在 Init(Character) 里赋值，而 Init 平时是
+                                    // 引擎 Equip 时调的。我们这套重注册不走 Equip（怕 OnWearing 副作用重放），
+                                    // 万一贴图还没轮到 Init，塞进 WearingItems 后任何 UpdateWearableTypesToHide
+                                    // （引擎 Equip 调的、或我们下面调的）都会在 HideWearablesOfType.Count 上空引用崩。
+                                    // Init 幂等（开头有 IsInitialized 早退），补调一次；补完还是 null 就宁可不画也不 Add。
+                                    if (!ws.IsInitialized) ws.Init(c);
+                                    if (ws.HideWearablesOfType == null)
+                                    {
+                                        // 缓存指针仍要指向活着的肢体，别留着指向刚被销毁的旧布娃娃
+                                        limbs[k] = newLimb;
+                                        skippedUninit++;
+                                        continue;
+                                    }
                                     if (limbWearingItemsField.GetValue(newLimb) is System.Collections.IList list &&
                                         !list.Contains(ws))
                                     {
@@ -551,17 +613,24 @@ namespace Touhou.RagdollScale
                     }
                     foreach (var limb in touchedLimbs)
                     {
-                        if (limbWearingItemsField.GetValue(limb) is System.Collections.IList list && list.Count > 1)
+                        // 单根肢体出问题不许连累其余肢体：之前一个异常会让后面所有肢体都没修到
+                        try
                         {
-                            var sorted = list.Cast<object>()
-                                .OrderBy(GetWearableSpriteDepth)
-                                .ThenBy(GetWearableOuterSlotFlag)
-                                .ToList();
-                            list.Clear();
-                            foreach (var o in sorted) list.Add(o);
+                            // 重排交给统一的绘制顺序修正（头饰画在装束上方），随后的一致性刷新由它的补丁兜底
+                            WearableDrawOrder.SortLimb(limb);
+                            updateWearableHideM?.Invoke(limb, null);
                         }
-                        updateWearableHideM?.Invoke(limb, null);
+                        catch (Exception ex)
+                        {
+                            if (!limbFixupWarned)
+                            {
+                                limbFixupWarned = true;
+                                RSLog.Warn($"wearable per-limb fixup failed: {ex.Message}");
+                            }
+                        }
                     }
+                    if (skippedUninit > 0)
+                        RSLog.Warn($"{c.Name}: {skippedUninit} wearable sprite(s) not initialized, re-register skipped");
                 }
                 catch (Exception ex)
                 {
@@ -630,30 +699,6 @@ namespace Touhou.RagdollScale
                     RSLog.Warn($"appendage reset failed for {c.Name}: {ex.Message}");
                 }
             }
-        }
-
-        // WearingItems 排序键 1：贴图 Depth（原版 Equip 第一个比较器，空贴图按 0）
-        static float GetWearableSpriteDepth(object ws)
-        {
-            try
-            {
-                object sprite = wsSpriteProp?.GetValue(ws);
-                if (sprite == null || spriteDepthProp == null) return 0f;
-                return spriteDepthProp.GetValue(sprite) is float d ? d : 0f;
-            }
-            catch { return 0f; }
-        }
-
-        // WearingItems 排序键 2：是否外套槽（原版 Equip 第二个比较器，InvSlotType 值 32）
-        static bool GetWearableOuterSlotFlag(object ws)
-        {
-            try
-            {
-                if (wsWearableCompProp?.GetValue(ws) is Barotrauma.Items.Components.Pickable comp)
-                    return comp.AllowedSlots.Contains((InvSlotType)32);
-            }
-            catch { /* 按 false 处理 */ }
-            return false;
         }
 
         // 角色当前实际应用的缩放系数（未缩放返回 1），供 SmoothRotate 力矩补偿补丁查询

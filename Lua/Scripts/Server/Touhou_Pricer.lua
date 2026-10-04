@@ -14,8 +14,15 @@ local MAX_LINES = 8
 local MAX_DETAIL_LEN = 160 -- 消息按字节算长度，别超
 local SCAN_COOLDOWN = 0.5  -- 同一估价器同一模式的触发冷却（秒），防重复播报
 
--- 逐个槽位 pcall，老版本没有 Face 之类枚举也不会崩
-local WORN_SLOT_NAMES = { "Head", "Face", "InnerClothes", "OuterClothes", "Headset", "IDCard", "Toolbelt", "Bag" }
+-- 逐个槽位 pcall；槽位名以当前版本的 InvSlotType 枚举为准（旧版的 Face/IDCard/Toolbelt 已经没有了）
+local WORN_SLOT_TYPES = {
+	InvSlotType.Head,
+	InvSlotType.InnerClothes,
+	InvSlotType.OuterClothes,
+	InvSlotType.Headset,
+	InvSlotType.Card,
+	InvSlotType.Bag,
+}
 
 -- prefab → 单价缓存，XML 静态数据整场不变
 local valueCache = {}
@@ -179,9 +186,9 @@ local function CollectInventoryItems(inventory, out, depth)
 end
 
 local function CollectWornItems(character, out)
-	for _, slotName in ipairs(WORN_SLOT_NAMES) do
+	for _, slotType in ipairs(WORN_SLOT_TYPES) do
 		pcall(function()
-			local worn = character.Inventory.GetItemInLimbSlot(InvSlotType[slotName])
+			local worn = character.Inventory.GetItemInLimbSlot(slotType)
 			if worn ~= nil then table.insert(out, worn) end
 		end)
 	end
@@ -323,6 +330,14 @@ end)
 Hook.Add("Touhou.Pricer.scanWorn", "Touhou.Pricer.scanWorn", function(effect, deltaTime, item, targets, worldPosition)
 	ScanAndReport(item, targets, true)
 end)
+
+-- 防抖表按"物品ID:模式"累积，一轮下来能把见过的物品全记一遍；它只用来挡 SCAN_COOLDOWN 秒内的重复触发，
+-- 跨巡回的旧条目早就失效了（os.clock 只增不减），所以轮前轮后清掉，行为和不清完全一致
+local function ClearScanCooldown()
+	lastScanTime = {}
+end
+Hook.Add("roundStart", "Touhou.Pricer.roundStart", ClearScanCooldown)
+Hook.Add("roundEnd", "Touhou.Pricer.roundEnd", ClearScanCooldown)
 
 -- 导出给女苑天赋（Jyoon_Wealth_Talent.lua）复用同一套估价；init.lua 里本脚本先加载，直接调就行
 TouhouPricer = TouhouPricer or {}

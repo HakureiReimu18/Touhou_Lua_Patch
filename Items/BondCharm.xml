@@ -177,8 +177,8 @@
     </Item>
     <Item name="陡度芯片 Mk.II" identifier="Touhou_Bond_Chip_K2" category="Equipment" subcategory="Touhou"
           tags="Bond_Chip,smallitem" Scale="0.35" impactsoundtag="impact_metal_light">
-      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="120,99,120,90" origin="0.5,0.5" />
-      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="120,99,120,90" origin="0.5,0.5" />
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Bond_Chip.png" sourcerect="129,99,120,90" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Bond_Chip.png" depth="0.57" sourcerect="129,99,120,90" origin="0.5,0.5" />
       <Body width="120" height="90" density="10" />
       <Holdable slots="Any" holdpos="0,0" handle1="0,0" msg="ItemMsgPickUpSelect" />
       <Deconstruct time="5">

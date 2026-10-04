@@ -61,6 +61,10 @@ local COUNTED_AFFLICTION_TYPES = {
     bleeding = true,
 }
 
+-- 下面两张缓存的键都是常驻的 prefab 对象，普通表不会泄漏；命中后伤害路径上不再重新分配字符串
+local affliction_type_cache = {} -- AfflictionPrefab → AfflictionType 的 tostring 结果
+local jade_prefab_cache = {}     -- ItemPrefab → { id = Identifier 的 tostring 结果, isJade = 是否以勾玉后缀结尾 }
+
 -- 这次攻击该扣多少
 local function CalcDurabilityLoss(totalDamage)
     local loss = 0
@@ -100,9 +104,16 @@ local function DrainJades(suit, loss)
         if slot < container.Capacity then
             local jade = container.GetItemAt(slot)
             if jade ~= nil then
-                -- Identifier 有的版本是string有的是结构体，统一tostring
-                local id = tostring(jade.Prefab.Identifier)
-                if string.sub(id, -#JADE_IDENTIFIER_SUFFIX) == JADE_IDENTIFIER_SUFFIX then
+                -- Identifier 有的版本是string有的是结构体，统一tostring；结果按 prefab 缓存，别每刀重算
+                local jadePrefab = jade.Prefab
+                local jadeInfo = jade_prefab_cache[jadePrefab]
+                if jadeInfo == nil then
+                    jadeInfo = { id = tostring(jadePrefab.Identifier) }
+                    jadeInfo.isJade = string.sub(jadeInfo.id, -#JADE_IDENTIFIER_SUFFIX) == JADE_IDENTIFIER_SUFFIX
+                    jade_prefab_cache[jadePrefab] = jadeInfo
+                end
+                local id = jadeInfo.id
+                if jadeInfo.isJade then
                     local before = jade.Condition
                     jade.Condition = math.max(jade.Condition - loss, 0)
                     drained = drained + 1
@@ -136,7 +147,12 @@ Hook.Add("character.applyDamage", "Touhou_JadeDurability.OnDamage", function(cha
         detail = {}
     end
     for affliction in attackResult.Afflictions do
-        local affType = tostring(affliction.Prefab.AfflictionType)
+        local afflictionPrefab = affliction.Prefab
+        local affType = affliction_type_cache[afflictionPrefab]
+        if affType == nil then
+            affType = tostring(afflictionPrefab.AfflictionType)
+            affliction_type_cache[afflictionPrefab] = affType
+        end
         if COUNTED_AFFLICTION_TYPES[affType] then
             totalDamage = totalDamage + affliction.Strength
             if detail ~= nil then

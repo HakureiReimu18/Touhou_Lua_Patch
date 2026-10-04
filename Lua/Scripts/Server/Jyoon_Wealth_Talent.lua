@@ -198,6 +198,11 @@ local function update_character(character)
         return
     end
 
+    -- 天赋与档位 affliction 只会挂在人类身上，非人类（怪物/宠物）没必要每轮白跑一遍读写
+    if character.IsHuman ~= true then
+        return
+    end
+
     local talent_ok = has_talent(character)
     local outfit_ok = has_outfit_affliction(character)
 

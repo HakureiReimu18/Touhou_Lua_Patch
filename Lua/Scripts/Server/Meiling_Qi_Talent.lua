@@ -20,6 +20,10 @@ local AFF_STANCE_ALLOUT = "Hong_Meirin_Stance_Allout"
 local AFF_STANCE_CD = "Hong_Meirin_Stance_CD"
 local STANCE_AFFS = { AFF_STANCE_CHARGE, AFF_STANCE_GUARD, AFF_STANCE_ALLOUT }
 
+-- 槽位常量：两处判定都在 ApplyAttack 每次命中的路径上，表提到模块级复用（不再逐次建表）
+local OUTFIT_SLOTS = { InvSlotType.InnerClothes, InvSlotType.OuterClothes }
+local HAND_SLOTS = { InvSlotType.RightHand, InvSlotType.LeftHand }
+
 local QI_MAX = 100
 -- 被动增减（每秒）
 local QI_CHARGE_PER_SEC = 1
@@ -50,7 +54,7 @@ end
 
 local function is_wearing_outfit(character)
     if character == nil or character.Inventory == nil then return false end
-    for _, slot in ipairs({ InvSlotType.InnerClothes, InvSlotType.OuterClothes }) do
+    for _, slot in ipairs(OUTFIT_SLOTS) do
         local item = character.Inventory.GetItemInLimbSlot(slot)
         if item ~= nil and item.Prefab ~= nil and tostring(item.Prefab.Identifier) == OUTFIT_IDENTIFIER then
             return true
@@ -121,13 +125,18 @@ local function is_enemy_of(a, b)
     return a.TeamID ~= b.TeamID
 end
 
+-- 攻击总伤害：对应 API 未必存在，统一用 pcall 包裹（模块级函数，避免每次命中新建闭包）
+local function total_character_damage(attack)
+    return attack.GetTotalCharacterDamage()
+end
+
 -- 造成伤害/受到伤害共用：按攻击强度折算获气（仅蓄势姿态）
 local function grant_combat_qi(character, attack, k, min_gain, max_gain)
     if get_active_stance(character) ~= AFF_STANCE_CHARGE then return end
     if attack == nil then return end
 
     local damage = 0
-    local ok, result = pcall(function() return attack.GetTotalCharacterDamage() end)
+    local ok, result = pcall(total_character_damage, attack)
     if ok and result ~= nil then damage = result end
     if damage <= 0 then return end
 
@@ -140,7 +149,7 @@ local function is_exclusive_weapon_attack(attacker, attack)
         if attack.SourceItem.HasTag(EXCLUSIVE_WEAPON_TAG) then return true end
     end
     if attacker == nil or attacker.Inventory == nil then return false end
-    for _, slot in ipairs({ InvSlotType.RightHand, InvSlotType.LeftHand }) do
+    for _, slot in ipairs(HAND_SLOTS) do
         local item = attacker.Inventory.GetItemAt(slot)
         if item ~= nil and item.HasTag(EXCLUSIVE_WEAPON_TAG) then return true end
     end
@@ -156,11 +165,12 @@ local allout_proc_state = setmetatable({}, { __mode = "k" }) -- attack -> { proc
 Hook.Patch("Barotrauma.Character", "ApplyAttack", function(instance, ptable)
     local attacker = ptable["attacker"]
     if attacker == nil or attacker.IsDead or attacker.Removed then return end
-    if get_active_stance(attacker) ~= AFF_STANCE_ALLOUT then return end
 
+    -- 两个判定都是纯读、无副作用：先做过滤性更强的武器判定，少走 GetAffliction
     local attack = ptable["attack"]
     if attack == nil then return end
     if not is_exclusive_weapon_attack(attacker, attack) then return end
+    if get_active_stance(attacker) ~= AFF_STANCE_ALLOUT then return end
 
     local state = allout_proc_state[attack]
     if state == nil then
@@ -253,13 +263,16 @@ Hook.Add("roundStart", "Meiling.QiTalent.RoundStart", function()
 end)
 
 -- 暂停检测：think 钩子在暂停时仍会触发，气的增减必须跳过
+-- （模块级命名函数 + pcall(命名函数)，避免每帧新建闭包）
+local function read_game_paused()
+    if GameMain ~= nil and GameMain.Instance ~= nil then
+        return GameMain.Instance.Paused
+    end
+    return false
+end
+
 local function is_game_paused()
-    local ok, paused = pcall(function()
-        if GameMain ~= nil and GameMain.Instance ~= nil then
-            return GameMain.Instance.Paused
-        end
-        return false
-    end)
+    local ok, paused = pcall(read_game_paused)
     return ok and paused == true
 end
 

@@ -59,6 +59,7 @@ namespace Touhou.Homing
             harmony.PatchAll(typeof(HomingShootPatch));
             harmony.PatchAll(typeof(HomingTurretPatch));
             harmony.PatchAll(typeof(HomingTickPatch));
+            harmony.PatchAll(typeof(MonarchShootPatch));
 
             HomingConfig.Load();
             LuaCsSetup.Instance.Hook.Add("roundStart", "Touhou.Homing.RoundStart", OnRoundStart);
@@ -84,12 +85,14 @@ namespace Touhou.Homing
             harmony?.UnpatchSelf();
             oneTimeInitDone = false;
             HomingTracker.Clear();
+            MonarchTracker.Clear();
             HomingLog.Log("射弹追踪插件已卸载");
         }
 
         object OnRoundStart(object[] args)
         {
             HomingTracker.Clear();
+            MonarchTracker.Clear();
             HomingConfig.Load();
             return null;
         }
@@ -97,6 +100,7 @@ namespace Touhou.Homing
         object OnRoundEnd(object[] args)
         {
             HomingTracker.Clear();
+            MonarchTracker.Clear();
             return null;
         }
 
@@ -157,6 +161,10 @@ namespace Touhou.Homing
         public float ArmDistanceSqr;
         /// <summary>追踪解锁时间保底（秒）：超过该时间仍未飞出 armDist 也强制解锁，防止卡弹永不追踪。</summary>
         public float ArmTime;
+        /// <summary>引导释放距离（模拟单位）：离目标这么近就交棒给弹道，之后不再转向。0 = 一直追踪（旧行为）。</summary>
+        public float ReleaseDist;
+        /// <summary>穿身补伤半径（模拟单位）：飞过最近点时最近距离在这以内还没被引擎判成命中，就补一刀。</summary>
+        public float PassHitDist;
 
         public HomingParams Clone() => (HomingParams)MemberwiseClone();
     }
@@ -321,6 +329,9 @@ namespace Touhou.Homing
             // 距离尺度参照：1 米 ≈ 100 模拟单位（见 homing_config.xml 注释），200 ≈ 2 米，远超贴脸/近战距离
             ArmDistanceSqr = 200f * 200f,
             ArmTime = 2f,
+            // 引导释放 + 穿身补伤（见 Docs/通用射弹追踪-可行方案.md §4.6）：300 = 3 米交棒，100 = 1 米内算贴脸穿过
+            ReleaseDist = 300f,
+            PassHitDist = 100f,
         };
 
         static HomingParams NewMouseDefault()
@@ -353,6 +364,8 @@ namespace Touhou.Homing
             float armDist = ParseFloat(get("armDist"), "armDist", -1f);
             if (armDist >= 0f) p.ArmDistanceSqr = armDist * armDist;
             p.ArmTime = ParseFloat(get("armTime"), "armTime", p.ArmTime);
+            p.ReleaseDist = ParseFloat(get("releaseDist"), "releaseDist", p.ReleaseDist);
+            p.PassHitDist = ParseFloat(get("passHitDist"), "passHitDist", p.PassHitDist);
         }
 
         public static string Describe()
@@ -375,8 +388,9 @@ namespace Touhou.Homing
                     "<HomingConfig enabled=\"true\" maxActive=\"128\" scansPerFrame=\"8\">\n" +
                     "  <Default range=\"2000\" coneDeg=\"45\" mode=\"velocity\" steering=\"5\"\n" +
                     "           minSpeed=\"0\" accel=\"0.25\" acquireInterval=\"0.2\" lockOn=\"true\" maxLifetime=\"10\"\n" +
-                    "           armDist=\"200\" armTime=\"2\"/>\n" +
+                    "           armDist=\"200\" armTime=\"2\" releaseDist=\"300\" passHitDist=\"100\"/>\n" +
                     "  <!-- armDist/armTime：追踪解锁条件（任一满足即解锁，距离是主条件、时间是保底，armDist=0 表示立即追踪） -->\n" +
+                    "  <!-- releaseDist：离目标这么近就释放引导、之后不再转向（0 = 一直追踪）；passHitDist：飞过最近点时多远以内算穿身、补一刀 -->\n" +
                     "  <!-- <Projectile id=\"射弹identifier\"/> 详见 Docs/通用射弹追踪-可行方案.md -->\n" +
                     "</HomingConfig>\n");
                 HomingLog.Log("配置文件不存在，已生成模板");
@@ -604,6 +618,7 @@ namespace Touhou.Homing
         {
             if (GameMain.NetworkMember == null || !GameMain.NetworkMember.IsServer) return;
             HomingTracker.Tick();
+            MonarchTracker.Tick();
         }
     }
 #else
@@ -616,6 +631,7 @@ namespace Touhou.Homing
             if (GameMain.NetworkMember != null && !GameMain.NetworkMember.IsServer) return;
             if (GameMain.Instance != null && GameMain.Instance.Paused) return;
             HomingTracker.Tick();
+            MonarchTracker.Tick();
         }
     }
 #endif
@@ -636,6 +652,10 @@ namespace Touhou.Homing
             public Vector2 LaunchPos;
             public double ArmAt;
             public bool Armed;
+            /// <summary>已释放引导：进到 releaseDist 以内后不再施加任何冲量，永久弹道飞行。</summary>
+            public bool Released;
+            /// <summary>对当前目标的最近距离（换目标时重置成 float.MaxValue），用来判断"这一帧飞过了最近点"。</summary>
+            public float MinDist = float.MaxValue;
         }
 
         static readonly List<Entry> entries = new List<Entry>(128);
@@ -715,6 +735,7 @@ namespace Touhou.Homing
                 {
                     target = null;
                     e.Target = null;
+                    e.MinDist = float.MaxValue; // 目标没了，最近距离跟着作废
                 }
 
                 bool due = now >= e.NextAcquire;
@@ -728,18 +749,48 @@ namespace Touhou.Homing
                             ? $"{item.Prefab.Identifier.Value} 锁定 {newTarget.Name}"
                             : $"{item.Prefab.Identifier.Value} 未捕获到目标");
                     }
+                    if (newTarget != e.Target) e.MinDist = float.MaxValue; // 换目标才重置，LockOn=false 重扫到同一个不算换
                     e.Target = newTarget;
                     target = newTarget;
                     e.NextAcquire = now + p.AcquireInterval;
                 }
                 // 扫描预算用完则顺延到下帧（NextAcquire 保持过期状态，下帧自然优先处理）
 
-                if (target == null || speedSqr < 0.0001f) continue;
+                if (target == null) continue;
+
+                Vector2 toTarget = target.WorldPosition - item.WorldPosition;
+                float dist = toTarget.Length();
+
+                // 穿身补伤兜底：这一帧比历史最近距离还远 → 上一帧左右已经飞过最近点。
+                // 最近点在 passHitDist（默认 1 米）以内还没打出伤害，就是引擎没登记命中
+                // （坐标系失配的幽灵弹、碰撞被先前命中关掉等），按伤害入口补一刀再把弹移除。
+                // HiddenInGame 是引擎登记命中后立刻置位的标志，它 true 时绝不能补，否则双倍伤害。
+                if (dist > e.MinDist)
+                {
+                    if (e.MinDist <= p.PassHitDist && !item.HiddenInGame)
+                    {
+                        bool damaged = HomingFallbackHit.Apply(item, e.Shooter, target);
+                        if (HomingLog.DebugMode)
+                            HomingLog.Debug($"{item.Prefab.Identifier.Value} 穿身补伤：最近距离 {e.MinDist:F0}，补刀={damaged}");
+                        entries[i] = entries[entries.Count - 1];
+                        entries.RemoveAt(entries.Count - 1);
+                        continue;
+                    }
+                }
+                else
+                {
+                    e.MinDist = dist;
+                }
+
+                if (speedSqr < 0.0001f) continue;
+
+                // 引导释放：进到 releaseDist 以内就交棒给弹道，之后不再施加任何冲量。
+                // 一直转向会让弹贴着目标绕圈、引擎反而碰不上，永远没伤害。releaseDist=0 表示不释放（旧行为）。
+                if (!e.Released && dist <= p.ReleaseDist) e.Released = true;
+                if (e.Released) continue;
 
                 float speed = (float)Math.Sqrt(speedSqr);
                 Vector2 curDir = vel / speed;
-                Vector2 toTarget = target.WorldPosition - item.WorldPosition;
-                float dist = toTarget.Length();
                 if (dist < 1f) continue;
                 Vector2 targetDir = toTarget / dist;
 
@@ -794,6 +845,58 @@ namespace Touhou.Homing
                 }
             }
             return best;
+        }
+    }
+
+    /// <summary>
+    /// 穿身补伤的共用善后：射弹从目标身上飞过（最近距离在 passHitDist 以内）却没被引擎判成命中时，
+    /// 按引擎的伤害入口补一次命中再把弹移除，表现得就像命中消失。
+    /// 通用追踪和君王迁移版（MonarchHoming.cs）共用；"飞过最近点且引擎没登记命中"由调用方判断。
+    /// </summary>
+    public static class HomingFallbackHit
+    {
+        /// <summary>
+        /// 挨打的是谁：角色目标直接用；鱼叉目标是反查它插到的四肢所属的角色
+        /// （君王场景里弹追的是鱼叉，不是人，光看目标解析不出受害者）。
+        /// </summary>
+        public static Character ResolveVictim(Entity target)
+        {
+            if (target is Character character) return character;
+            if (target is Item item && item.GetComponent<Projectile>()?.StickTarget?.UserData is Limb limb)
+                return limb.character;
+            return null;
+        }
+
+        /// <summary>补一次命中并把射弹移除；解析不出受害者就只移除不补伤。返回是否真的补上了伤害。</summary>
+        public static bool Apply(Item round, Character shooter, Entity target)
+        {
+            bool damaged = TryDamage(round, shooter, ResolveVictim(target));
+            Entity.Spawner?.AddItemToRemoveQueue(round);
+            return damaged;
+        }
+
+        static bool TryDamage(Item round, Character shooter, Character victim)
+        {
+            if (victim == null || victim.AnimController == null) return false;
+            Projectile proj = round.GetComponent<Projectile>();
+            if (proj == null || proj.Attack == null) return false;
+
+            Limb limb = victim.AnimController.GetLimb(LimbType.Torso);
+            if (limb == null || limb.IsSevered)
+            {
+                limb = null;
+                var limbs = victim.AnimController.Limbs;
+                for (int i = 0; i < limbs.Length; i++)
+                {
+                    Limb candidate = limbs[i];
+                    if (candidate != null && !candidate.IsSevered) { limb = candidate; break; }
+                }
+            }
+            if (limb == null) return false;
+
+            if (shooter != null && shooter.Removed) shooter = null;
+            proj.Attack.DoDamageToLimb(shooter, limb, round.WorldPosition, 1.0f, false);
+            return true;
         }
     }
 

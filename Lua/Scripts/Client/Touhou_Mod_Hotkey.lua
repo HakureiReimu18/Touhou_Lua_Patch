@@ -150,11 +150,41 @@ local L = {
         bs_resist = "转移抗性折算系数（0-1）",
         bs_distance = "链接距离上限（0 = 不限）",
         bs_types = "计入的 affliction 类型（逗号分隔）",
-        bs_hint = "保存后即时生效；多人模式需要作弊权限（enablecheats）",
+        bs_hint = "保存后即时生效；多人模式需要管理员权限（ConsoleCommands）",
         bs_module_missing = "（未检测到绑定系统模块）",
         bs_denied_prefix = "⚠ ",
         cd_mult = "受击耐久损耗全局倍率（0 = 关闭）",
         cd_hint = "曲线：损耗 = 10 × (伤害/48)² × tag倍率 × 全局倍率（默认 1）；配置方式：给任意可穿戴物品加 tag Touhou_Condition_Loss_Rate_X",
+        damage_settings = "武器伤害与防具抗性设置",
+        dmg_hint = "选择左侧分组调整倍率；保存后约 1 秒内生效。联机时修改需要管理员权限，改动会广播到所有人的聊天栏",
+        dmg_damage = "伤害倍率",
+        dmg_pen_mode_add = "穿甲：加算",
+        dmg_pen_mode_mul = "穿甲：乘算",
+        dmg_pen_value = "穿甲数值",
+        dmg_defense = "防御倍率",
+        dmg_save = "保存设置",
+        dmg_reset = "重置默认",
+        dmg_saved = "已保存，约 1 秒内生效",
+        dmg_reset_done = "已重置为默认值并保存",
+        dmg_loading = "（未检测到伤害设置模块，请确认 Lua 补丁的 C# 部分已加载）",
+        dmg_groups_hint = "分组列表",
+        dmg_items_fmt = "%d 件",
+        dmg_status_fmt = "已应用：物品 %s · 数值对象 %s · %s",
+        dmg_lv1 = "LV1（略弱于补强）",
+        dmg_lv2 = "LV2（等于补强）",
+        dmg_lv3 = "LV3（补强×2）",
+        dmg_lv_applied = "已应用档位：%s（约 1 秒内生效）",
+        dmg_lv_missing = "（配置里没有档位数据，请更新 Config/damage_settings.xml）",
+        dmg_mp_loading = "（正在从主机获取伤害设置…）",
+        dmg_readonly_short = "只读：需要管理员权限",
+        dmg_submitted = "已提交给主机，正在应用…",
+        dmg_submitted_short = "已提交，等待主机应用…",
+        dmg_lv_submitted = "已提交档位：%s（等待主机应用）",
+        dmg_noedit_reason = "没有修改权限（需要管理员/ConsoleCommands 权限）",
+        dmg_noedit_toast = "没有修改权限：联机时修改需要管理员权限（ConsoleCommands）",
+        dmg_denied_generic = "服务器拒绝了本次修改",
+        dmg_mp_timeout = "提交后主机没有回应（C# 应用器可能未加载）",
+        dmg_denied_prefix = "⚠ ",
         menu_hotkey = "快捷键设置",
         cl_settings = "装束锁定设置",
         cl_enable = "启用装束锁定",
@@ -165,7 +195,7 @@ local L = {
         cl_reset_done = "装束锁定已重置为默认值：开启，120 秒",
         cl_no_permission = "修改需要控制台指令权限（ConsoleCommands）",
         cl_locked_list = "已锁定玩家",
-        cl_total_suffix = "（共 %d 人，仅显示前 3 个）",
+        cl_total_suffix = "（共 %d 人，滚轮翻看）",
         cl_refresh = "刷新",
         cl_none = "（当前没有被锁定的玩家）",
         cl_unlock = "解锁",
@@ -255,11 +285,41 @@ local L = {
         bs_resist = "Resistance scale on transfer (0-1)",
         bs_distance = "Max link distance (0 = unlimited)",
         bs_types = "Counted affliction types (comma separated)",
-        bs_hint = "Applies immediately on save; multiplayer requires cheat permissions (enablecheats)",
+        bs_hint = "Applies immediately on save; multiplayer requires admin permissions (ConsoleCommands)",
         bs_module_missing = "(Bond system module not detected)",
         bs_denied_prefix = "⚠ ",
         cd_mult = "Global durability loss multiplier on hit (0 = off)",
         cd_hint = "Curve: loss = 10 × (damage/48)² × tag multiplier × global multiplier (default 1); configure by adding tag Touhou_Condition_Loss_Rate_X to any wearable item",
+        damage_settings = "Weapon damage & armor settings",
+        dmg_hint = "Pick a group on the left to adjust multipliers; applies ~1s after saving. In multiplayer, edits require admin permission and are announced to everyone's chat",
+        dmg_damage = "Damage multiplier",
+        dmg_pen_mode_add = "Penetration: additive",
+        dmg_pen_mode_mul = "Penetration: multiplier",
+        dmg_pen_value = "Penetration value",
+        dmg_defense = "Defense multiplier",
+        dmg_save = "Save settings",
+        dmg_reset = "Reset to defaults",
+        dmg_saved = "Saved, applies within ~1s",
+        dmg_reset_done = "Reset to defaults and saved",
+        dmg_loading = "(Damage settings module not detected - is the Lua patch's C# part loaded?)",
+        dmg_groups_hint = "Groups",
+        dmg_items_fmt = "%d items",
+        dmg_status_fmt = "Applied: %s items · %s values · %s",
+        dmg_lv1 = "LV1 (below buff mod)",
+        dmg_lv2 = "LV2 (= buff mod)",
+        dmg_lv3 = "LV3 (buff mod ×2)",
+        dmg_lv_applied = "Tier applied: %s (takes effect within ~1s)",
+        dmg_lv_missing = "(No tier data in config - update Config/damage_settings.xml)",
+        dmg_mp_loading = "(Fetching damage settings from the host...)",
+        dmg_readonly_short = "Read-only: admin permission required",
+        dmg_submitted = "Submitted to the host, applying...",
+        dmg_submitted_short = "Submitted - waiting for host",
+        dmg_lv_submitted = "Tier submitted: %s (waiting for host)",
+        dmg_noedit_reason = "No permission to modify (admin/ConsoleCommands required)",
+        dmg_noedit_toast = "No permission: editing requires admin rights (ConsoleCommands) in multiplayer",
+        dmg_denied_generic = "The server rejected the change",
+        dmg_mp_timeout = "No response from the host after submitting (is the C# part loaded?)",
+        dmg_denied_prefix = "⚠ ",
         menu_hotkey = "Hotkey settings",
         cl_settings = "Costume Lock Settings",
         cl_enable = "Enable costume lock",
@@ -270,7 +330,7 @@ local L = {
         cl_reset_done = "Costume lock reset to default: enabled, 120s",
         cl_no_permission = "Requires ConsoleCommands permission",
         cl_locked_list = "Locked players",
-        cl_total_suffix = " (%d total, showing first 3)",
+        cl_total_suffix = " (%d total, scroll to view)",
         cl_refresh = "Refresh",
         cl_none = "(no locked players)",
         cl_unlock = "Unlock",
@@ -415,6 +475,8 @@ end
 
 -- 绑定匹配顺序缓存（修饰键多的优先）。不缓存的话每帧都得新建表再 sort，白扔一堆分配
 local sorted_binding_order = nil
+-- 双击绑定键集合缓存（纯配置派生，跟 sorted_binding_order 同一时刻失效）
+local double_bound_keys_cache = nil
 
 local function get_config_path()
     -- 首选：官方存档目录（需要 SaveUtil；新版 LuaCs 禁止注册它时会拿不到）
@@ -439,6 +501,7 @@ local function save_config()
     end
     -- 配置已变化，绑定匹配顺序需要重建
     sorted_binding_order = nil
+    double_bound_keys_cache = nil  -- 同点失效（双击绑定键集合也是纯配置派生）
     local lines = { "cfgver=2", "menukey=" .. config.menukey }
     lines[#lines + 1] = "hud_hidden=" .. (config.hud_hidden and "1" or "0")
     lines[#lines + 1] = "hud_hidden_outer=" .. (config.hud_hidden_outer and "1" or "0")
@@ -620,10 +683,38 @@ end
 -- 直接读原始键盘状态、自己记上一帧做边沿检测，边跑边按也能稳定触发
 local key_was_down = {}  -- 按键名 -> 上一帧是否按下
 local double_last_press = {}  -- 按键名 -> 上一次按下的时刻（双击检测用）
+local key_hits = {}      -- 按键名 -> 本帧是否新按下（think 每帧开头清空复用，不再每帧新建）
+local double_hits = {}   -- 按键名 -> 本帧是否双击（同上）
+
+-- 键盘状态读取链路：加载时探测一次（照 pause_toggle_probe 的写法），结果存模块级标志。
+-- 通过 -> 热路径直连静态调用，不再每帧 pcall、不再建闭包；
+-- 没通过 -> 退回下面原来的 pcall 实现，语义跟改动前一模一样，且不把结果固化，
+-- 免得加载那一瞬间的一次抖动把热键系统永久废掉
+local key_api_direct = pcall(function()
+    return PlayerInput.GetKeyboardState.IsKeyDown(Keys["Escape"])
+end)
+
+-- 按键名 -> XNA Keys 枚举值缓存（普通表）。名字来自 KEY_LIST 白名单，加载后查一次就够，
+-- 省掉每帧的静态成员查找；查不到的按“读不到就是没按下”处理（跟原来 pcall 兜住异常的结果一致）
+local key_code_cache = {}
+local function key_code(name)
+    local code = key_code_cache[name]
+    if code == nil then
+        local ok, v = pcall(function() return Keys[name] end)
+        code = (ok and v ~= nil) and v or false
+        key_code_cache[name] = code
+    end
+    return code
+end
 
 local function raw_key_down(name)
     if is_mouse_button(name) then
         return raw_mouse_down(name)
+    end
+    if key_api_direct then
+        local code = key_code(name)
+        if code == false then return false end
+        return PlayerInput.GetKeyboardState.IsKeyDown(code) == true
     end
     local ok, down = pcall(function()
         return PlayerInput.GetKeyboardState.IsKeyDown(Keys[name])
@@ -806,8 +897,10 @@ local function is_mod_weapon(item)
 end
 
 local function is_touhou_outfit(item)
-    local ok, sub = pcall(function() return tostring(item.Prefab.Subcategory) end)
-    if ok and sub ~= nil and string.lower(sub) == string.lower(OUTFIT_SUBCATEGORY) then
+    -- Subcategory 是普通属性，直接读；原来那层 pcall 包的是个不会有副作用、也不会抛的属性读
+    local sub = nil
+    if item ~= nil and item.Prefab ~= nil then sub = tostring(item.Prefab.Subcategory) end
+    if sub ~= nil and string.lower(sub) == string.lower(OUTFIT_SUBCATEGORY) then
         return true
     end
     for _, id in ipairs(OUTFIT_IDENTIFIERS) do
@@ -867,7 +960,12 @@ local function set_slots_hud_visible(slots, visible)
             for component in item.Components do
                 local ok, frame = pcall(function() return component.GuiFrame end)
                 if ok and frame ~= nil then
-                    pcall(function() frame.Visible = visible end)
+                    -- 值一样就不写：每 30 帧无条件赋同值会让 UI 白白重建/重排（读和写同一个 pcall 里，异常照旧吞掉）
+                    pcall(function()
+                        if frame.Visible ~= visible then
+                            frame.Visible = visible
+                        end
+                    end)
                 end
             end
         end
@@ -972,6 +1070,7 @@ local detect_labels = {}     -- 装束技能行的“检测到的技能名”标
 local frame_counter = 0
 local hud_enforce_counter = 0  -- 装束悬浮界面隐藏状态的强制刷新计数
 local pause_toggle_probe = nil  -- GUI.PreventPauseMenuToggle 属性存在性探测结果（nil = 未探测）
+local input_blocking_probe = nil  -- GUI.InputBlockingMenuOpen 属性存在性探测结果（nil = 未探测）
 -- 内置分页（按功能分组；索引跟 default_bindings 顺序一致）
 local BUILTIN_PAGES = {
     { first = 1,  last = 3,  label_key = "pg_weapons"  },   -- 武器按钮 1-3
@@ -1014,6 +1113,8 @@ local cl_dirty = false          -- 有未保存的编辑（状态刷新重建页
 local cl_skip_request = false   -- OnState 重建页面时置真，避免"请求→重建→再请求"循环
 local cl_unlockall_confirm = nil  -- 全部解锁的二击确认时刻（os.clock）
 local cl_time_box = nil      -- 锁定时长输入框（GUITextBox；构造失败时为 nil，退回纯步进按钮）
+local cl_list_box = nil      -- 锁定列表 ListBox（跨重建保存滚动位置用）
+local cl_list_scroll = 0     -- 锁定列表滚动位置（0~1，重建页面后恢复）
 
 local function refresh_binding_texts()
     if menukey_button ~= nil then
@@ -1085,6 +1186,10 @@ local function close_menu()
     capture_ignored = {}
     sync_key_states()
     if menu_frame ~= nil then
+        -- 关窗/重建前记下锁定列表的滚动位置，重建后恢复（避免刷新后跳回顶部）
+        if cl_list_box ~= nil then
+            pcall(function() cl_list_scroll = cl_list_box.ScrollBar.BarScroll end)
+        end
         GUI.GUI.RemoveFromUpdateList(menu_frame, true)
         menu_frame.RectTransform.Parent = nil
         menu_frame = nil
@@ -1092,6 +1197,7 @@ local function close_menu()
         binding_buttons = {}
         detect_labels = {}
         cl_time_box = nil
+        cl_list_box = nil
     end
 end
 
@@ -1199,6 +1305,277 @@ local function hb_slider_row(layout, height, label, min, max, fmt, get, set)
         set(min + (max - min) * s)
         value_text.Text = RichString.Plain(RawLString(string.format(fmt, get())))
         hb_write_config()
+        return true
+    end
+end
+
+-- ==================== 武器伤害与防具抗性设置页（damage） ====================
+-- C# 侧 Touhou.Damage：状态快照 TouhouDamageState.txt（分组元数据 + 当前值 + 默认值 + 已应用值），
+-- 本页「保存」写 TouhouDamageConfig.txt，C# 每秒查 mtime 后重载、全量重应用并回写状态。
+local dmg_state = nil       -- 解析后的状态（含 stamp/patched 与分组）
+local dmg_state_raw = nil   -- 原始文本（变化检测）
+local dmg_groups = {}       -- 分组数组（显示顺序）
+local dmg_selected = nil    -- 选中分组 id
+local dmg_pending = {}      -- 编辑暂存：gid -> { damage / penmode / penvalue / defense }
+local dmg_dirty = false     -- 有未保存编辑
+local dmg_poll_counter = 0
+
+-- 联机（服务端 Touhou_Damage_Settings.lua）：请求-应答 + 权限门槛 + 主机广播。
+-- 联机时状态只放内存（不读本地文件，防本地旧快照覆盖主机状态）；单机仍走文件轮询。
+local DMG_MSG_STATE  = "TLE_DMG_STATE"    -- S→全体：状态快照
+local DMG_MSG_STATEP = "TLE_DMG_STATEP"   -- S→单个：同上 + can_edit
+local DMG_MSG_GET    = "TLE_DMG_GET"      -- C→S：请求状态
+local DMG_MSG_SET    = "TLE_DMG_SET"      -- C→S：提交玩家值全文
+local DMG_MSG_DENIED = "TLE_DMG_DENIED"   -- S→单个：拒绝原因
+local dmg_mp_can_edit = true    -- 服务器下发的编辑权限（最终以服务端校验为准）
+local dmg_mp_denied = nil       -- 服务器的拒绝原因（下次提交 / 收到新状态时清除）
+local dmg_mp_submitted = false  -- 已提交，等待主机应用
+local dmg_mp_submit_ticks = 0   -- 提交后等待的轮询次数（超时兜底）
+local dmg_mp_refresh = false    -- 收到网络状态，挂起重建设置页
+local dmg_mp_get_counter = 99   -- 打开页面后尽快主动拉取一次状态（>=10 即发）
+
+local function dmg_num(v)
+    return tonumber(v) or 0
+end
+
+local function dmg_parse_state(text)
+    local st = { groups = {}, order = {}, patched = {} }
+    for line in string.gmatch(text or "", "[^\r\n]+") do
+        local k, v = string.match(line, "^([^=]+)=(.*)$")
+        if k ~= nil then
+            if k == "stamp" then
+                st.stamp = v
+            elseif k == "patched.items" or k == "patched.objects" then
+                st.patched[k] = v
+            else
+                local gid, prop = string.match(k, "^group%.([^.]+)%.(.+)$")
+                if gid ~= nil then
+                    local g = st.groups[gid]
+                    if g == nil then
+                        g = { id = gid, label = gid, kind = "weapon", count = 0 }
+                        st.groups[gid] = g
+                        st.order[#st.order + 1] = gid
+                    end
+                    if prop == "count" then g.count = dmg_num(v)
+                    elseif prop == "label" then g.label = v
+                    elseif prop == "kind" then g.kind = v
+                    else
+                        local lv, sub = string.match(prop, "^lv(%d)%.(.+)$")
+                        if lv ~= nil then
+                            g.levels = g.levels or {}
+                            local lvn = tonumber(lv)
+                            g.levels[lvn] = g.levels[lvn] or {}
+                            g.levels[lvn][sub] = v
+                        else
+                            g[prop] = v
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return st
+end
+
+local function dmg_set_state_from_text(text)
+    dmg_state_raw = text
+    local st = dmg_parse_state(text)
+    dmg_state = st
+    dmg_groups = {}
+    for _, gid in ipairs(st.order) do
+        dmg_groups[#dmg_groups + 1] = st.groups[gid]
+    end
+    return st
+end
+
+local function dmg_load_state()
+    if File == nil then return nil end
+    local path = hb_dir_file("TouhouDamageState.txt")
+    local ok, text = pcall(function()
+        if not File.Exists(path) then return nil end
+        return File.ReadAllText(path)
+    end)
+    if not ok or text == nil then return nil end
+    return dmg_set_state_from_text(text)
+end
+
+-- 暂存跟随最新状态（未脏时）；进入页面与状态刷新时调用
+local function dmg_sync_pending()
+    dmg_pending = {}
+    for _, g in ipairs(dmg_groups) do
+        dmg_pending[g.id] = {
+            damage = dmg_num(g.damage),
+            penmode = g.penmode or "add",
+            penvalue = dmg_num(g.penvalue),
+            defense = dmg_num(g.defense),
+        }
+    end
+end
+
+local function dmg_pending_of(gid)
+    local p = dmg_pending[gid]
+    if p == nil then
+        dmg_sync_pending()
+        p = dmg_pending[gid]
+    end
+    return p
+end
+
+local function dmg_fmt_num(v)
+    return string.format("%.4g", v)
+end
+
+-- 玩家值全文（格式与 C# DamageValues.Load 的解析一致）
+local function dmg_build_config_text()
+    local lines = {
+        "# 东方-武器伤害与防具抗性设置 · 玩家值（设置页 / damage_set 写入，C# 每秒热加载）",
+        "# 键：damage.<组>=倍率 · pen.<组>=add:<加值> 或 multiply:<乘数> · def.<组>=防御倍率",
+        "ver=1",
+    }
+    for _, g in ipairs(dmg_groups) do
+        local p = dmg_pending[g.id]
+        if p ~= nil then
+            if g.kind == "armor" then
+                lines[#lines + 1] = string.format("def.%s=%s", g.id, dmg_fmt_num(p.defense))
+            else
+                lines[#lines + 1] = string.format("damage.%s=%s", g.id, dmg_fmt_num(p.damage))
+                lines[#lines + 1] = string.format("pen.%s=%s:%s", g.id, p.penmode or "add", dmg_fmt_num(p.penvalue))
+            end
+        end
+    end
+    return table.concat(lines, "\n")
+end
+
+-- 本进程是否权威端（单机 / 主机）。联机主机直接写文件、读本地快照，不走网络回环；
+-- 兜底判定：SERVER 全局（主机进程为 true）或 Game.Server 可用（部分上下文只有它有服务端属性）
+local function dmg_is_authority()
+    if Game.IsSingleplayer then return true end
+    if SERVER == true then return true end
+    local ok, srv = pcall(function() return Game.Server end)
+    return ok and srv ~= nil
+end
+
+-- 保存玩家值：单机/主机直接写文件；纯客户端提交给服务端验权限后写入。
+-- 返回 "ok"（已保存）/ "pending"（已提交，等主机应用）/ nil（失败或无权限）
+local function dmg_write_config()
+    if File == nil and dmg_is_authority() then return nil end
+    local text = dmg_build_config_text()
+    if dmg_is_authority() then
+        local ok = pcall(function()
+            File.WriteAllText(hb_dir_file("TouhouDamageConfig.txt"), text)
+        end)
+        return ok and "ok" or nil
+    end
+    if not dmg_mp_can_edit then
+        dmg_mp_denied = T("dmg_noedit_reason")
+        return nil
+    end
+    if Networking == nil or Networking.Start == nil or Networking.Send == nil then return nil end
+    local sent = false
+    pcall(function()
+        local msg = Networking.Start(DMG_MSG_SET)
+        msg.WriteString(text)
+        Networking.Send(msg)
+        sent = true
+    end)
+    if sent then
+        dmg_mp_denied = nil
+        dmg_mp_submitted = true
+        dmg_mp_submit_ticks = 0
+    end
+    return sent and "pending" or nil
+end
+
+-- 联机：请求服务端发一份最新状态（打开页面 / 平时约 5 秒 / 等应用时 0.5 秒）
+local function dmg_mp_request_state()
+    if Game.IsSingleplayer then return end
+    if Networking == nil or Networking.Start == nil or Networking.Send == nil then return end
+    pcall(function()
+        local msg = Networking.Start(DMG_MSG_GET)
+        Networking.Send(msg)
+    end)
+end
+
+local function dmg_mp_on_state(message, read_edit_flag)
+    -- 主机/单机权威端以本地快照为准（C# 直接写），不吃广播，免得两种文本源来回刷
+    if dmg_is_authority() then return end
+    local text = nil
+    pcall(function() text = message.ReadString() end)
+    if type(text) ~= "string" or text == "" then return end
+    if read_edit_flag then
+        local ok, flag = pcall(function() return message.ReadBoolean() end)
+        if ok then dmg_mp_can_edit = flag == true end
+    end
+    dmg_set_state_from_text(text)
+    dmg_mp_submitted = false
+    dmg_mp_submit_ticks = 0
+    dmg_mp_denied = nil
+    if not dmg_dirty then dmg_sync_pending() end
+    dmg_mp_refresh = true
+end
+
+local function dmg_mp_on_denied(message)
+    local reason = nil
+    pcall(function() reason = message.ReadString() end)
+    dmg_mp_denied = (type(reason) == "string" and reason ~= "") and reason or T("dmg_denied_generic")
+    dmg_mp_submitted = false
+    dmg_mp_submit_ticks = 0
+    dmg_mp_refresh = true
+end
+
+if not Game.IsSingleplayer and Networking ~= nil and Networking.Receive ~= nil then
+    Networking.Receive(DMG_MSG_STATE, function(message) dmg_mp_on_state(message, false) end)
+    Networking.Receive(DMG_MSG_STATEP, function(message) dmg_mp_on_state(message, true) end)
+    Networking.Receive(DMG_MSG_DENIED, function(message) dmg_mp_on_denied(message) end)
+end
+
+-- 档位快选：把全部组按档位值（配置 XML 的 Tier）写入暂存并保存（一键生效）
+local function dmg_apply_tier(level)
+    local applied = false
+    for _, g in ipairs(dmg_groups) do
+        local lv = g.levels and g.levels[level]
+        local p = dmg_pending_of(g.id)
+        if lv ~= nil and p ~= nil then
+            if g.kind == "armor" then
+                p.defense = dmg_num(lv.defense)
+            else
+                p.damage = dmg_num(lv.damage)
+                p.penmode = lv.penmode or "add"
+                p.penvalue = dmg_num(lv.penvalue)
+            end
+            applied = true
+        end
+    end
+    if not applied then
+        pcall(function() GUI.AddMessage(T("dmg_lv_missing"), Color(255, 160, 120, 255)) end)
+        return
+    end
+    dmg_dirty = false
+    local res = dmg_write_config()
+    local label = "LV" .. tostring(level)
+    if res == "ok" then
+        pcall(function() GUI.AddMessage(string.format(T("dmg_lv_applied"), label), Color(150, 255, 150, 255)) end)
+        print(T("log_prefix") .. string.format(T("dmg_lv_applied"), label))
+    elseif res == "pending" then
+        pcall(function() GUI.AddMessage(string.format(T("dmg_lv_submitted"), label), Color(150, 255, 150, 255)) end)
+        print(T("log_prefix") .. string.format(T("dmg_lv_submitted"), label))
+    else
+        pcall(function() GUI.AddMessage(T("dmg_noedit_toast"), Color(255, 140, 120, 255)) end)
+    end
+end
+
+-- 滑条行（与 hb_slider_row 同款；拖动只改暂存 + 刷新数值文本，量化到 0.01）
+local function dmg_slider_row(layout, height, label, min, max, fmt, get, set)
+    local row = add_row(layout, height)
+    hb_add_text(Vector2(0.30, 1), row.RectTransform, label, GUI.Alignment.CenterLeft)
+    local scroll = GUI.ScrollBar(GUI.RectTransform(Vector2(0.46, 1), row.RectTransform), 0.1)
+    scroll.Range = Vector2(min, max)
+    local value_text = hb_add_text(Vector2(0.21, 1), row.RectTransform, string.format(fmt, get()), GUI.Alignment.CenterLeft)
+    scroll.BarScroll = math.min(math.max((get() - min) / (max - min), 0), 1)
+    scroll.OnMoved = function(bar, s)
+        set(math.floor((min + (max - min) * s) * 100 + 0.5) / 100)
+        dmg_dirty = true
+        value_text.Text = RichString.Plain(RawLString(string.format(fmt, get())))
         return true
     end
 end
@@ -1315,6 +1692,21 @@ local function open_menu()
             return true
         end
 
+        local btn_damage = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("damage_settings")))
+        btn_damage.OnClicked = function()
+            -- 武器伤害与防具抗性设置是本菜单的子页面（单机读 TouhouDamageState.txt 快照；联机向主机请求）
+            dmg_state = nil
+            dmg_dirty = false
+            dmg_selected = nil
+            if Game.IsMultiplayer then
+                dmg_mp_refresh = false
+                dmg_mp_get_counter = 99  -- 打开页面后首次轮询就拉取一次主机状态
+            end
+            menu_page = "damage"
+            pcall(open_menu)
+            return true
+        end
+
         local btn_costumelock = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("cl_settings")))
         btn_costumelock.OnClicked = function()
             -- 进入页面时重置编辑暂存（跟随服务器最新值）
@@ -1322,6 +1714,7 @@ local function open_menu()
             cl_pending_time = nil
             cl_pending_bots = nil
             cl_dirty = false
+            cl_list_scroll = 0
             cl_unlockall_confirm = nil
             menu_page = "costumelock"
             pcall(open_menu)
@@ -1462,11 +1855,11 @@ local function open_menu()
                 add_text(Vector2(1, ROW_H), layout.RectTransform, T("cl_no_permission"), GUI.Alignment.Center)
             end
 
-            -- 已锁定玩家列表（最多显示 3 行，超出在标题行注明总人数）
+            -- 已锁定玩家列表：ListBox 装全部条目，滚轮/拖动滚动条翻看（可视高度仍是 3 行，不影响布局）
             do
                 local row = add_row(layout, ROW_H)
                 local header = T("cl_locked_list")
-                if #CL.locked > 3 then
+                if #CL.locked > 0 then
                     header = header .. string.format(T("cl_total_suffix"), #CL.locked)
                 end
                 add_text(Vector2(0.76, 1), row.RectTransform, header, GUI.Alignment.CenterLeft)
@@ -1482,18 +1875,23 @@ local function open_menu()
             elseif #CL.locked == 0 then
                 add_text(Vector2(1, ROW_H), layout.RectTransform, T("cl_none"), GUI.Alignment.Center)
             else
-                for i = 1, math.min(#CL.locked, 3) do
-                    local entry = CL.locked[i]
-                    local row = add_row(layout, ROW_H)
-                    add_text(Vector2(0.76, 1), row.RectTransform,
+                local list = GUI.ListBox(GUI.RectTransform(Vector2(1, ROW_H * 3), layout.RectTransform))
+                cl_list_box = list
+                for _, entry in ipairs(CL.locked) do
+                    -- 每条占可视高度的 1/3（ListBox 里子项的相对高度以列表框高度为基准）
+                    local row = GUI.LayoutGroup(GUI.RectTransform(Vector2(1, 1 / 3), list.Content.RectTransform), true, GUI.Anchor.CenterLeft)
+                    row.RelativeSpacing = 0.006
+                    add_text(Vector2(0.74, 1), row.RectTransform,
                         tostring(entry.char_name) .. "（" .. tostring(entry.item_name) .. "）", GUI.Alignment.CenterLeft)
-                    local un_btn = GUI.Button(GUI.RectTransform(Vector2(0.2, 1), row.RectTransform), RawLString(T("cl_unlock")))
+                    local un_btn = GUI.Button(GUI.RectTransform(Vector2(0.22, 1), row.RectTransform), RawLString(T("cl_unlock")))
                     un_btn.Enabled = can_edit
                     un_btn.OnClicked = function()
                         CL.SendUnlock(entry.char_id)
                         return true
                     end
                 end
+                -- 恢复重建前的滚动位置（条目变少时会被 ListBox 自动夹到合法范围）
+                pcall(function() list.ScrollBar.BarScroll = cl_list_scroll end)
             end
 
             -- 全部解锁（二击确认，3 秒内再点一次生效）
@@ -1671,6 +2069,213 @@ local function open_menu()
             add_text(Vector2(1, HB_H), layout.RectTransform, "页面构建出错: " .. tostring(build_err), GUI.Alignment.Center)
             pcall(function() File.WriteAllText(hb_dir_file("page_error.txt"), tostring(build_err)) end)
         end
+        -- 返回主菜单 / 关闭（与其他页同款）
+        do
+            local bottom_row = add_row(layout, HB_H)
+            local back_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("back")))
+            back_btn.OnClicked = function()
+                menu_page = "hub"
+                pcall(open_menu)
+                return true
+            end
+            local close_button = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("close")))
+            close_button.OnClicked = function()
+                close_menu()
+                return true
+            end
+        end
+        return
+    end
+
+    if menu_page == "damage" then
+        if dmg_state == nil then dmg_state = dmg_load_state() end
+        add_text(Vector2(1, HB_H), layout.RectTransform, T("window_title") .. " - " .. T("damage_settings"), GUI.Alignment.Center)
+
+        -- 页面主体用 xpcall 包住：构建出错直接显示在页面上并写 page_error.txt
+        local build_ok, build_err = xpcall(function()
+        if dmg_state == nil or #dmg_groups == 0 then
+            add_text(Vector2(1, HB_H), layout.RectTransform,
+                Game.IsMultiplayer and T("dmg_mp_loading") or T("dmg_loading"), GUI.Alignment.Center)
+        else
+            if not dmg_dirty then dmg_sync_pending() end
+            if dmg_selected == nil or dmg_pending[dmg_selected] == nil then
+                dmg_selected = dmg_groups[1].id
+            end
+
+            -- 联机提示合并进状态行（不新增行，避免布局溢出）：只读 / 拒绝原因 / 已提交
+            do
+                local status_text = string.format(T("dmg_status_fmt"),
+                    tostring(dmg_state.patched["patched.items"] or "?"),
+                    tostring(dmg_state.patched["patched.objects"] or "?"),
+                    tostring(dmg_state.stamp or ""))
+                if Game.IsMultiplayer then
+                    if not dmg_mp_can_edit then
+                        status_text = status_text .. " · " .. T("dmg_readonly_short")
+                    elseif dmg_mp_denied ~= nil then
+                        status_text = status_text .. " · " .. T("dmg_denied_prefix") .. dmg_mp_denied
+                    elseif dmg_mp_submitted then
+                        status_text = status_text .. " · " .. T("dmg_submitted_short")
+                    end
+                end
+                add_text(Vector2(1, HB_H), layout.RectTransform, status_text, GUI.Alignment.Center)
+            end
+
+            -- 档位快选：一键写入全部组（LV1 略弱 / LV2 等补强 / LV3 补强×2），随后自动保存
+            do
+                local tier_row = add_row(layout, HB_H)
+                local btn_lv1 = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), tier_row.RectTransform), RawLString(T("dmg_lv1")))
+                btn_lv1.OnClicked = function()
+                    dmg_apply_tier(1)
+                    return true
+                end
+                local btn_lv2 = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), tier_row.RectTransform), RawLString(T("dmg_lv2")))
+                btn_lv2.OnClicked = function()
+                    dmg_apply_tier(2)
+                    return true
+                end
+                local btn_lv3 = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), tier_row.RectTransform), RawLString(T("dmg_lv3")))
+                btn_lv3.OnClicked = function()
+                    dmg_apply_tier(3)
+                    return true
+                end
+                -- 联机无权限时只读展示（真正的门槛在服务端，这里只是 UI 反馈）
+                if Game.IsMultiplayer then
+                    btn_lv1.Enabled = dmg_mp_can_edit
+                    btn_lv2.Enabled = dmg_mp_can_edit
+                    btn_lv3.Enabled = dmg_mp_can_edit
+                end
+            end
+
+            -- 左右排版：左列选分组，右列调选中分组的参数
+            local columns = GUI.LayoutGroup(GUI.RectTransform(Vector2(1, 0.66), layout.RectTransform), true, GUI.Anchor.CenterLeft)
+            columns.RelativeSpacing = 0.01
+
+            local left_col = GUI.LayoutGroup(GUI.RectTransform(Vector2(0.34, 1), columns.RectTransform))
+            left_col.Stretch = true
+            hb_add_text(Vector2(1, 0.1), left_col.RectTransform, T("dmg_groups_hint"), GUI.Alignment.CenterLeft)
+            local list = GUI.ListBox(GUI.RectTransform(Vector2(1, 0.9), left_col.RectTransform))
+            for _, g in ipairs(dmg_groups) do
+                local label = (g.id == dmg_selected and "» " or "") .. tostring(g.label)
+                    .. " · " .. string.format(T("dmg_items_fmt"), g.count)
+                    .. (g.id == dmg_selected and " «" or "")
+                local btn = GUI.Button(GUI.RectTransform(Vector2(1, 0.12), list.Content.RectTransform), RawLString(label))
+                btn.OnClicked = function()
+                    dmg_selected = g.id
+                    pcall(open_menu)
+                    return true
+                end
+            end
+
+            local right_col = GUI.LayoutGroup(GUI.RectTransform(Vector2(0.64, 1), columns.RectTransform))
+            right_col.Stretch = true
+            right_col.RelativeSpacing = 0.02
+            local RC_H = 0.13
+
+            local sel = nil
+            for _, g in ipairs(dmg_groups) do
+                if g.id == dmg_selected then
+                    sel = g
+                    break
+                end
+            end
+            if sel ~= nil then
+                local p = dmg_pending_of(sel.id)
+                if p == nil then
+                    add_text(Vector2(1, RC_H), right_col.RectTransform, T("dmg_loading"), GUI.Alignment.Center)
+                elseif sel.kind == "armor" then
+                    dmg_slider_row(right_col, RC_H, T("dmg_defense"), 0, 3, "%.2f",
+                        function() return p.defense or 1 end,
+                        function(v) p.defense = v end)
+                else
+                    dmg_slider_row(right_col, RC_H, T("dmg_damage"), 0.1, 5, "%.2f",
+                        function() return p.damage or 1 end,
+                        function(v) p.damage = v end)
+
+                    -- 穿甲模式（加算/乘算 二选一生效）；切换时落到该模式的中性值（0 / ×1），不偷偷改数值
+                    do
+                        local row = add_row(right_col, RC_H)
+                        local mode_btn = GUI.Button(GUI.RectTransform(Vector2(1, 1), row.RectTransform),
+                            RawLString(p.penmode == "multiply" and T("dmg_pen_mode_mul") or T("dmg_pen_mode_add")))
+                        mode_btn.OnClicked = function()
+                            if p.penmode == "multiply" then
+                                p.penmode = "add"
+                                p.penvalue = 0
+                            else
+                                p.penmode = "multiply"
+                                p.penvalue = 1
+                            end
+                            dmg_dirty = true
+                            pcall(open_menu)
+                            return true
+                        end
+                        if Game.IsMultiplayer then mode_btn.Enabled = dmg_mp_can_edit end
+                    end
+                    local pen_mult = (p.penmode == "multiply")
+                    dmg_slider_row(right_col, RC_H, T("dmg_pen_value"),
+                        pen_mult and 0.1 or -0.5, pen_mult and 3.0 or 0.5,
+                        pen_mult and "%.2f" or "%.3f",
+                        function() return p.penvalue or 0 end,
+                        function(v) p.penvalue = v end)
+                end
+
+                -- 保存 / 重置
+                do
+                    local row = add_row(right_col, RC_H)
+                    local save_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), RawLString(T("dmg_save")))
+                    save_btn.OnClicked = function()
+                        local res = dmg_write_config()
+                        if res == "ok" then
+                            dmg_dirty = false
+                            pcall(function() GUI.AddMessage(T("dmg_saved"), Color(150, 255, 150, 255)) end)
+                            print(T("log_prefix") .. T("dmg_saved"))
+                        elseif res == "pending" then
+                            dmg_dirty = false
+                            pcall(function() GUI.AddMessage(T("dmg_submitted"), Color(150, 255, 150, 255)) end)
+                            print(T("log_prefix") .. T("dmg_submitted"))
+                        else
+                            pcall(function() GUI.AddMessage(T("dmg_noedit_toast"), Color(255, 140, 120, 255)) end)
+                        end
+                        return true
+                    end
+                    local reset_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), RawLString(T("dmg_reset")))
+                    reset_btn.OnClicked = function()
+                        for _, g in ipairs(dmg_groups) do
+                            local pp = dmg_pending_of(g.id)
+                            if pp ~= nil then
+                                pp.damage = dmg_num(g.defaultdamage)
+                                pp.penmode = g.defaultpenmode or "add"
+                                pp.penvalue = dmg_num(g.defaultpenvalue)
+                                pp.defense = dmg_num(g.defaultdefense)
+                            end
+                        end
+                        dmg_dirty = false
+                        local res = dmg_write_config()
+                        if res == "ok" then
+                            pcall(function() GUI.AddMessage(T("dmg_reset_done"), Color(150, 255, 150, 255)) end)
+                            print(T("log_prefix") .. T("dmg_reset_done"))
+                        elseif res == "pending" then
+                            pcall(function() GUI.AddMessage(T("dmg_submitted"), Color(150, 255, 150, 255)) end)
+                            print(T("log_prefix") .. T("dmg_submitted"))
+                        else
+                            pcall(function() GUI.AddMessage(T("dmg_noedit_toast"), Color(255, 140, 120, 255)) end)
+                        end
+                        return true
+                    end
+                    if Game.IsMultiplayer then
+                        save_btn.Enabled = dmg_mp_can_edit
+                        reset_btn.Enabled = dmg_mp_can_edit
+                    end
+                end
+
+                add_text(Vector2(1, HB_H), right_col.RectTransform, T("dmg_hint"), GUI.Alignment.CenterLeft)
+            end
+        end
+        end, function(e) return tostring(e) end)
+        if not build_ok then
+            add_text(Vector2(1, HB_H), layout.RectTransform, "页面构建出错: " .. tostring(build_err), GUI.Alignment.Center)
+            pcall(function() File.WriteAllText(hb_dir_file("page_error.txt"), tostring(build_err)) end)
+        end
+
         -- 返回主菜单 / 关闭（与其他页同款）
         do
             local bottom_row = add_row(layout, HB_H)
@@ -2043,6 +2648,7 @@ local function register_binding(def)
     extra_order[#extra_order + 1] = def.id
     combined_cache = nil
     sorted_binding_order = nil
+    double_bound_keys_cache = nil  -- 同点失效（双击绑定键集合也是纯配置派生）
     print(T("log_prefix") .. "已注册快捷键绑定：" .. def.id .. "（" .. b.mod .. " / " .. b.name .. "）")
     return true
 end
@@ -2087,6 +2693,19 @@ local function get_sorted_binding_order()
     return sorted_binding_order
 end
 
+-- 有双击绑定的键集合（单击绑定要让位给同键的双击绑定）。
+-- 纯配置派生、跟按键状态无关，所以跟 sorted_binding_order 一样缓存、一样失效
+local function get_double_bound_keys()
+    if double_bound_keys_cache == nil then
+        local t = {}
+        for _, b in ipairs(get_combined()) do
+            if b.double and b.key ~= "" then t[b.key] = true end
+        end
+        double_bound_keys_cache = t
+    end
+    return double_bound_keys_cache
+end
+
 local function apply_captured_key(name)
     local conflict, who
     if capturing == "menukey" then
@@ -2111,6 +2730,9 @@ end
 Hook.Add("think", "touhou_hotkey_settings", function()
     -- 清掉上一帧未被消费的轻点标记（被输入守卫拦截的轻点直接丢弃，不延迟触发）
     desc_tapped = false
+    -- 复用模块级命中表：开头清空即可，跟每帧新建表等价，省掉每帧的分配
+    for k in pairs(key_hits) do key_hits[k] = nil end
+    for k in pairs(double_hits) do double_hits[k] = nil end
 
     -- C# 设置窗口「返回」标记轮询：open_mod_settings=1 → 重新打开主菜单（0.5s 节流）
     flag_poll_counter = flag_poll_counter + 1
@@ -2158,6 +2780,51 @@ Hook.Add("think", "touhou_hotkey_settings", function()
                     elseif hb_pending_rebuild and not hb_mouse_held() then
                         hb_pending_rebuild = false
                         pcall(open_menu)
+                    end
+                end)
+            end
+        end
+
+        -- 伤害/防具设置页：单机 0.5 秒轮询状态快照；联机走主机请求-应答（不读本地文件，
+        -- 防本地旧快照覆盖主机状态）。有未保存编辑时不重建（保住暂存值）。
+        if menu_page == "damage" then
+            dmg_poll_counter = dmg_poll_counter + 1
+            if dmg_poll_counter >= 30 then
+                dmg_poll_counter = 0
+                pcall(function()
+                    if not dmg_is_authority() then
+                        -- 纯客户端：只请求服务端（状态放内存）。已提交等应用时 0.5 秒一拉，平时 5 秒一拉
+                        dmg_mp_get_counter = dmg_mp_get_counter + 1
+                        if dmg_mp_get_counter >= (dmg_mp_submitted and 1 or 10) then
+                            dmg_mp_get_counter = 0
+                            dmg_mp_request_state()
+                        end
+                        if dmg_mp_submitted then
+                            dmg_mp_submit_ticks = dmg_mp_submit_ticks + 1
+                            if dmg_mp_submit_ticks >= 20 then  -- 约 10 秒没回应（C# 应用器没跑？）就放弃等待
+                                dmg_mp_submitted = false
+                                dmg_mp_submit_ticks = 0
+                                dmg_mp_denied = T("dmg_mp_timeout")
+                            end
+                        end
+                        if dmg_mp_refresh then
+                            dmg_mp_refresh = false
+                            if not dmg_dirty and not hb_mouse_held() then
+                                pcall(open_menu)
+                            end
+                        end
+                        return
+                    end
+                    -- 单机 / 主机：读本地快照（C# 就写在这台机器上）
+                    if File == nil then return end
+                    local path = hb_dir_file("TouhouDamageState.txt")
+                    if not File.Exists(path) then return end
+                    local text = File.ReadAllText(path)
+                    if text ~= nil and text ~= dmg_state_raw then
+                        dmg_set_state_from_text(text)
+                        if not dmg_dirty and not hb_mouse_held() then
+                            pcall(open_menu)
+                        end
                     end
                 end)
             end
@@ -2256,7 +2923,6 @@ Hook.Add("think", "touhou_hotkey_settings", function()
     -- 逐绑定轮询会让第一条把边沿消费掉，后面的永远不响
     local menukey_hit = poll_key_hit(config.menukey)
     local esc_hit = poll_key_hit("Escape")
-    local key_hits = {}  -- 按键名 -> 本帧是否新按下
     for _, b in ipairs(get_combined()) do
         if b.key ~= "" and key_hits[b.key] == nil then
             key_hits[b.key] = poll_key_hit(b.key)
@@ -2322,8 +2988,11 @@ Hook.Add("think", "touhou_hotkey_settings", function()
 
     -- 控制台、Tab 菜单、战役界面、社交覆盖层等“阻挡输入”的界面打开时不触发技能
     -- （调试控制台打开时即视为正在输入文字；该属性也包含暂停菜单，但不会包含本脚本自己的设置窗口）
-    local ok_ib, input_blocking = pcall(function() return GUI.InputBlockingMenuOpen end)
-    if ok_ib and input_blocking then return end
+    -- 属性存在性只探一次（跟上面的 pause_toggle_probe 一个写法）；没有这个属性的环境直接跳过这段判断
+    if input_blocking_probe == nil then
+        input_blocking_probe = pcall(function() return GUI.InputBlockingMenuOpen end)
+    end
+    if input_blocking_probe and GUI.InputBlockingMenuOpen then return end
 
     -- 轻点「描述详略切换」= 切换锁定模式（详细/简短）
     if desc_tapped then
@@ -2341,8 +3010,7 @@ Hook.Add("think", "touhou_hotkey_settings", function()
 
     local fired_sig = nil
     -- 双击检测：同一键 0.35 秒内两次边沿 = 双击（三连击不重复触发）
-    local double_hits = {}
-    local double_bound_keys = {}
+    local double_bound_keys = get_double_bound_keys()
     local now = os.clock()
     for key, hit in pairs(key_hits) do
         if hit then
@@ -2353,10 +3021,6 @@ Hook.Add("think", "touhou_hotkey_settings", function()
                 double_last_press[key] = now
             end
         end
-    end
-    -- 有双击绑定的键，单击绑定让位（避免一键双绑时单击先抢走）
-    for _, b in ipairs(get_combined()) do
-        if b.double and b.key ~= "" then double_bound_keys[b.key] = true end
     end
 
     for _, i in ipairs(get_sorted_binding_order()) do

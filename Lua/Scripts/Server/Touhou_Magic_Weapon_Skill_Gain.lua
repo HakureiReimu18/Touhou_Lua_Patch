@@ -144,10 +144,8 @@ local function get_skill_gain_multiplier(skill_level)
     end
 
     local clamped_skill = math.max(0, math.min(skill_level, 100))
-    if clamped_skill >= 99 then
-        return 0.2
-    end
 
+    -- clamped_skill 落在 [99,100] 时曲线已经 <= 0.2，末尾的 math.max 会兜到 0.2，等价于旧代码这里提前 return 0.2
     local curve = 1 - (clamped_skill / 99) * 0.8
     return math.max(curve, 0.2)
 end
@@ -161,18 +159,19 @@ Hook.Patch("Barotrauma.Character", "ApplyAttack", function(instance, ptable)
         return
     end
 
-    local is_enemy, enemy_reason = is_valid_enemy(attacker, instance)
-    if not is_enemy then
-        if DEBUG_LOG then
-            print("Touhou.MagicWeaponSkillGain: skip non-enemy (" .. tostring(enemy_reason) .. ").")
-        end
-        return
-    end
-
+    -- 先判武器（带等级tag的魔法武器）再做敌人判定：两边都是纯判断、AND 关系，调换只影响先短路哪一个
     local attack = try_get_param(ptable, "attack")
     if resolve_magic_weapon_tag(attacker, attack) == nil then
         if DEBUG_LOG then
             print("Touhou.MagicWeaponSkillGain: no magic weapon tag.")
+        end
+        return
+    end
+
+    local is_enemy, enemy_reason = is_valid_enemy(attacker, instance)
+    if not is_enemy then
+        if DEBUG_LOG then
+            print("Touhou.MagicWeaponSkillGain: skip non-enemy (" .. tostring(enemy_reason) .. ").")
         end
         return
     end

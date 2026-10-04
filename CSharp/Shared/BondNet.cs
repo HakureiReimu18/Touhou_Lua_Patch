@@ -100,13 +100,13 @@ namespace Touhou.Bond
                 {
                     var (msg, sender) = ParseArgs(args);
                     if (msg == null) return;
-                    bool permitted = DebugConsole.CheatsEnabled &&
-                        (sender == null ||
-                         sender.HasPermission(Barotrauma.Networking.ClientPermissions.ConsoleCommands));
+                    // 只认 ConsoleCommands 权限（服主/管理员）；不再额外要求服务器开 enablecheats
+                    bool permitted = sender == null ||
+                        sender.HasPermission(Barotrauma.Networking.ClientPermissions.ConsoleCommands);
                     if (!permitted)
                     {
                         SendTo(sender, NET_DENIED,
-                            w => w.WriteString("修改设置需要作弊权限（服务器 enablecheats + ConsoleCommands 权限）"));
+                            w => w.WriteString("修改设置需要管理员权限（ConsoleCommands）"));
                         return;
                     }
                     int n = SafeRead(msg.ReadUInt16);

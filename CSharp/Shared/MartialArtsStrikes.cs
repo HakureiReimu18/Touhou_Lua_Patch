@@ -33,6 +33,7 @@ namespace Touhou.MartialArts
             harmony.PatchAll(typeof(StrikeDrivePatch));
             harmony.PatchAll(typeof(StrikeUsePatch));
             harmony.PatchAll(typeof(StrikeMeleePosePatch));
+            harmony.PatchAll(typeof(StrikeItemRemovedPatch));
             LuaCsSetup.Instance.Hook.Add("roundEnd", "Touhou.MartialArts.RoundEnd", OnRoundEnd);
         }
 
@@ -43,12 +44,16 @@ namespace Touhou.MartialArts
             LuaCsSetup.Instance.Hook.Remove("roundEnd", "Touhou.MartialArts.RoundEnd");
             harmony?.UnpatchSelf();
             oneTimeInitDone = false;
-            StrikeManager.ClearAll();
+            // 顺序要紧：先把注入的原版攻击还原回去，再清表——ClearAll 会连注入记录一起清掉
             StrikeManager.RestoreInjections();
+            StrikeManager.ClearAll();
         }
 
         object OnRoundEnd(object[] args)
         {
+            // 先还原注入的原版攻击再清表：ClearAll 会把注入记录一起清掉，
+            // 反过来做的话，若某根 Limb 跨巡回还活着，下次 BindAttack 会把"注入的踢腿攻击"当成原版记下来
+            StrikeManager.RestoreInjections();
             StrikeManager.ClearAll();
             return null;
         }
@@ -270,9 +275,13 @@ namespace Touhou.MartialArts
 
         static void UnbindAttack(Limb limb)
         {
-            if (limb == null || limb.Removed || limbAttackField == null) return;
+            if (limb == null) return;
+            // 先把条目从表里摘出来再决定要不要写回：limb 被移除时不用还原注入，
+            // 但记录必须出表——否则字典只增不减，一轮下来按着所有踢过腿的肢体。
             if (!originalAttacks.TryGetValue(limb, out var orig)) return;
-            try { limbAttackField?.SetValue(limb, orig); originalAttacks.Remove(limb); } catch { }
+            originalAttacks.Remove(limb);
+            if (limb.Removed || limbAttackField == null) return;
+            try { limbAttackField.SetValue(limb, orig); } catch { }
         }
 
         // ---------------- 触发 ----------------
@@ -299,6 +308,13 @@ namespace Touhou.MartialArts
         }
 
         static readonly Dictionary<Item, string> strikeIdCache = new();
+
+        /// <summary>物品删除时清掉它的招式 id 缓存（StrikeItemRemovedPatch 调用）。</summary>
+        internal static void PurgeStrikeIdCache(Item item)
+        {
+            if (item == null || strikeIdCache.Count == 0) return;
+            strikeIdCache.Remove(item);
+        }
 
         /// <summary>架势分支专用轻量查询：只取小写 strike id，结果按 Item 缓存</summary>
         internal static bool TryGetStrikeId(Item item, out string strikeId)
@@ -527,10 +543,44 @@ namespace Touhou.MartialArts
 
         // ---------------- 每帧驱动 ----------------
 
+        /// <summary>残留条目清扫节流：active/comboTrack 都很小，但没必要每个角色每帧都扫一遍</summary>
+        const double StaleSweepInterval = 0.5;
+        static double nextStaleSweep;
+        static readonly List<Character> staleScratch = new();
+
+        /// <summary>
+        /// 清掉对应角色已被删除的条目：角色死亡/删除后驱动钩子不再回调 End，
+        /// 条目会一直挂到轮末，白白按着已经 Removed 的 Character（连带整个 StrikeState）。
+        /// 每帧驱动路径顺手调用，内部按 StaleSweepInterval 节流。
+        /// </summary>
+        static void SweepStaleEntries()
+        {
+            double now = Timing.TotalTime;
+            if (now < nextStaleSweep) return;
+            nextStaleSweep = now + StaleSweepInterval;
+            if (active.Count == 0 && comboTrack.Count == 0) return;
+
+            // Dictionary 的键不可能是 null（写入时就抛了），这里只按 Removed 判
+            staleScratch.Clear();
+            foreach (var kv in active)
+            {
+                if (kv.Key != null && kv.Key.Removed) staleScratch.Add(kv.Key);
+            }
+            for (int i = 0; i < staleScratch.Count; i++) active.Remove(staleScratch[i]);
+
+            staleScratch.Clear();
+            foreach (var kv in comboTrack)
+            {
+                if (kv.Key != null && kv.Key.Removed) staleScratch.Add(kv.Key);
+            }
+            for (int i = 0; i < staleScratch.Count; i++) comboTrack.Remove(staleScratch[i]);
+        }
+
         internal static void DriveStanding(HumanoidAnimController ac)
         {
             Character c = ac.character;
             if (c == null) return;
+            SweepStaleEntries();
             if (!active.TryGetValue(c, out var st)) return;
 
             float dt = (float)Timing.Step;
@@ -833,9 +883,13 @@ namespace Touhou.MartialArts
                 }
                 catch { }
             }
-            // 记录连击（供下一招换手判定）
-            comboTrack[c] = new ComboInfo { EndTime = Timing.TotalTime, ComboIndex = st.ComboIndex };
-            active.Remove(c);
+            // 记录连击（供下一招换手判定）；角色已经删掉了就别再往里塞，那种条目只能等到轮末
+            if (c != null)
+            {
+                if (!c.Removed)
+                    comboTrack[c] = new ComboInfo { EndTime = Timing.TotalTime, ComboIndex = st.ComboIndex };
+                active.Remove(c); // 键不可能是 null，这里一并防一下，省得 Remove(null) 抛
+            }
         }
 
         public static void ClearAll()
@@ -843,6 +897,9 @@ namespace Touhou.MartialArts
             active.Clear();
             comboTrack.Clear();
             strikeIdCache.Clear();
+            // 注入的原版攻击记录也要清：它只在这里和 RestoreInjections 里出表，
+            // 不清的话一轮打下来每根踢过腿的 Limb 都赖在表里
+            originalAttacks.Clear();
         }
 
         public static void RestoreInjections()
@@ -920,5 +977,15 @@ namespace Touhou.MartialArts
             try { StrikeManager.DriveStanding(__instance); }
             catch (Exception e) { StrikeManager.Log($"招式驱动异常：{e.Message}", true); }
         }
+    }
+
+    /// <summary>
+    /// 物品删除时清掉招式 id 缓存：那张表是按 Item 强键的，只在轮末清，
+    /// 中间被删除的物品（消耗/分解/掉图）会一直挂到轮末，ID 还会被引擎回收。
+    /// </summary>
+    [HarmonyPatch(typeof(Item), nameof(Item.Remove))]
+    public static class StrikeItemRemovedPatch
+    {
+        static void Postfix(Item __instance) => StrikeManager.PurgeStrikeIdCache(__instance);
     }
 }

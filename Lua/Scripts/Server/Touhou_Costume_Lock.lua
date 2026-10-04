@@ -26,6 +26,9 @@ end
 local File = register_static("Barotrauma.IO.File")
 local Path = register_static("Barotrauma.IO.Path")
 
+-- 装束都穿在 InnerClothes 槽，常量提到顶部（照仓库点号惯例，免得每 tick 去索引静态类）
+local INNER_CLOTHES_SLOT = InvSlotType.InnerClothes
+
 local CONFIG_FILE_NAME = "TouhouCostumeLockConfig.txt"
 local LOG_PREFIX = "[东方装束锁定] "
 local MSG_STATE  = "TLE_CL_STATE"    -- S→全体：配置 + 锁定列表
@@ -35,8 +38,7 @@ local MSG_CFGSET = "TLE_CL_CFGSET"   -- C→S：修改配置（需权限）
 local MSG_UNLOCK = "TLE_CL_UNLOCK"   -- C→S：强制解锁（需权限；0 = 全部）
 local LOCK_TIME_MIN = 10
 local LOCK_TIME_MAX = 600
-local TICK_FRAMES = 30               -- 每 30 帧算一次账
-local TICK_SECONDS = 0.5
+local TICK_SECONDS = 0.5             -- 记账间隔（秒）；按时间记账，锁定时长不随帧率漂移
 
 local CFG = {
     enabled = true,
@@ -82,6 +84,9 @@ local function save_config()
     end
 end
 
+-- is_lockable_outfit 的记忆化表：identifier 字符串 -> 是否可锁。配置变更（load_config/apply_config）时清空
+local lockable_cache = {}
+
 local function load_config()
     if File == nil then return end
     local path = get_config_path()
@@ -101,20 +106,25 @@ local function load_config()
     if kv["lockbots"] ~= nil then CFG.lock_bots = kv["lockbots"] == "1" end
     if kv["extra_ids"] ~= nil then CFG.extra_ids = split_ids(kv["extra_ids"]) end
     if kv["exclude_ids"] ~= nil then CFG.exclude_ids = split_ids(kv["exclude_ids"]) end
+    lockable_cache = {}
 end
 
 local wear_time = {}     -- character -> 本巡回累计穿着秒数（脱下保留，巡回开始清零）
 local locked = {}        -- character -> { item=被锁物品, orig=原 NonPlayerTeamInteractable 值 }
 local round_active = false
-local tick_counter = 0
+local state_dirty = false    -- tick 内的锁/解锁改动先攒着，tick 末尾统一广播一次
+local requip_warned = false  -- 锁装回装失败只提示一次，避免刷屏
+
+-- 记账计时双轨：有 Timer.GetTime 就用它做 next_tick 基准（think 可能不传 delta_time），
+-- 没有就按 1/60 秒累加兜底；tick_dt 是这一轮实际经过的秒数
+local next_tick = 0
+local last_tick_time = nil
+local elapsed = 0
 
 -- 追踪对象：玩家控制的角色始终算；开了 lock_bots 后 AI 船员也算（怪物不锁）
 local function is_player_character(char)
     if char == nil or char.Removed then return false end
-    local ok, res = pcall(function()
-        return char.IsHuman and (not char.IsBot or CFG.lock_bots)
-    end)
-    return ok and res == true
+    return char.IsHuman == true and (char.IsBot ~= true or CFG.lock_bots == true)
 end
 
 -- 物品现在挂在哪个玩家角色身上。实体被替换（中途加入/重连）时靠这个把锁跟到新角色
@@ -133,10 +143,7 @@ end
 
 -- 装束+ 的 id 都带 _Plus；exclude_ids 优先踢掉，extra_ids 兜底纳入
 -- （槽位是不是 InnerClothes 由调用方保证）
-local function is_lockable_outfit(item)
-    if item == nil or item.Removed then return false end
-    local ok, id = pcall(function() return tostring(item.Prefab.Identifier) end)
-    if not ok or id == nil then return false end
+local function compute_lockable(id)
     for _, ex in ipairs(CFG.exclude_ids) do
         if id == ex then return false end
     end
@@ -146,19 +153,26 @@ local function is_lockable_outfit(item)
     return string.find(id, "_Plus", 1, true) ~= nil
 end
 
+-- 每 tick 都要对每个角色问一次，按 identifier 字符串记结果；配置变了由 load_config/apply_config 清表
+local function is_lockable_outfit(item)
+    if item == nil or item.Removed then return false end
+    local id = tostring(item.Prefab.Identifier)
+    local cached = lockable_cache[id]
+    if cached == nil then
+        cached = compute_lockable(id)
+        lockable_cache[id] = cached
+    end
+    return cached
+end
+
 -- 暂停（单机 ESC）不计时；编辑器测试模式按正式巡回一样计时（方便排查问题）
 local function is_paused()
-    local ok, res = pcall(function() return Game.Paused == true end)
-    return ok and res == true
+    return Game.Paused == true
 end
 
 local function get_worn_outfit(char)
     if char.Inventory == nil then return nil end
-    local ok, item = pcall(function()
-        return char.Inventory.GetItemInLimbSlot(InvSlotType["InnerClothes"])
-    end)
-    if ok then return item end
-    return nil
+    return char.Inventory.GetItemInLimbSlot(INNER_CLOTHES_SLOT)
 end
 
 -- 定向私聊，发不出去就 print（照抄 Pseudologia.lua 的写法）
@@ -223,6 +237,13 @@ local function broadcast_state()
     end)
 end
 
+-- tick 里的锁/解锁改动攒成一次广播；没有改动时什么都不发，发完复位
+local function flush_state()
+    if not state_dirty then return end
+    state_dirty = false
+    broadcast_state()
+end
+
 local function send_state_to(client)
     if client == nil or Game.IsSingleplayer then return end
     local ok, err = pcall(function()
@@ -240,7 +261,7 @@ local function lock_outfit(char, item)
     locked[char] = { item = item, orig = item.NonPlayerTeamInteractable }
     item.NonPlayerTeamInteractable = true
     notify_character("你的装束已锁定，巡回结束或死亡后解锁：" .. tostring(item.Name), char)
-    broadcast_state()
+    state_dirty = true   -- 只有 tick 会走到这里，广播交给 tick 末尾统一发
 end
 
 local function unlock_character(char, reason_notify)
@@ -273,14 +294,17 @@ local function sweep_stray_locks()
     end
 end
 
-local function reset_round()
+-- roundStart：解锁 + 清计时 + 兜底扫一遍全图（防存档把锁序列化进去、读档后 Lua 状态丢了）。
+-- roundEnd：unlock_all 已经把挂着的锁都还原了，同一轮的 sweep 是重复劳动，跳过
+local function reset_round(sweep)
     unlock_all(false)
     wear_time = {}
-    sweep_stray_locks()
+    if sweep then sweep_stray_locks() end
     broadcast_state()
 end
 
 local function apply_config(enabled, lock_time, lock_bots)
+    lockable_cache = {}   -- 名单/开关可能变，记忆化结果作废
     CFG.enabled = enabled == true
     CFG.lock_time = math.floor(math.min(math.max(tonumber(lock_time) or CFG.lock_time, LOCK_TIME_MIN), LOCK_TIME_MAX))
     CFG.lock_bots = lock_bots == true
@@ -302,7 +326,7 @@ local function unlock_by_char_id(char_id, notify)
     for char, _ in pairs(locked) do
         if not char.Removed and char.ID == char_id then
             local r = unlock_character(char, notify)
-            broadcast_state()
+            state_dirty = true   -- tick 外的调用方随后自己补发（见 flush_state）
             return r
         end
     end
@@ -337,6 +361,7 @@ if SERVER and not Game.IsSingleplayer then
             broadcast_state()
         else
             unlock_by_char_id(target, true)
+            flush_state()
         end
     end)
 end
@@ -367,7 +392,9 @@ TLE.CostumeLock = {
             unlock_all(true)
             return true
         end
-        return unlock_by_char_id(char_id, true)
+        local result = unlock_by_char_id(char_id, true)
+        flush_state()   -- 指令路径不等 tick，立刻广播
+        return result
     end,
     IsLockableOutfit = is_lockable_outfit,
 }
@@ -381,12 +408,12 @@ end)
 
 Hook.Add("roundStart", "TLE_CostumeLock_round", function()
     round_active = true
-    reset_round()
+    reset_round(true)
 end)
 
 Hook.Add("roundEnd", "TLE_CostumeLock_round", function()
     round_active = false
-    reset_round()
+    reset_round(false)   -- 全图 sweep 交给下一次 roundStart
 end)
 
 -- 穿戴者死亡 → 立即解锁（尸体上的装束可被队友回收），并清掉其计时
@@ -398,10 +425,22 @@ Hook.Add("character.death", "TLE_CostumeLock_death", function(char)
     wear_time[char] = nil
 end)
 
-Hook.Add("think", "TLE_CostumeLock_tick", function()
-    tick_counter = tick_counter + 1
-    if tick_counter < TICK_FRAMES then return end
-    tick_counter = 0
+Hook.Add("think", "TLE_CostumeLock_tick", function(delta_time)
+    -- 时间制记账（数帧会随帧率漂）：有 Timer.GetTime 就用绝对时间做基准，
+    -- 拿不到就按 1/60 秒累加兜底；tick_dt = 这一轮实际经过的秒数，穿着时长按它累加
+    local tick_dt
+    if Timer ~= nil and Timer.GetTime ~= nil then
+        local now = Timer.GetTime()
+        if now < next_tick then return end
+        tick_dt = (last_tick_time ~= nil) and (now - last_tick_time) or TICK_SECONDS
+        last_tick_time = now
+        next_tick = now + TICK_SECONDS
+    else
+        elapsed = elapsed + (delta_time or (1.0 / 60.0))
+        if elapsed < TICK_SECONDS then return end
+        tick_dt = elapsed
+        elapsed = 0
+    end
 
     -- 先收集再删，遍历时增删键是未定义行为
     local removed_locked_chars = {}
@@ -418,7 +457,7 @@ Hook.Add("think", "TLE_CostumeLock_tick", function()
                 locked[char] = nil
                 locked[new_owner] = entry
                 wear_time[new_owner] = math.max(wear_time[new_owner] or 0, CFG.lock_time)
-                broadcast_state()
+                state_dirty = true   -- 广播交给 tick 末尾统一发
             else
                 if not entry.item.Removed then
                     pcall(function() entry.item.NonPlayerTeamInteractable = entry.orig end)
@@ -440,6 +479,28 @@ Hook.Add("think", "TLE_CostumeLock_tick", function()
         end
     end
 
+    -- 兜底：没同步到锁状态的客户端能从本地物品栏把装束脱下来（服务端不走
+    -- IsInteractable 校验，挡不住这种请求）→ 把还在物品栏里的锁装塞回装束槽
+    for char, entry in pairs(locked) do
+        local item = entry.item
+        if not item.Removed and not char.Removed and not char.IsDead
+                and find_item_owner_character(item) == char
+                and get_worn_outfit(char) ~= item then
+            local ok, err = pcall(function()
+                char.Inventory.TryPutItem(item, char, { InvSlotType["InnerClothes"] }, true)
+            end)
+            if ok then
+                state_dirty = true   -- 回装成功：让客户端尽快拿到状态，别继续钻空子
+            elseif not requip_warned then
+                requip_warned = true
+                print(LOG_PREFIX .. "锁定装束回装失败：" .. tostring(err))
+            end
+        end
+    end
+
+    -- 上面拆卸/挪锁/复查改动过的地方在这里补发一次，免得被下面的提前 return 吞掉
+    flush_state()
+
     if not CFG.enabled or not round_active then return end
     if is_paused() then return end  -- 暂停不计时
 
@@ -447,11 +508,14 @@ Hook.Add("think", "TLE_CostumeLock_tick", function()
         if is_player_character(char) and not char.IsDead then
             local item = get_worn_outfit(char)
             if item ~= nil and is_lockable_outfit(item) then
-                wear_time[char] = (wear_time[char] or 0) + TICK_SECONDS
+                wear_time[char] = (wear_time[char] or 0) + tick_dt
                 if wear_time[char] >= CFG.lock_time and locked[char] == nil then
                     lock_outfit(char, item)
                 end
             end
         end
     end
+
+    -- tick 内的锁/解锁改动合并成一次广播（发完复位，没改动就是空发）
+    flush_state()
 end)

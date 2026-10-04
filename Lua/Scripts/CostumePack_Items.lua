@@ -181,9 +181,12 @@ TLE_COSTUME_PACK_ITEMS.category_of = function(identifier)
 end
 
 ----------------------------------------------------------------------
--- 扩展收录：Config/CostumePack_Extra.xml（给拓展模组/玩家用，不用改本文件）
+-- 扩展收录：Config/CostumePack_Extra.xml
 -- <Item category="..." identifier="..." />，category：basic=装束包 / plus=装束包+ / headwear=头饰包
 -- 重复的 id 自动去重；分类名写错会被跳过并打日志。
+-- 收录范围：**所有已启用内容包各自的 Config/CostumePack_Extra.xml**（含本模组），按加载顺序合并。
+-- 别的模组把自己那份放在自己模组的 Config 里即可，不用塞进本模组；本模组那份排最前，优先级最高。
+-- 与 CSharp/Shared/HomingProjectiles.cs 扫 Config/homing_config.xml 是同一套做法。
 -- 用文本扫描而不是 XElement 解析：配置结构很简单，这样跨 LuaCs 版本最稳。
 ----------------------------------------------------------------------
 local function register_static(type_name)
@@ -199,41 +202,126 @@ local function register_static(type_name)
     return nil
 end
 
+-- 文件接口：默认沿用 Barotrauma.IO.File（不做路径限制）；它只在 LuaCs 开了 C# 脚本
+-- （LuaCsSetupConfig.xml 的 EnableCsScripting）时才注册得上，取不到就退回 LuaCs 自带的
+-- 全局 File（Barotrauma.LuaCsFile，一定存在；其可读白名单覆盖 LocalMods 与
+-- WorkshopMods/Installed，足够读所有模组目录）。
 local File = register_static("Barotrauma.IO.File")
+local FILE_IS_LUACS = false
+if File == nil then
+    local ok, f = pcall(function() return _G.File end)
+    if ok and f ~= nil then
+        File = f
+        FILE_IS_LUACS = true
+    end
+end
+
+local function read_config_text(path)
+    if File == nil then return nil end
+    local okExists, exists = pcall(function() return File.Exists(path) end)
+    if not okExists or exists ~= true then return nil end
+    local okRead, text
+    if FILE_IS_LUACS then
+        okRead, text = pcall(function() return File.Read(path) end)
+    else
+        okRead, text = pcall(function() return File.ReadAllText(path) end)
+    end
+    if okRead and type(text) == "string" then return text end
+    return nil
+end
+
+-- 收集所有已启用内容包的目录：多个来源逐级兜底（哪个能用用哪个）。读不到的路径无所谓，
+-- 下面只处理真实存在的文件。
+local function collect_package_dirs()
+    local getters = {
+        function() return ContentPackageManager.EnabledPackages.All end,
+        function() return ContentPackageManager.EnabledPackages.Regular end,
+        function() return ContentPackageManager.RegularPackages end,
+        function() return ContentPackageManager.AllPackages end,
+    }
+    for _, get in ipairs(getters) do
+        local dirs, seen = {}, {}
+        local ok = pcall(function()
+            for pkg in get() do
+                local okDir, dir = pcall(function() return pkg.Dir end)
+                if not okDir or type(dir) ~= "string" or dir == "" then
+                    local okPath, path = pcall(function() return pkg.Path end)
+                    if okPath and type(path) == "string" then
+                        dir = string.match(path, "^(.*)[/\\][Ff][Ii][Ll][Ee][Ll][Ii][Ss][Tt]%.xml$")
+                    end
+                end
+                if type(dir) == "string" and dir ~= "" then
+                    dir = string.gsub(dir, "\\", "/")
+                    dir = string.gsub(dir, "/+$", "")
+                    if dir ~= "" and not seen[dir] then
+                        seen[dir] = true
+                        table.insert(dirs, dir)
+                    end
+                end
+            end
+        end)
+        if ok and #dirs > 0 then return dirs end
+    end
+    return {}
+end
+
+local EXTRA_FILE_SUFFIX = { "/Config/CostumePack_Extra.xml", "/config/CostumePack_Extra.xml" }
 
 local function merge_extra_items()
-    if File == nil then return end
-    local okPath, path = pcall(function() return TLE.Path .. "/Config/CostumePack_Extra.xml" end)
-    if not okPath or path == nil then return end
-    local okExists, exists = pcall(function() return File.Exists(path) end)
-    if not okExists or not exists then return end
+    if File == nil then
+        print("[装束包] 扩展收录表未载入：LuaCs 文件接口不可用")
+        return
+    end
 
-    local okRead, text = pcall(function() return File.ReadAllText(path) end)
-    if not okRead or text == nil then return end
+    -- 本模组目录排最前（即使内容包枚举失败，原来那份 Config 也照旧生效），随后是其他所有已启用内容包
+    local dirs, seen_dir = {}, {}
+    local function add_dir(dir)
+        if type(dir) ~= "string" or dir == "" then return end
+        dir = string.gsub(dir, "\\", "/")
+        dir = string.gsub(dir, "/+$", "")
+        if dir ~= "" and not seen_dir[dir] then
+            seen_dir[dir] = true
+            table.insert(dirs, dir)
+        end
+    end
+    pcall(function() add_dir(TLE.Path) end)
+    for _, dir in ipairs(collect_package_dirs()) do add_dir(dir) end
 
-    -- 先剥掉注释，避免注释里的示例被当成配置
-    text = string.gsub(text, "<!%-%-.-%-%->", "")
-
-    local added, skipped = 0, 0
-    for tag in string.gmatch(text, "<Item%s+[^/>]*") do
-        local category = string.match(tag, 'category%s*=%s*"([^"]+)"')
-        local identifier = string.match(tag, 'identifier%s*=%s*"([^"]+)"')
-        if category ~= nil and identifier ~= nil then
-            category = string.lower(category)
-            if TLE_COSTUME_PACK_ITEMS[category] == nil then
-                skipped = skipped + 1
-                print("[装束包] 扩展收录表跳过未知分类 " .. tostring(category) .. "：" .. identifier)
-            elseif CATEGORY_OF[identifier] ~= nil then
-                -- 已在表里（或重复行），跳过
-            else
-                table.insert(TLE_COSTUME_PACK_ITEMS[category], identifier)
-                CATEGORY_OF[identifier] = category
-                added = added + 1
+    local added, skipped, duplicated, files = 0, 0, 0, 0
+    for _, dir in ipairs(dirs) do
+        for _, suffix in ipairs(EXTRA_FILE_SUFFIX) do
+            local text = read_config_text(dir .. suffix)
+            if text ~= nil then
+                files = files + 1
+                -- 先剥掉注释，避免注释里的示例被当成配置
+                text = string.gsub(text, "<!%-%-.-%-%->", "")
+                for tag in string.gmatch(text, "<Item%s+[^/>]*") do
+                    local category = string.match(tag, 'category%s*=%s*"([^"]+)"')
+                    local identifier = string.match(tag, 'identifier%s*=%s*"([^"]+)"')
+                    if category ~= nil and identifier ~= nil then
+                        category = string.lower(category)
+                        if TLE_COSTUME_PACK_ITEMS[category] == nil then
+                            skipped = skipped + 1
+                            print("[装束包] 扩展收录表跳过未知分类 " .. tostring(category) .. "：" .. identifier)
+                        elseif CATEGORY_OF[identifier] ~= nil then
+                            -- 已在表里（或别的模组先登记了），跳过
+                            duplicated = duplicated + 1
+                        else
+                            table.insert(TLE_COSTUME_PACK_ITEMS[category], identifier)
+                            CATEGORY_OF[identifier] = category
+                            added = added + 1
+                        end
+                    end
+                end
+                -- 同一模组只认一份（Windows 下 Config / config 是同一个目录，避免重复读）
+                break
             end
         end
     end
-    if added > 0 or skipped > 0 then
-        print("[装束包] 扩展收录表载入 " .. added .. " 条，跳过 " .. skipped .. " 条（" .. path .. "）")
+
+    if files > 0 then
+        print("[装束包] 扩展收录表：扫描 " .. #dirs .. " 个模组目录，读取 " .. files ..
+              " 份文件，收录 " .. added .. " 条，重复忽略 " .. duplicated .. " 条，跳过 " .. skipped .. " 条")
     end
 end
 

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  角色羁绊配置（东方潜渊行动组）
+  ============================================================
+  一个 <Synergy> = 一组羁绊：列出的成员全部在场时，给指定目标挂增益 affliction。
+
+  判定依据是"装束自己刷的身份 affliction"（每 0.5 秒刷一次、duration 1 秒，脱下 1 秒内消失），
+  所以脱装、换装、死亡、重生、中途加入都会在 0.5~2 秒内自动跟上，不需要事件系统。
+  装束身份 aff 全表见 Docs/角色羁绊系统-设计方案.md 附录 A（46 个）。
+
+  其他模组想加羁绊：在自己的内容包里放一份 Config/synergy_config.xml 即可，
+  按模组加载顺序合并：不同 id 追加；同 id 由排后面的包整条覆盖；remove="true" 可删除已有条目。
+
+  <Synergy> 属性
+    id          （必填）全局唯一
+    scope       same_sub（默认，成员需同一条潜艇）/ same_team / anywhere
+    detect      crew（默认，玩家 + 玩家队 AI 船员）/ players（只认玩家操控的角色）
+                / any（不限，含中立/敌对角色）
+    alive_only  默认 true；false = 尸体/昏迷也算在场
+    mode        while_present（默认，条件成立就挂、断开就撤）
+                / round_start（开局 10 秒窗口内成立即锁定，目标持续到巡回结束）
+    remove      true = 删除同 id 条目（本条目不需要子元素）
+
+  <Member> 子元素（至少 2 个才成立）
+    aff="装束身份 affliction"   推荐：同一角色多套装束共用同一个身份 aff
+    item="装束物品 identifier"  备选：按穿戴的物品判定（会漏掉 Plus / Eclipse / 头饰变体）
+
+  <Grant> 子元素（要发的增益，affliction 必须已在某处注册）
+    aff="增益 affliction identifier"（必填）
+    to="member:1 | member:2 | members（默认）| crew（同船玩家队全队）"
+    strength="1"（默认 1；会被 aff 自己的 maxstrength 截断）
+
+  增益 affliction 必须带 duration（建议 2.0，判定节拍的 4 倍余量），断链时引擎也会主动移除一次。
+  数值（技能/抗性/移速/生命上限等）全部写在 affliction 定义里，本文件只管"谁在场、给谁发什么"。
+-->
+<Synergies>
+
+  <!-- ===== 示例：灵梦 + 魔理沙同船，各拿一份增益 =====
+       启用前先在内容模组的 Touhou_Character_Afflictions.xml 里定义好这两个增益 aff，
+       否则加载时会被跳过并在日志里提示"增益 aff 未注册"。
+
+  <Synergy id="reimu_marisa" scope="same_sub" alive_only="true" mode="while_present">
+    <Member aff="Touhou_Reimu_Character_Effect"/>
+    <Member aff="Touhou_Marisa_Character_Effect"/>
+    <Grant aff="Touhou_Synergy_ReimuMarisa_Reimu"  to="member:1"/>
+    <Grant aff="Touhou_Synergy_ReimuMarisa_Marisa" to="member:2"/>
+  </Synergy>
+  -->
+
+  <!-- ===== 示例：三人羁绊，全船都吃增益 =====
+  <Synergy id="satori_family" scope="same_sub">
+    <Member aff="Touhou_Satori_Character_Effect"/>
+    <Member aff="Touhou_Koishi_Character_Effect"/>
+    <Member aff="Touhou_Kokoro_Character_Effect"/>
+    <Grant aff="Touhou_Synergy_SatoriFamily_Team" to="crew"/>
+  </Synergy>
+  -->
+
+  <!-- ===== 示例：按装束物品判定（同一角色只有这一套装束时可用）=====
+  <Synergy id="meirin_punch" scope="same_sub">
+    <Member item="Hong_Meirin_Plus"/>
+    <Member aff="Touhou_Sakuya_Character_Effect"/>
+    <Grant aff="Touhou_Synergy_MeirinPunch" to="member:1"/>
+  </Synergy>
+  -->
+
+  <!--红魔馆全员-->
+  <Synergy id="Touhou_Scarlet_Devil_Mansion_All_Members_Effect_Team" scope="same_team" detect="crew" alive_only="true" mode="while_present" >
+    <Member aff="Touhou_Remilia_Character_Effect"/>
+    <Member aff="Touhou_Flandre_Character_Effect"/>
+    <Member aff="Touhou_Patchouli_Character_Effect"/>
+    <Member aff="Touhou_Koakuma_Character_Effect"/>
+    <Member aff="Touhou_Hong_Meirin_Character_Effect"/>
+    <Grant aff="Touhou_Scarlet_Devil_Mansion_All_Members_Effect" to="members"/>
+  </Synergy>
+
+  <!--主角组-->
+  <Synergy id="Touhou_Protagonist_Team_Effect_Team" scope="same_team" detect="players" alive_only="true" mode="round_start">
+    <Member aff="Touhou_Reimu_Character_Effect"/>
+    <Member aff="Touhou_Marisa_Character_Effect"/>
+    <Grant aff="Touhou_Protagonist_Team_Effect" to="members"/>
+  </Synergy>
+
+  <!--古明地姐妹-->
+  <Synergy id="Touhou_Komeiji_Sisters_Effect_Team" scope="same_team" detect="players" alive_only="true" mode="round_start">
+    <Member aff="Touhou_Satori_Character_Effect"/>
+    <Member aff="Touhou_Koishi_Character_Effect"/>
+    <Grant aff="Touhou_Komeiji_Sisters_Effect" to="members"/>
+  </Synergy>
+
+  <!--最凶最恶姐妹-->
+  <Synergy id="Touhou_The_Most_Ferocious_Wicked_Sisters_Effect_Team" scope="same_team" detect="players" alive_only="true" mode="round_start">
+    <Member aff="Touhou_Shion_Character_Effect"/>
+    <Member aff="Touhou_Jyoon_Character_Effect"/>
+    <Grant aff="Touhou_The_Most_Ferocious_Wicked_Sisters_Effect" to="members"/>
+  </Synergy>
+
+</Synergies>

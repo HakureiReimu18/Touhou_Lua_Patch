@@ -45,6 +45,15 @@ local STABILIZER_CHANCE_MULT = 0.25
 
 local FIRE_MESSAGE           = "Touhou_Monorail_fired"
 
+-- 这把武器现在是否在该角色手上（引擎的 HeldItems 就是这个判定）
+local function in_hands(user, item)
+    local inv = user.Inventory
+    if inv == nil then return false end
+    local right = inv.GetItemInLimbSlot(InvSlotType.RightHand)
+    local left = inv.GetItemInLimbSlot(InvSlotType.LeftHand)
+    return (right ~= nil and right.ID == item.ID) or (left ~= nil and left.ID == item.ID)
+end
+
 LuaUserData.MakePropertyAccessible(Descriptors["Barotrauma.Items.Components.RangedWeapon"], "WeaponDamageModifier")
 LuaUserData.MakePropertyAccessible(Descriptors["Barotrauma.Items.Components.RangedWeapon"], "Penetration")
 LuaUserData.MakePropertyAccessible(Descriptors["Barotrauma.Items.Components.RangedWeapon"], "MaxChargeTime")
@@ -112,6 +121,15 @@ local function getHolder(item)
     return nil
 end
 
+-- 命名函数 + pcall 参数形式：省掉每次开火现场建闭包，调用点和原来完全一样
+local function use_item(item, deltaTime, user)
+    item.Use(deltaTime, user)
+end
+
+local function use_weapon(weapon, deltaTime, user)
+    weapon.Use(deltaTime, user)
+end
+
 local function fire(item, weapon, user, chargeRatio, deltaTime)
     weapon.WeaponDamageModifier = lerp(MIN_DAMAGE_MULT, MAX_DAMAGE_MULT, chargeRatio)
     weapon.Penetration = lerp(MIN_PENETRATION, MAX_PENETRATION, chargeRatio)
@@ -119,10 +137,10 @@ local function fire(item, weapon, user, chargeRatio, deltaTime)
 
     if Game.IsSingleplayer then
         -- 单机走完整 item.Use，音效闪光弹药检查都归原生管
-        pcall(function() item.Use(deltaTime, user) end)
+        pcall(use_item, item, deltaTime, user)
     else
         -- 服务器没音频，组件级 Use 也不发网络事件，只出伤害
-        pcall(function() weapon.Use(deltaTime, user) end)
+        pcall(use_weapon, weapon, deltaTime, user)
         -- 广播出去，客户端本地自己补表现
         local msg = Networking.Start(FIRE_MESSAGE)
         msg.WriteUInt16(item.ID)
@@ -149,9 +167,7 @@ Hook.Add("Touhou_Monorail_charge", "Touhou_Monorail_charge", function(effect, de
     -- 只让单人/服务器跑，免得客户端重复判定
     if CLIENT and not Game.IsSingleplayer then return end
 
-    local weapon = item.GetComponentString("RangedWeapon")
-    if weapon == nil then return end
-
+    -- 没人持有是最常见的空跑情形，先于 GetComponentString 退出
     local user = getHolder(item)
     local state = charging[item]
 
@@ -160,15 +176,29 @@ Hook.Add("Touhou_Monorail_charge", "Touhou_Monorail_charge", function(effect, de
         return
     end
 
+    -- 只有真正拿在手上的单轨才响应按键（和引擎自己的 HeldItems 判定完全一致）：
+    -- 放在物品栏其他栏位时按别的装备的操作键也会命中这层，会凭空蓄力、过蓄自爆
+    if not in_hands(user, item) then
+        charging[item] = nil
+        return
+    end
+
     local aiming = user.IsKeyDown(InputType.Aim)
     local shooting = user.IsKeyDown(InputType.Shoot)
 
     if state == nil then
-        if aiming and shooting and weapon.ReloadTimer <= 0 then
-            charging[item] = { time = 0 }
+        if aiming and shooting then
+            local weapon = item.GetComponentString("RangedWeapon")
+            if weapon ~= nil and weapon.ReloadTimer <= 0 then
+                -- 蓄力期间组件实例不变，开蓄时解析一次存进 state；
+                -- criticalTime/自爆倍率吃的是物品 tag，tag 能在运行时被改，所以那两项仍按帧重算、不缓存
+                charging[item] = { time = 0, weapon = weapon }
+            end
         end
         return
     end
+
+    local weapon = state.weapon
 
     if aiming and shooting then
         if weapon.ReloadTimer > 0 then return end -- 装填中就先停着

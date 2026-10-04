@@ -356,10 +356,21 @@ local function held_pack_impl(character)
 end
 held_pack = held_pack_impl
 
+-- 一次性探测 Esc 键盘状态读取是否可用（同快捷键脚本的探测器写法）：探测通过后直连，
+-- 不再每帧套 pcall 闭包；探测失败就一直走 pcall 兜底（每帧还会再探，API 迟到了也能接上）
+local esc_api_ok = nil   -- true = 直连可用，nil = 还没探测成功
+
 local function esc_down()
+    if esc_api_ok == true then
+        local state = PlayerInput.GetKeyboardState
+        local key = (Keys ~= nil) and Keys.Escape or nil
+        if state == nil or key == nil then return false end
+        return state.IsKeyDown(key) == true
+    end
     local ok, down = pcall(function()
         return PlayerInput.GetKeyboardState.IsKeyDown(Keys.Escape)
     end)
+    if ok then esc_api_ok = true end
     return ok and down == true
 end
 
@@ -370,22 +381,25 @@ Hook.Add("think", "TLE_CostumePack_client", function()
     -- 窗口每帧重新加入 GUI 更新列表才画得出来（跟暂停菜单一样，快捷键脚本同款），
     -- 必须放在所有 return 分支之前
     if menu_frame ~= nil then
-        pcall(function() menu_frame.AddToGUIUpdateList(false, 1) end)
+        menu_frame.AddToGUIUpdateList(false, 1)
     end
     if confirm_frame ~= nil then
-        pcall(function() confirm_frame.AddToGUIUpdateList(false, 2) end)  -- 层级比主窗高，盖在上面
+        confirm_frame.AddToGUIUpdateList(false, 2)  -- 层级比主窗高，盖在上面
     end
 
-    -- Esc 边沿：先关确认子窗口，再关主窗口
-    local down = esc_down()
-    if down and not esc_was_down then
-        if confirm_frame ~= nil then
-            close_confirm()
-        elseif menu_frame ~= nil then
-            dismiss_window(held_pack(character))
+    -- Esc 边沿：先关确认子窗口，再关主窗口。没窗口时连键盘都不查，省掉每帧的查询；
+    -- 代价是 esc_was_down 只在窗口开着期间维护（无窗口时物理按键状态不跟进）
+    if menu_frame ~= nil or confirm_frame ~= nil then
+        local down = esc_down()
+        if down and not esc_was_down then
+            if confirm_frame ~= nil then
+                close_confirm()
+            elseif menu_frame ~= nil then
+                dismiss_window(held_pack(character))
+            end
         end
+        esc_was_down = down
     end
-    esc_was_down = down
 
     tick = tick + 1
     if tick < 10 then return end
@@ -393,6 +407,7 @@ Hook.Add("think", "TLE_CostumePack_client", function()
 
     if character == nil or character.IsDead then
         if menu_frame ~= nil then close_window() end
+        close_confirm()   -- 主窗关了确认子窗也别留着
         current_pack_id = nil
         dismissed_id = nil
         last_held_pack_id = nil

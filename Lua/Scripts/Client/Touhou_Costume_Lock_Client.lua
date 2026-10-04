@@ -77,34 +77,40 @@ local function read_state(message)
             item_name = item_name, item_id = item_id, wear = wear,
         })
     end
-    -- 只有配置变了才主动刷 GUI，列表变化 GUI 自己刷
-    local config_changed = (not CL.has_state) or CL.enabled ~= enabled
-        or CL.lock_time ~= lock_time or CL.lock_bots ~= lock_bots
     CL.enabled = enabled
     CL.lock_time = lock_time
     CL.lock_bots = lock_bots
     CL.locked = list
     CL.has_state = true
     apply_local_locks()
-    return config_changed
+end
+
+-- 只有"配置/权限/锁定列表"真的变了才回调 GUI 刷新。
+-- 定期主动拉取状态也会走到这里，不比对的话设置页会被反复重建
+local last_signature = nil
+local function notify_gui_if_changed()
+    local parts = { tostring(CL.enabled), tostring(CL.lock_time), tostring(CL.lock_bots),
+        tostring(CL.can_edit), tostring(#CL.locked) }
+    for _, e in ipairs(CL.locked) do
+        parts[#parts + 1] = tostring(e.char_id) .. ":" .. tostring(e.item_id)
+    end
+    local sig = table.concat(parts, "|")
+    if sig == last_signature then return end
+    last_signature = sig
+    if CL.OnState ~= nil then pcall(CL.OnState) end
 end
 
 if not Game.IsSingleplayer then
-    -- 配置变了才回调 GUI 刷新
     Networking.Receive(MSG_STATE, function(message)
-        local config_changed = read_state(message)
-        if config_changed and CL.OnState ~= nil then
-            pcall(CL.OnState)
-        end
+        read_state(message)
+        notify_gui_if_changed()
     end)
 
-    -- 定向状态（CFGGET 的回包）：末尾附带本机权限位，收到即刷新 GUI
+    -- 定向状态（CFGGET 的回包）：末尾附带本机权限位
     Networking.Receive(MSG_STATEP, function(message)
         read_state(message)
         CL.can_edit = message.ReadBoolean()
-        if CL.OnState ~= nil then
-            pcall(CL.OnState)
-        end
+        notify_gui_if_changed()
     end)
 end
 
@@ -123,6 +129,30 @@ Hook.Add("think", "TLE_CostumeLock_client", function()
             pcall(function() item.NonPlayerTeamInteractable = true end)
         end
     end
+end)
+
+-- 中途加入/重连的客户端此前收不到锁的广播（服务端不走 IsInteractable 校验，
+-- 挡脱下全靠各客户端本地的 NonPlayerTeamInteractable），所以主动定期拉取一次状态，
+-- 并在角色创建（中途加入会创建角色）、巡回开始时立即拉一次
+local refresh_counter = 0
+Hook.Add("think", "TLE_CostumeLock_client_refresh", function()
+    if Game.IsSingleplayer then return end
+    refresh_counter = refresh_counter + 1
+    if refresh_counter < 300 then return end  -- 5 秒
+    refresh_counter = 0
+    CL.RequestState()
+end)
+
+Hook.Add("characterCreated", "TLE_CostumeLock_client_join", function(character)
+    if Game.IsSingleplayer then return end
+    refresh_counter = 0
+    CL.RequestState()
+end)
+
+Hook.Add("roundStart", "TLE_CostumeLock_client_round", function()
+    if Game.IsSingleplayer then return end
+    refresh_counter = 0
+    CL.RequestState()
 end)
 
 -- 打开设置页时拉一次最新状态；单机直接取本地并立即回调

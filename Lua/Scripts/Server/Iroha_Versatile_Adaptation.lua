@@ -20,7 +20,20 @@ local MODE_DEFINITIONS = {
     { skill = "weapons",    affliction = "Iroha_Mode_Creator", customskill = MAGIC_SKILL_IDENTIFIER }
 }
 
-local character_state_cache = setmetatable({}, { __mode = "k" })
+-- 技能 Identifier 惰性缓存：Identifier 每次新建会堆分配，mode 里的技能名是常量，只用建一次
+local identifier_cache = {}
+local function cached_identifier(name)
+    local id = identifier_cache[name]
+    if id == nil then
+        id = Identifier(name)
+        identifier_cache[name] = id
+    end
+    return id
+end
+
+-- 常驻复用的槽位表，别每次判定都新建一张
+local EQUIPPED_SLOT_TYPES = { InvSlotType.Headset, InvSlotType.Head, InvSlotType.InnerClothes, InvSlotType.OuterClothes }
+
 -- think不一定传deltaTime，优先用Timer.GetTime，拿不到就按1/60秒累加兜底
 local next_update = 0
 local elapsed = 0
@@ -78,9 +91,8 @@ local function has_equipped_item(character, target_identifier)
     end
 
     local inv = character.Inventory
-    local slot_types = { InvSlotType.Headset, InvSlotType.Head, InvSlotType.InnerClothes, InvSlotType.OuterClothes }
 
-    for _, slot_type in ipairs(slot_types) do
+    for _, slot_type in ipairs(EQUIPPED_SLOT_TYPES) do
         local item = inv.GetItemInLimbSlot(slot_type)
         if item ~= nil and item.Prefab ~= nil and item.Prefab.Identifier ~= nil then
             if tostring(item.Prefab.Identifier) == target_identifier then
@@ -97,10 +109,12 @@ local function get_skill_level(character, mode)
         return 0
     end
 
-    local skill_identifier = mode.customskill or mode.skill
-    if skill_identifier == nil then
+    local skill_name = mode.customskill or mode.skill
+    if skill_name == nil then
         return 0
     end
+
+    local skill_identifier = cached_identifier(skill_name)
 
     local ok, value = pcall(function()
         return character.GetSkillLevel(skill_identifier)
@@ -117,9 +131,6 @@ local function update_character_modes(character)
     if character == nil or character.Removed or character.IsDead then
         return
     end
-
-    local cache = character_state_cache[character] or {}
-    character_state_cache[character] = cache
 
     local active_flags = {}
     local has_gate = has_affliction(character, REQUIRED_GATE_AFFLICTION)
@@ -153,7 +164,6 @@ local function update_character_modes(character)
     for _, mode in ipairs(MODE_DEFINITIONS) do
         local aff = mode.affliction
         local should_enable = active_flags[aff] == true
-        cache[aff] = should_enable
 
         set_affliction_strength(character, aff, should_enable and 1 or 0)
     end

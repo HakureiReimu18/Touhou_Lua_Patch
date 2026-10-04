@@ -15,7 +15,9 @@ if Game.IsSingleplayer or SERVER then
 --[[    dofile(TLE.Path .. "/Lua/Scripts/Server/Cook.lua")]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Touhou_Costume_Lock.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Touhou_Costume_Pack.lua")
-    dofile(TLE.Path .. "/Lua/Scripts/Server/Touhou_Monarch.lua")
+    --[[君王追踪已迁移至 C#（CSharp/Shared/MonarchHoming.cs），避免双重转向。
+        脚本文件留在磁盘上作保险，要回退就把下面这行的注释去掉、同时停用 C# 侧的 MonarchShootPatch。
+    dofile(TLE.Path .. "/Lua/Scripts/Server/Touhou_Monarch.lua")]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Touhou_Zero_Moment_Pendant.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Touhou_Magic_Weapon_Bonus.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Touhou_Magic_Weapon_Skill_Gain.lua")
@@ -23,6 +25,7 @@ if Game.IsSingleplayer or SERVER then
     dofile(TLE.Path .. "/Lua/Scripts/Server/Touhou_Pricer.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Jyoon_Wealth_Talent.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Sanae_Miracle_Talent.lua")
+    dofile(TLE.Path .. "/Lua/Scripts/Server/Renko_Red_Spot_Freak_Report.lua")
     --[[红美铃天赋「气与姿态」：须排在 Touhou_Magic_Weapon_Bonus.lua 之后（DamageMultiplier 补丁依赖其加载顺序）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Meiling_Qi_Talent.lua")
     --[[ 人偶指挥（隐形信标方案）已停用：信标会被 DoVisibilityCheck 重新显形，
