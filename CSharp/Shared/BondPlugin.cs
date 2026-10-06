@@ -50,12 +50,15 @@ namespace Touhou.Bond
             //（这个 Harmony 版本里 UnpatchAll(string) 直接标 error 过时，只能 UnpatchSelf）
             harmony.UnpatchSelf();
 
-            harmony.PatchAll(typeof(BondMeterPatch));
-            harmony.PatchAll(typeof(BondTickerPatch));
-            harmony.PatchAll(typeof(WearDurabilityPatch));
+            // 手动注册：这些补丁类刻意不带 [HarmonyPatch] 特性——
+            // 主插件的 PatchAll(程序集) 会把带特性的类再打一遍，导致补丁与 GUI 注册每帧跑两次
+            RegisterPatch(typeof(BondMeterPatch), prefix: "Prefix", postfix: "Postfix");
+            RegisterPatch(typeof(BondTickerPatch), postfix: "Postfix");
+            RegisterPatch(typeof(WearDurabilityPatch), prefix: "Prefix", postfix: "Postfix");
 #if CLIENT
-            harmony.PatchAll(typeof(BondGui.BondGuiFramePatch));
-            harmony.PatchAll(typeof(BondSettingsBridge.BondSettingsPatch));
+            RegisterPatch(typeof(BondGui.BondGuiFramePatch), postfix: "Postfix");
+            RegisterPatch(typeof(BondGui.BondScreenPatch), postfix: "Postfix");
+            RegisterPatch(typeof(BondSettingsBridge.BondSettingsPatch), postfix: "Postfix");
             BondSettingsBridge.CleanStaleFlags(); // 清上个会话残留的开窗标记，只删不开
 #endif
 
@@ -68,6 +71,21 @@ namespace Touhou.Bond
         }
 
         public void PreInitPatching() { }
+
+        /// <summary>手动打补丁：通过补丁类自带的 TargetMethod 解析目标（补丁类不带特性，避免被主插件重复扫描）</summary>
+        void RegisterPatch(Type patchType, string prefix = null, string postfix = null)
+        {
+            try
+            {
+                var target = patchType.GetMethod("TargetMethod",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.Invoke(null, null) as MethodBase;
+                if (target == null) { BondLog.Warn($"{patchType.Name}: 目标方法未找到，跳过"); return; }
+                harmony.Patch(target,
+                    prefix: prefix != null ? new HarmonyMethod(patchType, prefix) : null,
+                    postfix: postfix != null ? new HarmonyMethod(patchType, postfix) : null);
+            }
+            catch (Exception ex) { BondLog.Warn($"{patchType.Name} 注册失败：{ex.Message}"); }
+        }
 
         public void Dispose()
         {
@@ -87,6 +105,7 @@ namespace Touhou.Bond
             BondState.SwitchUsedThisRound.Clear();
             BondState.PairHistoryThisRound.Clear();
             BondState.LastForcedPartner.Clear();
+            BondMatch.ResetSeenOnline(); // 新巡回重新记录在线状态（避免开局把休眠配对误判为下线）
             if (GameMain.NetworkMember == null || GameMain.NetworkMember.IsServer)
             {
                 BondMatch.LoadPairs();

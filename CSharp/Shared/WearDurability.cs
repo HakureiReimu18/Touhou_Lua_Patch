@@ -13,7 +13,7 @@ namespace Touhou.Bond
     /// 带 Touhou_Condition_Loss_Rate_X tag 的穿戴物，主人挨揍按 X 倍掉耐久。
     /// 掉多少用 ApplyAttack 前后的活力差量，曲线 = 10 × (伤害/48)² × tag × 全局倍率。
     /// </summary>
-    [HarmonyPatch]
+
     public static class WearDurabilityPatch
     {
         const string TAG_PREFIX = "Touhou_Condition_Loss_Rate_";

@@ -9,7 +9,7 @@ namespace Touhou.Homing
 {
     /// <summary>
     /// 君王追踪（Round01 定位鱼叉 + Round02 追踪弹）。
-    /// 行为规格照抄 Lua 版（Lua/Scripts/Server/Touhou_Monarch.lua，文件留在磁盘但已停止加载）——
+    /// 行为规格照抄 Lua 版（Lua/Scripts/Server/Disabled/Touhou_Monarch.lua，文件留在磁盘但已停止加载）——
     /// 两套同时跑会双重转向，所以迁移后 Lua 那半边不再进游戏。
     /// 在 Lua 规格之上加了两条：引导释放（贴到 3 米就交棒给弹道，不再绕圈）和穿身补伤兜底，见 §4.6。
     /// </summary>

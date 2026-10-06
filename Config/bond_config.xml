@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BondConfig>
-  <settleinterval>0.3</settleinterval>
+  <settleinterval>0.5</settleinterval>
   <resistancescale>0.5</resistancescale>
   <maxlinkdistance>0</maxlinkdistance>
   <powerdref>30</powerdref>

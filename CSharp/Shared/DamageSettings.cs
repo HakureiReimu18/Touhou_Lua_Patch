@@ -111,9 +111,18 @@ namespace Touhou.Damage
             try
             {
                 if (!DamagePatcher.IsAuthority) return null;
-                if (!File.Exists(DamageValues.ConfigPath)) return null;
-                var mtime = File.GetLastWriteTime(DamageValues.ConfigPath);
-                if (mtime == DamageValues.LastConfigMtime) return null;
+                bool changed = false;
+                if (File.Exists(DamageValues.ConfigPath))
+                {
+                    var mtime = File.GetLastWriteTime(DamageValues.ConfigPath);
+                    if (mtime != DamageValues.LastConfigMtime) changed = true;
+                }
+                if (!changed && File.Exists(DamageValues.ItemsPath))
+                {
+                    var mtime = File.GetLastWriteTime(DamageValues.ItemsPath);
+                    if (mtime != DamageValues.LastItemsMtime) changed = true;
+                }
+                if (!changed) return null;
                 DamageValues.Load();
                 DamagePatcher.ApplyAll();
             }
@@ -186,6 +195,59 @@ namespace Touhou.Damage
                     DamagePatcher.ApplyAll();
                     DamageLog.Log(DamageConfig.LastAutoScanSummary);
                 }, null, false);
+            game.AddCommand("damage_item", "单独调一件武器/射弹的倍率：damage_item <物品id> <damage|pen> <值>；damage_item <物品id> clear 取消；damage_item list 查看",
+                args =>
+                {
+                    if (!DamagePatcher.IsAuthority) { DamageLog.Warn("仅主机/单机可改数值"); return; }
+                    var a = CommandArgs(args);
+                    if (a.Length >= 1 && a[0].Equals("list", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var lines = DamageValues.ItemOverrideLines();
+                        if (lines.Count == 0) DamageLog.Log("当前没有单件单独调整");
+                        else
+                        {
+                            DamageLog.Log($"单件单独调整（{lines.Count} 件）：");
+                            foreach (var l in lines) DamageLog.Log("  · " + l);
+                        }
+                        return;
+                    }
+                    if (a.Length < 3)
+                    {
+                        DamageLog.Warn("用法：damage_item <物品id> <damage|pen> <值>；damage_item <物品id> clear；damage_item list");
+                        return;
+                    }
+                    string id = a[0], axis = a[1].Trim().ToLowerInvariant(), rawValue = a[2];
+                    if (axis == "clear")
+                    {
+                        if (!DamageValues.ClearItemOverride(id)) { DamageLog.Warn($"「{id}」本来就没有单独调整"); return; }
+                        DamagePatcher.ApplyAll();
+                        DamageNet.BroadcastState();
+                        DamageChat.Broadcast($"{DamageNet.LocalPlayerName()} 取消了「{id}」的单独调整（恢复用所属分组的倍率）");
+                        DamageLog.Log($"已取消「{id}」的单独调整");
+                        return;
+                    }
+                    if (axis == "penetration") axis = "pen";
+                    string DescribeItem()
+                    {
+                        var parts = new List<string>();
+                        if (DamageValues.TryGetItemDamage(id, out var dv)) parts.Add($"伤害 ×{dv.ToString("0.###", CultureInfo.InvariantCulture)}");
+                        if (DamageValues.TryGetItemPen(id, out var pm, out var pv))
+                            parts.Add($"穿甲 {(pm == "multiply" ? "×" : "+")}{pv.ToString("0.###", CultureInfo.InvariantCulture)}");
+                        return parts.Count > 0 ? string.Join(" · ", parts) : "（无单独调整）";
+                    }
+                    string beforeText = DescribeItem();
+                    if (!DamageValues.SetItemValue(id, axis, rawValue, out var err))
+                    {
+                        DamageLog.Warn($"damage_item 失败：{err}");
+                        return;
+                    }
+                    DamagePatcher.ApplyAll();
+                    DamageNet.BroadcastState();
+                    string afterText = DescribeItem();
+                    string axisText = axis == "pen" ? "穿甲" : "伤害";
+                    DamageChat.Broadcast($"{DamageNet.LocalPlayerName()} 单独调整了「{id}」的{axisText}：{beforeText} → {afterText}");
+                    DamageLog.Log($"已设置「{id}」{axisText} = {rawValue}（单件调整，可用 damage_probe {id} 核对）");
+                }, null, false);
         }
 
         /// <summary>命令参数形状兼容：LuaCs 可能给 object[]{"a"}、object[]{ string[]{"a","b"} } 或混合。</summary>
@@ -238,6 +300,12 @@ namespace Touhou.Damage
 
         /// <summary>联动模组兼容：按物品 tag 收录（&lt;Tag name="…"/&gt;，内容加载后展开）。</summary>
         public readonly HashSet<string> Tags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>同一件物品出现在多个分组时的取舍：priority 大的赢（默认 0）；一样大时“后定义的赢”。
+        /// 想让某件物品只归自己新建的组，就在那个组上写 priority="10"。</summary>
+        public int Priority;
+        /// <summary>定义顺序（解析时递增；内部用，决定同优先级谁赢）。</summary>
+        public int Seq;
     }
 
     /// <summary>一个档位预设（LV1 略弱于补强 / LV2 等于补强 / LV3 补强×2）。</summary>
@@ -275,6 +343,7 @@ namespace Touhou.Damage
         public static readonly List<string> MergedFiles = new List<string>();
 
         static bool autoScanDone;
+        static int groupSeq;   // <Group> 定义顺序（同一物品出现在多组时，priority 相同时后定义的赢）
         /// <summary>最近一次自动收录的摘要（damage_list / 日志显示）。</summary>
         public static string LastAutoScanSummary = "";
 
@@ -616,6 +685,9 @@ namespace Touhou.Damage
                 }
                 g.PenetrationValue = ParseFloat((string)el.Attribute("penetrationValue"), "penetrationValue", g.PenetrationValue, sourceName);
                 g.DefaultDefense = ParseFloat((string)el.Attribute("defaultDefense"), "defaultDefense", g.DefaultDefense, sourceName);
+                string prio = (string)el.Attribute("priority");
+                if (!string.IsNullOrEmpty(prio) && int.TryParse(prio, out var pv)) g.Priority = pv;
+                g.Seq = ++groupSeq;   // 记录定义顺序：同优先级时后定义的赢
 
                 foreach (var tierEl in el.Elements("Tier"))
                 {
@@ -916,6 +988,19 @@ namespace Touhou.Damage
                     LuaCsLogger.LogMessage($"[伤害] 合并来源：{string.Join("、", DamageConfig.MergedFiles)}" + (DamageConfig.Excluded.Count > 0 ? $" · 排除 {DamageConfig.Excluded.Count} 件" : ""), Color.LightGray);
                 if (!string.IsNullOrEmpty(DamageConfig.LastAutoScanSummary))
                     LuaCsLogger.LogMessage($"[伤害] {DamageConfig.LastAutoScanSummary}", Color.LightGreen);
+                {
+                    var itemLines = DamageValues.ItemOverrideLines();
+                    if (itemLines.Count > 0)
+                    {
+                        LuaCsLogger.LogMessage($"[伤害] 单件单独调整（{itemLines.Count} 件）：", Color.LightGreen);
+                        int shown = 0;
+                        foreach (var l in itemLines)
+                        {
+                            LuaCsLogger.LogMessage($"[伤害]   · {l}", Color.LightGreen);
+                            if (++shown >= 15) { LuaCsLogger.LogMessage($"[伤害]   …（其余 {itemLines.Count - shown} 件省略，damage_item list 看全部）", Color.LightGray); break; }
+                        }
+                    }
+                }
                 LuaCsLogger.LogMessage($"[伤害] 规则：DamageTypes=[{string.Join(",", DamageConfig.DamageTypes)}] · EffectTargets=[{DamageConfig.EffectTargets}] · 减伤上限={Fmt(DamageConfig.DefenseReductionCap)}", Color.LightGreen);
                 if (DamageConfig.Groups.Count == 0)
                 {
@@ -1096,6 +1181,14 @@ namespace Touhou.Damage
                 string axis = g.IsArmor
                     ? $"防御 M={Fmt(DamageValues.GetDefense(g.Id))}"
                     : $"伤害 ×{Fmt(DamageValues.GetDamage(g.Id))}";
+                if (!g.IsArmor && DamageValues.HasItemOverride(identifier))
+                {
+                    var extra = new List<string>();
+                    if (DamageValues.TryGetItemDamage(identifier, out var idv)) extra.Add($"伤害 ×{Fmt(idv)}");
+                    if (DamageValues.TryGetItemPen(identifier, out var ipm, out var ipv))
+                        extra.Add($"穿甲 {(ipm == "multiply" ? "×" : "+")}{Fmt(ipv)}");
+                    if (extra.Count > 0) axis += " → 单件调整生效：" + string.Join(" · ", extra);
+                }
                 LuaCsLogger.LogMessage($"[伤害] 探测 [{g.Id}] {identifier}：{entries.Count} 个数据点 · {axis} · 权威端={DamagePatcher.IsAuthority}", Color.LightGreen);
                 LuaCsLogger.LogMessage($"[伤害]   诊断：构造补丁已挂载={DamagePatcher.HookRegistered} · 钩子累计应用 {DamagePatcher.HookAppliedObjects} 个对象 · 上次全量实际写入 {DamagePatcher.LastWrittenObjects} 个 · 上次全量归一转除 {DamagePatcher.LastNormalizedObjects} 个", Color.LightGray);
 

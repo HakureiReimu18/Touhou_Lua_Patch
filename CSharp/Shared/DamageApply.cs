@@ -21,6 +21,7 @@ namespace Touhou.Damage
     {
         public const string ConfigFileName = "TouhouDamageConfig.txt";
         public const string StateFileName = "TouhouDamageState.txt";
+        public const string ItemsFileName = "TouhouDamageItems.txt";
 
         sealed class Entry
         {
@@ -32,8 +33,12 @@ namespace Touhou.Damage
 
         static readonly Dictionary<string, Entry> values = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
         static readonly Dictionary<string, Entry> applied = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
+        // 单件物品的单独调整（damage_item 命令写入；存 TouhouDamageItems.txt，按物品 id 生效于该物品的所有实例）
+        static readonly Dictionary<string, Entry> itemOverrides = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
+        static readonly Dictionary<string, Entry> itemApplied = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
 
         public static DateTime LastConfigMtime = DateTime.MinValue;
+        public static DateTime LastItemsMtime = DateTime.MinValue;
         public static int LastPatchedItems;
         public static int LastPatchedObjects;
 
@@ -50,6 +55,119 @@ namespace Touhou.Damage
 
         public static string ConfigPath => Path.Combine(SaveDir(), ConfigFileName);
         public static string StatePath => Path.Combine(SaveDir(), StateFileName);
+        public static string ItemsPath => Path.Combine(SaveDir(), ItemsFileName);
+
+        // ==================== 单件物品单独调整 ====================
+
+        public static bool HasItemOverride(string itemId) => itemId != null && itemOverrides.ContainsKey(itemId);
+
+        /// <summary>该物品单独调整过的伤害倍率/穿甲（没有调整则返回 false，用分组的）。</summary>
+        public static bool TryGetItemDamage(string itemId, out float factor)
+        {
+            factor = 1f;
+            if (itemId != null && itemOverrides.TryGetValue(itemId, out var e)) { factor = e.Damage; return true; }
+            return false;
+        }
+
+        public static bool TryGetItemPen(string itemId, out string mode, out float value)
+        {
+            mode = "add"; value = 0f;
+            if (itemId != null && itemOverrides.TryGetValue(itemId, out var e)) { mode = e.PenMode; value = e.PenValue; return true; }
+            return false;
+        }
+
+        public static float ItemAppliedDamage(string itemId) =>
+            itemId != null && itemApplied.TryGetValue(itemId, out var e) ? e.Damage : 1f;
+
+        public static void GetItemAppliedPen(string itemId, out string mode, out float value)
+        {
+            if (itemId != null && itemApplied.TryGetValue(itemId, out var e)) { mode = e.PenMode; value = e.PenValue; }
+            else { mode = "add"; value = 0f; }
+        }
+
+        /// <summary>damage_item 命令用：改一件物品的单独倍率（axis: damage / pen）。</summary>
+        public static bool SetItemValue(string itemId, string axis, string rawValue, out string error)
+        {
+            error = "";
+            if (string.IsNullOrEmpty(itemId)) { error = "缺少物品 id"; return false; }
+            var grp = DamageConfig.Groups.Values.FirstOrDefault(x => x.Items.Contains(itemId));
+            if (grp == null) { error = $"「{itemId}」不在任何分组里，不能单独调整（先在 Config/damage_settings.xml 里把它加进某个分组）"; return false; }
+            if (grp.IsArmor) { error = $"「{itemId}」是防具组的物品，单独调整只支持武器（damage/pen）"; return false; }
+
+            if (!itemOverrides.TryGetValue(itemId, out var e))
+            {
+                e = new Entry { Damage = GetDamage(grp.Id), PenMode = grp.PenetrationMode, PenValue = grp.PenetrationValue };
+                itemOverrides[itemId] = e;
+            }
+            axis = (axis ?? "").Trim().ToLowerInvariant();
+            switch (axis)
+            {
+                case "damage":
+                case "dmg":
+                    if (!TryParseFloat(rawValue, out var dv)) { error = $"数值无效：{rawValue}"; return false; }
+                    if (dv < 0f || dv > 10f) { error = $"伤害倍率超出范围（0~10）：{dv}"; return false; }
+                    e.Damage = dv;
+                    break;
+                case "pen":
+                case "penetration":
+                    {
+                        string m = e.PenMode; float v = e.PenValue;
+                        if (!ParsePen(rawValue, ref m, ref v)) { error = $"穿甲值无效：{rawValue}"; return false; }
+                        if (m == "add" && (v < -1f || v > 1f)) { error = $"穿甲加值超出范围（-1~1）：{v}"; return false; }
+                        if (m == "multiply" && (v < 0f || v > 10f)) { error = $"穿甲乘数超出范围（0~10）：{v}"; return false; }
+                        e.PenMode = m; e.PenValue = v;
+                        break;
+                    }
+                default:
+                    error = "轴只支持 damage / pen";
+                    return false;
+            }
+            SaveItems();
+            return true;
+        }
+
+        public static bool ClearItemOverride(string itemId)
+        {
+            if (itemId == null || !itemOverrides.Remove(itemId)) return false;
+            itemApplied.Remove(itemId);
+            SaveItems();
+            return true;
+        }
+
+        public static List<string> ItemOverrideLines()
+        {
+            var list = new List<string>();
+            foreach (var kv in itemOverrides)
+            {
+                var parts = new List<string> { $"伤害 ×{Fmt(kv.Value.Damage)}" };
+                if (Math.Abs(kv.Value.PenValue) > 0.0001f || kv.Value.PenMode == "multiply")
+                    parts.Add($"穿甲 {(kv.Value.PenMode == "multiply" ? "×" : "+")}{Fmt(kv.Value.PenValue)}");
+                list.Add($"{kv.Key}：{string.Join(" · ", parts)}");
+            }
+            return list;
+        }
+
+        public static void SaveItems()
+        {
+            try
+            {
+                var lines = new List<string>
+                {
+                    "# 东方-武器伤害与防具抗性设置 · 单件物品单独调整（damage_item 命令写入，勿手改）",
+                    "# 键：<物品id>.damage=倍率 · <物品id>.pen=add:<加值> 或 multiply:<乘数>",
+                    "ver=1",
+                };
+                foreach (var kv in itemOverrides)
+                {
+                    lines.Add($"{kv.Key}.damage={Fmt(kv.Value.Damage)}");
+                    if (kv.Value.PenMode == "multiply") lines.Add($"{kv.Key}.pen=multiply:{Fmt(kv.Value.PenValue)}");
+                    else if (Math.Abs(kv.Value.PenValue) > 0.0001f) lines.Add($"{kv.Key}.pen=add:{Fmt(kv.Value.PenValue)}");
+                }
+                File.WriteAllText(ItemsPath, string.Join("\n", lines) + "\n");
+                LastItemsMtime = File.GetLastWriteTime(ItemsPath);
+            }
+            catch (Exception ex) { DamageLog.Warn($"单件调整写入失败：{ex.Message}"); }
+        }
 
         public static void Load()
         {
@@ -120,8 +238,53 @@ namespace Touhou.Damage
                 catch (Exception ex) { DamageLog.Warn($"已应用状态读取失败：{ex.Message}"); }
             }
 
+            // 4) 单件物品单独调整（TouhouDamageItems.txt）+ 它上次应用的值（applied.item.<id>.*）
+            itemOverrides.Clear();
+            itemApplied.Clear();
+            if (File.Exists(ItemsPath))
+            {
+                try
+                {
+                    foreach (var line in File.ReadAllLines(ItemsPath))
+                    {
+                        string key, raw;
+                        if (!SplitLine(line, out key, out raw)) continue;
+                        var dot = key.LastIndexOf('.');
+                        if (dot <= 0) continue;
+                        string iid = key.Substring(0, dot);
+                        string axis = key.Substring(dot + 1).ToLowerInvariant();
+                        if (!itemOverrides.TryGetValue(iid, out var e)) { e = new Entry(); itemOverrides[iid] = e; }
+                        if (axis == "damage") { if (TryParseFloat(raw, out var v)) e.Damage = v; }
+                        else if (axis == "pen") { ParsePen(raw, ref e.PenMode, ref e.PenValue); }
+                    }
+                }
+                catch (Exception ex) { DamageLog.Warn($"单件调整读取失败：{ex.Message}"); }
+            }
+            if (File.Exists(StatePath))
+            {
+                try
+                {
+                    foreach (var line in File.ReadAllLines(StatePath))
+                    {
+                        string key, raw;
+                        if (!SplitLine(line, out key, out raw)) continue;
+                        if (!key.StartsWith("applied.item.", StringComparison.OrdinalIgnoreCase)) continue;
+                        var rest = key.Substring("applied.item.".Length);
+                        var dot = rest.LastIndexOf('.');
+                        if (dot <= 0) continue;
+                        string iid = rest.Substring(0, dot);
+                        string axis = rest.Substring(dot + 1).ToLowerInvariant();
+                        if (!itemApplied.TryGetValue(iid, out var e)) { e = new Entry(); itemApplied[iid] = e; }
+                        if (axis == "damage") { if (TryParseFloat(raw, out var v)) e.Damage = v; }
+                        else if (axis == "pen") { ParsePen(raw, ref e.PenMode, ref e.PenValue); }
+                    }
+                }
+                catch { }
+            }
+            LastItemsMtime = File.Exists(ItemsPath) ? File.GetLastWriteTime(ItemsPath) : DateTime.MinValue;
+
             LastConfigMtime = File.Exists(ConfigPath) ? File.GetLastWriteTime(ConfigPath) : DateTime.MinValue;
-            DamageLog.Debug($"数值已加载：组 {values.Count}，已应用记录 {applied.Count}");
+            DamageLog.Debug($"数值已加载：组 {values.Count}，已应用记录 {applied.Count}，单件调整 {itemOverrides.Count}");
         }
 
         static bool SplitLine(string line, out string key, out string raw)
@@ -304,6 +467,9 @@ namespace Touhou.Damage
             applied.Clear();
             foreach (var kv in values)
                 applied[kv.Key] = new Entry { Damage = kv.Value.Damage, PenMode = kv.Value.PenMode, PenValue = kv.Value.PenValue, Defense = kv.Value.Defense };
+            itemApplied.Clear();
+            foreach (var kv in itemOverrides)
+                itemApplied[kv.Key] = new Entry { Damage = kv.Value.Damage, PenMode = kv.Value.PenMode, PenValue = kv.Value.PenValue };
             LastPatchedItems = patchedItems;
             LastPatchedObjects = patchedObjects;
             try
@@ -325,6 +491,12 @@ namespace Touhou.Damage
                         lines.Add($"applied.damage.{g.Id}={Fmt(e.Damage)}");
                         lines.Add($"applied.pen.{g.Id}={e.PenMode}:{Fmt(e.PenValue)}");
                     }
+                }
+                // 单件物品单独调整的已应用值（该类物品的归一基）
+                foreach (var kv in itemApplied)
+                {
+                    lines.Add($"applied.item.{kv.Key}.damage={Fmt(kv.Value.Damage)}");
+                    lines.Add($"applied.item.{kv.Key}.pen={kv.Value.PenMode}:{Fmt(kv.Value.PenValue)}");
                 }
                 // 设置页（Lua）显示用：分组元数据 + 当前值 + 默认值 + 档位预设
                 foreach (var g in DamageConfig.Groups.Values)
@@ -634,8 +806,41 @@ namespace Touhou.Damage
             DamageLog.Log($"应用完成：物品 {items}，数值对象 {objects}（实际写入 {writtenThisPass}，归一 {normalizedThisPass}）");
         }
 
+        // 当前物品本次生效的倍率（ApplyItem 解析后写入；单件调整按物品 id 生效）
+        static float curDamageFactor = 1f, curDamageApplied = 1f;
+        static string curPenMode = "add", curPenAppliedMode = "add";
+        static float curPenValue = 0f, curPenAppliedValue = 0f;
+        static float curDefenseFactor = 1f, curDefenseApplied = 1f;
+
         static int ApplyItem(Item item, DamageGroup g, bool freshObject)
         {
+            // 解析这件物品本次生效的倍率：有单件调整（damage_item 命令）就用单件的，否则用所属分组的。
+            // 单件调整按“物品 id”生效，所以同一 prefab 的所有实例一致。存成静态字段供下面几个应用函数读。
+            string iid = null;
+            try { iid = item?.Prefab?.Identifier.Value; } catch { }
+            if (DamageValues.TryGetItemDamage(iid, out var itemDmg))
+            {
+                curDamageFactor = itemDmg;
+                curDamageApplied = DamageValues.ItemAppliedDamage(iid);
+            }
+            else
+            {
+                curDamageFactor = DamageValues.GetDamage(g.Id);
+                curDamageApplied = DamageValues.AppliedDamage(g.Id);
+            }
+            if (DamageValues.TryGetItemPen(iid, out var itemPenMode, out var itemPenValue))
+            {
+                curPenMode = itemPenMode; curPenValue = itemPenValue;
+                DamageValues.GetItemAppliedPen(iid, out curPenAppliedMode, out curPenAppliedValue);
+            }
+            else
+            {
+                DamageValues.GetPen(g.Id, out curPenMode, out curPenValue);
+                DamageValues.GetAppliedPen(g.Id, out curPenAppliedMode, out curPenAppliedValue);
+            }
+            curDefenseFactor = DamageValues.GetDefense(g.Id);
+            curDefenseApplied = DamageValues.AppliedDefense(g.Id);
+
             int n = 0;
             if (g.IsArmor)
             {
@@ -689,7 +894,7 @@ namespace Touhou.Damage
             if (!DamageConfig.DamageTypes.Contains(aff.Prefab.AfflictionType.Value)) return 0;
             if (effectTargets != null && (effectTargets.Value & DamageConfig.EffectTargets) == 0) return 0;
 
-            float factor = DamageValues.GetDamage(g.Id);
+            float factor = curDamageFactor;
             float baseVal;
             if (snapshots.TryGetValue(aff, out var box))
             {
@@ -702,7 +907,7 @@ namespace Touhou.Damage
                 if (!freshObject)
                 {
                     // 可能是上一个插件实例按"已应用倍率"烘过的值：除回来再乘当前值
-                    float prev = DamageValues.AppliedDamage(g.Id);
+                    float prev = curDamageApplied;
                     if (prev > 0.0001f && Math.Abs(prev - 1f) > 0.0001f)
                     {
                         baseVal = cur / prev;
@@ -716,7 +921,7 @@ namespace Touhou.Damage
             // 只在 _nonClampedStrength<0 时同步它、之后不再更新（否则改了值伤害也不变）。
             // 但「本次与上次都是中性」时一个字都不写——中性 = 完全不动（也避免替游戏同步双字段）。
             bool neutral = Math.Abs(factor - 1f) < 0.0001f;
-            if (!(neutral && Math.Abs(DamageValues.AppliedDamage(g.Id) - 1f) < 0.0001f))
+            if (!(neutral && Math.Abs(curDamageApplied - 1f) < 0.0001f))
             {
                 aff.SetStrength(baseVal * factor);
                 writtenThisPass++;
@@ -726,7 +931,7 @@ namespace Touhou.Damage
 
         static int ApplyPenetration(Attack attack, DamageGroup g, bool freshObject)
         {
-            DamageValues.GetPen(g.Id, out var mode, out var factor);
+            string mode = curPenMode; float factor = curPenValue;
             float basePen;
             if (snapshots.TryGetValue(attack, out var box))
             {
@@ -738,7 +943,7 @@ namespace Touhou.Damage
                 basePen = cur;
                 if (!freshObject)
                 {
-                    DamageValues.GetAppliedPen(g.Id, out var amode, out var av);
+                    string amode = curPenAppliedMode; float av = curPenAppliedValue;
                     bool penApplied = amode == "multiply" ? Math.Abs(av - 1f) > 0.0001f : Math.Abs(av) > 0.0001f;
                     basePen = InvertPenetration(cur, amode, av);
                     if (penApplied) normalizedThisPass++;
@@ -747,7 +952,7 @@ namespace Touhou.Damage
             }
             // 中性 = 完全不动：连 0~1 封顶也不做（内容里存在负穿甲 / 被效果改过的值，替它封顶就是改了数值）。
             // 从非中性回退到中性时把底值写回去；写回/写入前比一下现值，相同就不碰属性。
-            DamageValues.GetAppliedPen(g.Id, out var amode2, out var av2);
+            string amode2 = curPenAppliedMode; float av2 = curPenAppliedValue;
             bool neutral = mode == "multiply" ? Math.Abs(factor - 1f) < 0.0001f : Math.Abs(factor) < 0.0001f;
             bool appliedNeutral = amode2 == "multiply" ? Math.Abs(av2 - 1f) < 0.0001f : Math.Abs(av2) < 0.0001f;
             if (!(neutral && appliedNeutral))
@@ -765,7 +970,7 @@ namespace Touhou.Damage
 
         static int ApplyDefense(DamageModifier dm, DamageGroup g, bool freshObject)
         {
-            float m = DamageValues.GetDefense(g.Id);
+            float m = curDefenseFactor;
             float baseV;
             if (snapshots.TryGetValue(dm, out var box))
             {
@@ -777,7 +982,7 @@ namespace Touhou.Damage
                 baseV = cur;
                 if (!freshObject)
                 {
-                    float prev = DamageValues.AppliedDefense(g.Id);
+                    float prev = curDefenseApplied;
                     if (prev > 0.0001f && Math.Abs(prev - 1f) > 0.0001f)
                     {
                         baseV = Math.Clamp(1f - (1f - cur) / prev, 0f, 1f);
@@ -788,7 +993,7 @@ namespace Touhou.Damage
             }
             // 中性 = 完全不动：本次与上次都是 M=1 时不写（避免无谓赋值，也防止把游戏侧改过的值刷回来）
             bool neutral = Math.Abs(m - 1f) < 0.0001f;
-            if (!(neutral && Math.Abs(DamageValues.AppliedDefense(g.Id) - 1f) < 0.0001f))
+            if (!(neutral && Math.Abs(curDefenseApplied - 1f) < 0.0001f))
             {
                 float target = TransformDefense(baseV, m);
                 if (Math.Abs(dm.DamageMultiplier - target) > 0.0001f)

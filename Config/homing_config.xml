@@ -23,6 +23,9 @@
     armTime         到时间就强制开始追踪（防止子弹卡住永远不追踪），和 armDist 谁先满足听谁的
     releaseDist     离目标这么近就"放走"：不再拐弯，靠惯性打过去（游戏单位，100 ≈ 1 米）
     passHitDist     补伤距离：见下面的说明
+    trackInsideSub  true = 可以追踪潜艇里的目标（默认）；false = 不追艇内的目标——
+                    防止登船敌人/跑进艇里的怪把追踪弹"勾"回来撞自己船体。
+                    判的是目标是否真进了潜艇舱室：在艇壳外扒着、在水里游的怪不算，照常追
 
   文件顶上的开关：enabled 总开关；maxActive 同时最多追几发；scansPerFrame 每帧最多扫描几个目标。
 
@@ -51,13 +54,13 @@
   <Projectile idPrefix="railgun" coneDeg="15"/>
   -->
   <!--炮塔-->
-  <Projectile id="Touhou_Silent_Selene_Bolt" range="5000" coneDeg="60" steering="6" armDist="500"/>
-  <Projectile id="Touhou_Royal_Flare_Bolt" range="5000" coneDeg="60" steering="6" armDist="500" armTime="0.3"/>
-  <Projectile id="Phoenix_Wings_Bolt" range="5000" coneDeg="60" steering="6" armDist="300" armTime="0.2"/>
-  <Projectile id="Touhou_Nue_Danmaku_Chimera_Bolt" range="3000" coneDeg="60" steering="6" armDist="300" armTime="0.1"/>
-  <Projectile id="Sword_Qi" coneDeg="60" range="5000" steering="7"/>
-  <Projectile id="Yin_Yang_Spirit_Orb" range="5000" coneDeg="50" steering="7" armDist="500" armTime="0.1" />
-  <Projectile id="Touhou_Glass_Railgun" range="4000" coneDeg="50" steering="6" armDist="300" armTime="0.1" />
+  <Projectile id="Touhou_Silent_Selene_Bolt" range="5000" steering="6" armDist="500" trackInsideSub="false"/>
+  <Projectile id="Touhou_Royal_Flare_Bolt" range="5000" steering="6" armDist="500" armTime="0.3" trackInsideSub="false"/>
+  <Projectile id="Phoenix_Wings_Bolt" range="5000" coneDeg="60" steering="6" armDist="300" armTime="0.2" trackInsideSub="false"/>
+  <Projectile id="Touhou_Nue_Danmaku_Chimera_Bolt" range="3000" steering="6" armDist="300" armTime="0.1" trackInsideSub="false"/>
+  <Projectile id="Sword_Qi" coneDeg="60" range="5000" steering="9" trackInsideSub="false"/>
+  <Projectile id="Yin_Yang_Spirit_Orb" range="5000" steering="7" armDist="500" armTime="0.1" trackInsideSub="false" />
+  <Projectile id="Touhou_Glass_Railgun" range="4000" steering="6" armDist="300" armTime="0.1" trackInsideSub="false" />
   
   <!--手持武器-->
   <Projectile id="Touhou_Homing_Amulet_Bullet" coneDeg="60" steering="6" maxLifetime="3"/>

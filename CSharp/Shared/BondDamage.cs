@@ -11,7 +11,7 @@ namespace Touhou.Bond
     // 计量挂在 Character.ApplyAttack（受击伤害的唯一漏斗）：前缀快照受害者各 affliction 强度，
     // 后缀重读一次，差值就是这次攻击真实入账的量。装备/药物 DoT 没攻击者天然不计，多段命中每段单独算。
     // 飞了
-    [HarmonyPatch]
+
     public static class BondMeterPatch
     {
         // 按 prefab 全量加总（快照/存量/钳制都走这个入口）
@@ -149,7 +149,7 @@ namespace Touhou.Bond
         static readonly Dictionary<string, double> uncountedLogged = new();
     }
 
-    [HarmonyPatch]
+
     public static class BondTickerPatch
     {
         static MethodBase TargetMethod()

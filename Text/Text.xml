@@ -126,5 +126,7 @@
     <touhou.pricer.more>……</touhou.pricer.more>
     <touhou.pricer.summary>背包估价合计约 %d mk（%d 种 / 共 %d 件）</touhou.pricer.summary>
     <touhou.pricer.summary.worn>穿戴装备估价合计约 %d mk（%d 种 / 共 %d 件）</touhou.pricer.summary.worn>
+    <entityname.Touhou_Scatter_Spell_Card_Cannon>散射符卡发射器</entityname.Touhou_Scatter_Spell_Card_Cannon>
+    <entitydescription.Touhou_Scatter_Spell_Card_Cannon>低射速的散射符卡发射器，可以使用连射炮弹药和相关类型的符卡。短暂蓄力后一次性喷射多枚射弹、呈扇形铺开，单发伤害倍率更高，代价是每发消耗1.5倍的弹药耐久</entitydescription.Touhou_Scatter_Spell_Card_Cannon>
   </Override>
 </infotexts>

@@ -172,6 +172,12 @@ namespace Touhou.Bond
         // id → 首次发现没戴符的时刻
         static readonly Dictionary<string, double> noCharmSince = new();
 
+        // 本巡回见过的在线 id：只有"在线上过又掉线"才算下线；
+        // 服务器刚起时还没连接的视为休眠（配对保留，等其上线），不然开局瞬间全被拆
+        static readonly HashSet<string> seenOnlineThisRound = new();
+
+        public static void ResetSeenOnline() => seenOnlineThisRound.Clear();
+
         // 下线/摘符的强制解散；在不在线看能不能解析到角色
         public static void ValidatePairs(double now)
         {
@@ -182,14 +188,18 @@ namespace Touhou.Bond
                     var ch = FindCharacterById(id);
                     if (ch == null)
                     {
-                        // 解析不到 = 离线（或角色死亡暂离）。死亡不断链（链接是玩家级），只有离线断
-                        if (!IsOnline(id))
+                        if (IsOnline(id)) { seenOnlineThisRound.Add(id); continue; } // 在线但角色未就位（加载/换人）
+                        if (seenOnlineThisRound.Contains(id))
                         {
+                            // 在线上过又消失 = 真下线，强制解散（不消耗配额）
                             BreakPair(id, forced: true, reason: "对方已下线");
+                            seenOnlineThisRound.Remove(id);
                             noCharmSince.Remove(id);
                         }
+                        // 从未在线 = 休眠配对（等待上线），保留
                         continue;
                     }
+                    seenOnlineThisRound.Add(id);
                     if (!BondState.Wearers.ContainsKey(ch))
                     {
                         if (!noCharmSince.TryGetValue(id, out double since)) noCharmSince[id] = now;

@@ -414,6 +414,182 @@
           <ParticleEmitter particle="StarDanmuBoom" copyentityangle="true" anglemin="105" anglemax="255" particleamount="3" velocitymin="200" velocitymax="600" colormultiplier="255,36,36,200" scalemin="0.1" scalemax="0.2" />
         </StatusEffect>
       </Projectile>
+    </Item>、
+    
+    <!--散射符卡发射器：短暂蓄力后一次性喷射多枚连射炮弹药（扇形齐射）。齐射/弹药倍率参数由插件读取，见 CSharp/Shared/ChargedSpellCard.cs-->
+    <Item name="散射符卡发射器"
+          identifier="Touhou_Scatter_Spell_Card_Cannon"
+          Tags="turret,Spell_Card_Cannon"
+          subcategory="Touhou"
+          category="Machine"
+          interactthroughwalls="true"
+          Scale="0.5"
+          interactdistance="10"
+          spritecolor="1.0,1.0,1.0,1.0"
+          focusonselected="true"
+          offsetonselected="800"
+          linkable="true"
+          allowedupgrades="Spell_Card_Cannon"
+          allowedlinks="Touhou_Rapidly_Spell_Card_Cannon_Loader">
+        <Sprite texture="%ModDir:2941124988%/Images/OtherWeapons/Touhou_Turrets.png" depth="0.01" sourcerect="782,34,222,188" canflipy="false"/>
+        <MinimapIcon name="Command_Weapons_Coilgun" texture="Content/UI/CommandUIAtlas.png" sourcerect="768,0,128,128"/>
+        <SwappableItem price="12000" replacementonuninstall="turrethardpoint" origin="128,215" swapidentifier="basicturret">
+            <SchematicSprite texture="Content/UI/WeaponUI.png" sourcerect="256,0,256,389"/>
+            <SwapConnectedItem tag="periscope" swapto="periscope"/>
+            <SwapConnectedItem tag="turretammosource" swapto="Touhou_Rapidly_Spell_Card_Cannon_Loader"/>
+        </SwappableItem>
+        <UpgradePreviewSprite scale="2.5" texture="Content/UI/WeaponUI.png" sourcerect="7,810,109,65" origin="0.5,0.5"/>
+        <StaticBody width="80" radius="80"/>
+
+        <!-- ========== 蓄力 / 装弹节奏（这些是原版 Turret 属性；连打与装弹由 <ChargedSpellCard> 控制） ==========
+             maxchargetime        蓄力时长（秒），蓄满前不允许开火。本炮 0.8s（蓄力感明显，蓄力音能完整上扬一遍）
+             singlechargedshot    本炮 = true：引擎开火后会把蓄力钳下去，蓄力音因此"开火即停、装弹期静音"；
+                                  连打的第 2、3 轮由插件把蓄力补满，不用重新蓄力。这就是"一轮蓄力连打三轮"的实现方式，
+                                  所以这一栏别改成 false（改成 false 蓄力会一直停在满格，蓄力音会一直响）
+             reload               同一组连打里，两轮齐射之间的间隔（秒）。本炮 0.5s
+                                  （连打的第 2、3 轮由插件补满蓄力，所以这一栏不受 maxchargetime 影响）
+             DamageMultiplier     这一发的伤害倍率（同时作用于 OnImpact 里的爆炸 / 异常强度）
+             spread               原生那一发的随机散布（度）；补射的扇形另由 fanangle 控制，两者叠加。
+                                  本炮填 0：炮口转到贴着自家船壳的角度时会被收缩到壳表面，随机散布会让
+                                  引擎那一发一出门就蹭到壳、在炮口触发弹药的 OnImpact（补射已经屏蔽自家船体，
+                                  引擎那一发没法屏蔽），所以散射效果交给 fanangle 就够了
+             powerconsumption     每次【原生开火】扣的电。补射绕过了原生发射流程、不额外扣电，
+                                  所以这一栏 × 一组连打的轮数 = 一整组齐射耗电（想按每发 500 × 5 发 × 3 轮收费就填 7500）
+                                  （参考：高速符卡发射器 400/发 ≈ 4400 电/秒）
+             maxactiveprojectiles 只统计炮塔自己发射的射弹，补射不计入（所以限流实际靠节奏，不是这栏）
+             firingrotationspeedmodifier  蓄力期间转塔速度按缓动插值到 55%（越小越笨重）
+             chargesoundwinduppitchslide  蓄力音的音高从 0.5 滑到 1.4（X 最小 0.25、Y 最大 4，原版默认 0.5,1.5）
+             launchimpulse        会加到弹自身的 launchimpulse 上（越大弹越快）
+             barrelpos            炮口位置，要跟着炮管贴图的 pivot 走（换贴图记得一起改）
+             表现三件套：showchargeindicator（HUD 蓄力条）/ <ChargeSound>（蓄力音）/ <ParticleEmitterCharge>（蓄力粒子）
+
+             ◆ 完整节奏（按当前数值算）：
+               蓄力 0.8s（蓄力音）→ 第 1 轮 5 发 → 0.5s → 第 2 轮 5 发 → 0.5s → 第 3 轮 5 发
+               → 装弹 1.0s（静音，蓄力也不走）→ 再蓄力 0.8s（蓄力音）→ 下一组
+               即：一组 15 发 / 2.8 秒（从第 1 轮算到下一组的第 1 轮），两组之间空档 1.8 秒
+        -->
+        <Turret
+                canbeselected="false"
+                spread="0"
+                launchimpulse="100.0"
+                characterusable="false"
+                linkable="true"
+                barrelpos="128,118"
+                rotationlimits="180,360"
+                powerconsumption="2000.0"
+                showchargeindicator="true"
+                showprojectileindicator="true"
+                recoildistance="80"
+                maxchargetime="0.8"
+                singlechargedshot="true"
+                reload="0.5"
+                DamageMultiplier="2.0"
+                maxactiveprojectiles="12"
+                firingrotationspeedmodifier="0.55"
+                chargesoundwinduppitchslide="0.5,1.4"
+                springstiffnesslowskill="2"
+                springstiffnesshighskill="50"
+                springdampinglowskill="0.5"
+                springdampinghighskill="10"
+                rotationspeedlowskill="1"
+                rotationspeedhighskill="8"
+                firingoffset="-10,-370"
+                MaxAngleOffset="5"
+                AICurrentTargetPriorityMultiplier="1">
+
+            <!-- ========== 齐射参数（插件 CSharp/Shared/ChargedSpellCard.cs 读取） ==========
+                 原版 Turret 构造函数只认自己认识的名字，这个子元素会被直接忽略；
+                 插件靠它判断"这台是齐射炮"并取参数。别的炮塔想用同一套齐射，把这一行抄进它的 <Turret> 里即可。
+                 注意：必须放在 <Turret> 里面；放到 <Item> 下面会被当成组件名去找类型，报红字。
+
+                 burstspercharge  一组连打有几轮（0 = 不限制，完全按引擎的 singlechargedshot 走）。
+                              第 2..N 轮由插件补满蓄力、跳过重新蓄力，只等 reload；打满 N 轮后进入装弹。
+                              填 1 = 每轮都要重新蓄力（想改回单发蓄力炮的节奏就填 1）
+                 magazinereload   装弹时间（秒）：一组连打打满后额外等待多久。这段里整段 TryLaunch 被拦掉，
+                              所以蓄力不积累、蓄力音静音；等待结束后还要重新蓄力 maxchargetime 才开下一组。
+                              实际两组间隔 ≈ magazinereload + maxchargetime（本炮 1.0 + 0.8 = 1.8 秒）
+                 burstcount   每轮齐射的总弹数（含原生那发）。
+                              1 = 关闭齐射，退化成原生单发蓄力炮；
+                              5 = 原生 1 发 + 补射 4 发，同一帧一起生成（齐射越大，单帧生成尖峰越高）
+                 fanangle     补射相对基线的总张角（度），在扇面内均匀对称铺开，正中那一发留给原生弹
+                 ammomultiplier  每发弹的弹药耐久倍数，口径是"每发都按这个倍数结算"。
+                              **允许小数**（每发按 1.5 点这样扣），原版弹药盒自己也用 0.2 / 0.25 / 0.5 这种小数：
+                              · 1.5 = 每发扣 1.5 点（模组符卡弹药的原成本是 1/发），小于 1 会被当成 1
+                              · 1 = 每发只扣原成本，和高速符卡发射器同样吃弹（这个炮塔最省的一档）
+                              · 每点耐久换到的伤害 ≈ DamageMultiplier ÷ ammomultiplier：
+                                2.0 ÷ 1.5 ≈ 1.33（对比：普通连射炮 1.0、高速符卡发射器 1.1，赚约 20%）。
+                                打平点随这个倍数变：现在 ×1.5，和高速符卡发射器持平要倍率 1.65、
+                                和普通连射炮持平要 1.5。想更省弹药就把这个倍数继续往下调（最低 1）
+                 ammocost     每发弹的基准耐久（**同样允许小数**）。0 = 自动：用"本次原生发射前后弹药盒的耐久差值"推算
+                              （模组符卡弹药约 1/发；原版连射炮弹药 0.2、穿甲弹 0.25）。
+                              想不受弹药盒自身记账顺序影响就手动填：模组符卡弹药 1、原版 0.2、要更细就 1.5 这样填
+
+                 其它行为：只在服务端/单人执行（客户端不生成实体）；巡回加载窗口跳过；
+                           同一帧只齐射一次；补射用当前装填弹种的 prefab（弹药自动适配，不用逐种配置）；
+                           补射吃 DamageMultiplier 与 launchimpulse，但不吃机修的 +20%；
+                           弹药不够时自动少打几发，不会先扣耐久再打空炮。
+                 调试：CSharp/Shared/ChargedSpellCard.cs 里把 ChargedLog.Verbose 改成 true，
+                       每轮齐射 / 每组连打结束都会打一行日志（发数 / 扇形 / 出膛点 / 弹药盒剩余耐久 / 装弹）。
+                 速查（当前数值 = 蓄力 0.8、连打 3 轮 × 5 发、轮间隔 0.5、装弹 1.0、倍率 2.0、弹药 ×1.5）：
+                       一组 15 发 / 2.8 秒 → 5.4 发/秒；每秒伤害 ≈ 5.4 × 2.0 ≈ 10.7
+                       （普通连射炮 ≈ 10 发/秒 × 1.0 = 10.0，高速符卡发射器 ≈ 11 发/秒 × 1.1 ≈ 12.2，
+                         即本炮约 1.07 倍 / 0.88 倍）；每秒生成 5.4 个射弹物件（对手 11 个，少 52%）；
+                       每秒吃弹药约 8.0 点，一个 700 耐久的弹药盒约打 87 秒、合计约 930 伤害；每秒耗电约 536。
+                       想再省弹药：继续调小 ammomultiplier（1.25 → 约 104 秒/盒；1.0 → 约 131 秒/盒，和对手同速吃弹）；
+                       想更"重炮"或想拉开两组之间的间隔：加大 magazinereload（例如 2.0）。
+                       想更贴脸爆发把 fanangle 压到 6；想更"散射压制"就放大到 20 ~ 30，并把上面的 spread 一起加上去。
+            -->
+            <ChargedSpellCard burstspercharge="3" magazinereload="1.0" burstcount="5" fanangle="12" ammomultiplier="1.5" ammocost="0"/>
+
+            <!--开火音：每轮齐射响一声（补射不会各自出声）。volume 是倍数，1 = 原版默认音量，嫌轻就继续加大-->
+            <Sound file="Content/Items/Weapons/Coilgun1.ogg" type="OnUse" range="10000" volume="2.5" selectionmode="Random"/>
+            <Sound file="Content/Items/Weapons/Coilgun2.ogg" type="OnUse" range="10000" volume="2.5"/>
+            <Sound file="Content/Items/Weapons/Coilgun3.ogg" type="OnUse" range="10000" volume="2.5"/>
+            <Sound file="Content/Items/Weapons/Coilgun4.ogg" type="OnUse" range="10000" volume="2.5"/>
+            <Sound file="Content/Items/Weapons/Coilgun5.ogg" type="OnUse" range="10000" volume="2.5"/>
+            <Sound file="Content/Items/Weapons/Coilgun6.ogg" type="OnUse" range="10000" volume="2.5"/>
+            <WeaponIndicator texture="Content/UI/WeaponUI.png" sourcerect="575,914,66,32" origin="0.227, 0.531"/>
+            <RailSprite texture="Content/Items/Weapons/Turrets.png" depth="0.011" sourcerect="901,256,120,287" origin="0.7, 0.7"/>
+            <!--炮管支点 origin：ox = 横向（垂直于炮口方向）的位置，0.5 = 正中间；调大 0.1 就往一侧偏 0.1×252 ≈ 25 贴图像素
+                               oy = 纵向（沿炮口方向）的位置，1 = 贴图最下沿（接在底座上的那一点）；嫌炮管太靠前/靠后就 0.02 一档调它-->
+            <BarrelSprite texture="%ModDir:2941124988%/Images/OtherWeapons/Touhou_Turrets.png" depth="0.012" sourcerect="513,189,252,471" origin="0.565, 1"/>
+            <Crosshair texture="Content/Items/Weapons/Crosshairs.png" sourcerect="256,0,256,256"/>
+            <CrosshairPointer texture="Content/Items/Weapons/Crosshairs.png" sourcerect="0,0,256,256"/>
+            <MoveSound file="Content/Items/Weapons/RailgunLoop.ogg"/>
+            <StartMoveSound file="Content/Items/Weapons/RailgunStart.ogg"/>
+            <EndMoveSound file="Content/Items/Weapons/RailgunStop.ogg"/>
+            <!--蓄力音：volume 同样是倍数（原版默认 1）。装弹期是静音的，开火瞬间会自动停，不用手动关-->
+            <ChargeSound file="Content/Items/Weapons/CHAINGUN_chargeUp_loop.ogg" volume="2" range="10000"/>
+
+            <RequiredSkill identifier="Touhou_Magic" level="50"/>
+
+            <LightComponent LightColor="1.0,0.8,0.8,1.0" Flicker="0.0" range="2500" directional="true" IsOn="true" drawbehindsubs="true"
+                            ignorecontinuoustoggle="true" InheritParentIsActive="false">
+                <LightTexture texture="Content/Lights/lightcone.png" origin="0.0,0.5" size="1.0,1.0"/>
+            </LightComponent>
+            <ParticleEmitter particle="muzzleflashcoilgun" particleamount="1" velocitymin="50" velocitymax="100"/>
+            <ParticleEmitterCharge particle="chargepulselaser" particlespersecond="60" scalemin="0.8" scalemax="1.2" anglemax="360"/>
+            <StatusEffect type="OnUse" target="This">
+                <Explosion range="1000.0" structuredamage="0" force="0.01" camerashake="5.0" flames="false" smoke="false" sparks="false"
+                           underwaterbubble="false"/>
+            </StatusEffect>
+        </Turret>
+
+        <aitarget maxsightrange="3000" maxsoundrange="8000" fadeouttime="5"/>
+
+        <ConnectionPanel selectkey="Action" canbeselected="true" msg="ItemMsgRewireScrewdriver" hudpriority="10">
+            <GuiFrame relativesize="0.2,0.32" minsize="400,350" maxsize="480,420" anchor="Center" style="ConnectionPanel"/>
+            <RequiredItem items="screwdriver" type="Equipped"/>
+            <input name="power_in" displayname="connection.powerin"/>
+            <input name="position_in" displayname="connection.turretaimingin"/>
+            <input name="trigger_in" displayname="connection.turrettriggerin"/>
+            <input name="toggle_light" displayname="connection.togglelight"/>
+            <input name="set_light" displayname="connection.setlight"/>
+            <input name="set_auto_operate" displayname="connection.setautooperate"/>
+            <input name="toggle_auto_operate" displayname="connection.toggleautooperate"/>
+        </ConnectionPanel>
+        <SkillRequirementHint identifier="weapons" level="50"/>
     </Item>
+
   </Items>
 </Override>

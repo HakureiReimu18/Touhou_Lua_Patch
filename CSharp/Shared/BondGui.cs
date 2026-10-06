@@ -18,7 +18,8 @@ namespace Touhou.Bond
         static GUITextBlock statusText, denyText;
         static int seenVersion = -1;
         static string selectedId;
-        static bool pendingRefresh;        // 鼠标按住期间的刷新请求延迟到松开（防重建吃掉点击）
+        static bool pendingRefresh;        // 有脏数据待重建列表（鼠标按住/节流期间挂起）
+        static double nextListRefresh;     // 列表重建节流（合并连发刷新，避免闪烁）
         static bool hotkeyWasDown, escWasDown; // 原始按键边沿检测（KeyHit 在固定步长下会一帧双触发）
         // 候选人按钮引用，选中态靠原地改文字，不重建列表（重建会吃掉点击）
         static readonly List<(GUIButton btn, string id, string name)> candButtons = new();
@@ -278,7 +279,7 @@ namespace Touhou.Bond
             return false;
         }
 
-        [HarmonyPatch]
+
         public static class BondGuiFramePatch
         {
             static System.Reflection.MethodBase TargetMethod()
@@ -295,27 +296,8 @@ namespace Touhou.Bond
             {
                 try
                 {
-                    // 窗口开着必须每帧重新注册，否则不绘制
-                    if (BondGui.window != null)
-                    {
-                        GUI.PreventPauseMenuToggle = true;   // 窗口开着时 Esc 归我们管，不弹暂停菜单
-                        BondGui.window.AddToGUIUpdateList(false, 1);
-                        if (BondClientState.Version != BondGui.seenVersion)
-                        {
-                            BondGui.seenVersion = BondClientState.Version;
-                            if (PlayerInput.PrimaryMouseButtonHeld()) BondGui.pendingRefresh = true;
-                            else BondGui.RefreshLists();
-                        }
-                        else if (BondGui.pendingRefresh && !PlayerInput.PrimaryMouseButtonHeld())
-                        {
-                            BondGui.pendingRefresh = false;
-                            BondGui.RefreshLists();
-                        }
-                        bool escDown = PlayerInput.GetKeyboardState.IsKeyDown(Keys.Escape);
-                        if (escDown && !BondGui.escWasDown) { BondGui.escWasDown = true; BondGui.Close(); return; }
-                        BondGui.escWasDown = escDown;
-                    }
-
+                    // 窗口维护不在这里（见 BondGui.WindowTick / BondScreenPatch）：
+                    // GameMain 后缀在 GUI.Update 之后执行，注册要慢一帧；挂 GameScreen 才是当帧生效
                     EnsureHotkey();
                     if (GUI.KeyboardDispatcher.Subscriber != null) return; // 聊天框/输入框激活时不触发
                     if (GameMain.Instance != null && GameMain.Instance.Paused) return; // 1.12.7 里 Paused 是实例属性
@@ -340,6 +322,55 @@ namespace Touhou.Bond
                 }
                 catch { }
             }
+        }
+
+        // 窗口维护挂 GameScreen.Update：它在 GUI.Update 之前执行，注册进当帧绘制列表，
+        // 与 Lua 窗口（think 钩子）的时序一致；GameMain 后缀注册要慢一帧，是窗口闪烁的来源之一
+        public static class BondScreenPatch
+        {
+            static System.Reflection.MethodBase TargetMethod()
+            {
+                var t = typeof(GameMain).Assembly.GetType("Barotrauma.GameScreen");
+                if (t == null) { BondLog.Warn("BondScreenPatch: GameScreen 未找到"); return null; }
+                foreach (var m in t.GetMethods(System.Reflection.BindingFlags.Public |
+                                                System.Reflection.BindingFlags.NonPublic |
+                                                System.Reflection.BindingFlags.Instance))
+                {
+                    if (m.Name == "Update" && m.GetParameters().Length == 1) return m;
+                }
+                BondLog.Warn("BondScreenPatch: GameScreen.Update 未找到");
+                return null;
+            }
+
+            static void Postfix() => BondGui.WindowTick();
+        }
+
+        /// <summary>窗口每帧维护：注册绘制列表、脏数据节流刷新、Esc 关窗（由 BondScreenPatch 驱动）</summary>
+        public static void WindowTick()
+        {
+            if (window == null) return;
+            try
+            {
+                GUI.PreventPauseMenuToggle = true;   // 窗口开着时 Esc 归我们管，不弹暂停菜单
+                window.AddToGUIUpdateList(false, 1);
+                // 版本变化只置脏标记；统一走延迟刷新（合并连发重建 + 鼠标按住期间不重建）
+                if (BondClientState.Version != seenVersion)
+                {
+                    seenVersion = BondClientState.Version;
+                    pendingRefresh = true;
+                }
+                if (pendingRefresh && !PlayerInput.PrimaryMouseButtonHeld() &&
+                    Timing.TotalTime >= nextListRefresh)
+                {
+                    pendingRefresh = false;
+                    nextListRefresh = Timing.TotalTime + 0.25;
+                    RefreshLists();
+                }
+                bool escDown = PlayerInput.GetKeyboardState.IsKeyDown(Keys.Escape);
+                if (escDown && !escWasDown) { escWasDown = true; Close(); return; }
+                escWasDown = escDown;
+            }
+            catch { }
         }
     }
     // 绑定/耐久设置 ↔ Lua 设置页的文件桥接：
@@ -465,7 +496,7 @@ namespace Touhou.Bond
             catch { }
         }
 
-        [HarmonyPatch]
+
         public static class BondSettingsPatch
         {
             static System.Reflection.MethodBase TargetMethod()

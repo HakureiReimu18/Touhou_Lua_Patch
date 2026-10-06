@@ -167,6 +167,9 @@ namespace Touhou.Homing
         public float ReleaseDist;
         /// <summary>穿身补伤半径（模拟单位）：飞过最近点时最近距离在这以内还没被引擎判成命中，就补一刀。</summary>
         public float PassHitDist;
+        /// <summary>是否允许追踪潜艇舱室内部的目标（登船敌人/跑进艇里的怪）。
+        /// false = 艇内目标一律不锁、已锁定的进艇即脱锁，防止追踪弹被"勾"回自家船体。</summary>
+        public bool TrackInsideSub;
 
         public HomingParams Clone() => (HomingParams)MemberwiseClone();
     }
@@ -334,6 +337,8 @@ namespace Touhou.Homing
             // 引导释放 + 穿身补伤（见 Docs/通用射弹追踪-可行方案.md §4.6）：300 = 3 米交棒，100 = 1 米内算贴脸穿过
             ReleaseDist = 300f,
             PassHitDist = 100f,
+            // 默认仍可追踪艇内目标（保持既有行为）；设为 false 可让艇内登船敌人不再"勾"走追踪弹
+            TrackInsideSub = true,
         };
 
         static HomingParams NewMouseDefault()
@@ -368,6 +373,7 @@ namespace Touhou.Homing
             p.ArmTime = ParseFloat(get("armTime"), "armTime", p.ArmTime);
             p.ReleaseDist = ParseFloat(get("releaseDist"), "releaseDist", p.ReleaseDist);
             p.PassHitDist = ParseFloat(get("passHitDist"), "passHitDist", p.PassHitDist);
+            p.TrackInsideSub = ParseBool(get("trackInsideSub"), "trackInsideSub", p.TrackInsideSub);
         }
 
         public static string Describe()
@@ -674,11 +680,12 @@ namespace Touhou.Homing
                 }
 
                 Character target = e.Target;
-                if (target != null && (target.Removed || target.IsDead))
+                if (target != null && (target.Removed || target.IsDead ||
+                                       (!p.TrackInsideSub && IsInsideSub(target))))
                 {
                     target = null;
                     e.Target = null;
-                    e.MinDist = float.MaxValue; // 目标没了，最近距离跟着作废
+                    e.MinDist = float.MaxValue; // 目标没了/进艇脱锁，最近距离跟着作废
                 }
 
                 bool due = now >= e.NextAcquire;
@@ -770,6 +777,7 @@ namespace Touhou.Homing
                 Character c = list[i];
                 if (c == null || c.Removed || c.IsDead || c == shooter0) continue;
                 if (c.TeamID == e.Team) continue;
+                if (!p.TrackInsideSub && IsInsideSub(c)) continue;
                 Vector2 offset = c.WorldPosition - origin;
                 float distSqr = offset.LengthSquared();
                 if (distSqr > p.AcquireRangeSqr || distSqr < 1f) continue;
@@ -782,6 +790,13 @@ namespace Touhou.Homing
             }
             return best;
         }
+
+        /// <summary>
+        /// 目标是否真的在潜艇舱室内部（登船敌人 / 跑进艇里的怪）。
+        /// 用 CurrentHull（每帧对所有角色更新的所在舱室，见 Character.Update）+ 舱室所属潜艇判定：
+        /// 在艇壳外扒着或在水中游的目标 CurrentHull 为 null，不算"艇内"，照常追踪。
+        /// </summary>
+        static bool IsInsideSub(Character c) => c.CurrentHull != null && c.CurrentHull.Submarine != null;
     }
 
     /// <summary>
@@ -893,7 +908,13 @@ namespace Touhou.Homing
             Projectile proj = round.GetComponent<Projectile>();
             if (proj == null || proj.Attack == null) return false;
 
+            // 伤害走引擎入口 DoDamageToLimb（与引擎命中同一方法），生物按最大生命值的 affliction
+            // 归一化（CharacterHealth.AddLimbAffliction：× 100/MaxVitality ×(1−抗性)）自动生效。
+            victim.LastDamageSource = round; // 与引擎肢体分支一致：先记伤害来源（击杀归属等）
             proj.Attack.DoDamageToLimb(shooter, limb, round.WorldPosition, 1.0f, false);
+            // 复刻引擎命中时给被击肢体的动量冲量（引擎在同一处做，命中击退手感一致）
+            if (limb.body != null && round.body != null)
+                limb.body.ApplyLinearImpulse(round.body.LinearVelocity * round.body.Mass);
             return true;
         }
 

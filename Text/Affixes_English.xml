@@ -125,4 +125,6 @@
 	<affix.desc.lonewolf>+18% damage while this is the only affixed weapon in your quick slots</affix.desc.lonewolf>
 	<affix.prefix.miracle>‖color:255,64,64,255‖Miracle‖color:end‖‖color:255,255,255,255‖</affix.prefix.miracle>
 	<affix.desc.miracle>Allows the item to hold one extra affix of Epic-or-lower tier and one extra affix of any tier (applied via enchantment stone transfer); run the enchanting station with no material to strip the extra affixes</affix.desc.miracle>
+	<entityname.Touhou_Scatter_Spell_Card_Cannon>Scatter Spell Card Launcher</entityname.Touhou_Scatter_Spell_Card_Cannon>
+	<entitydescription.Touhou_Scatter_Spell_Card_Cannon>A slow-firing spell card launcher that uses chaingun ammunition. It briefly charges up, then fires a fan of several rounds at once. Higher damage per shot, but every round costs 1.5x the ammunition durability.</entitydescription.Touhou_Scatter_Spell_Card_Cannon>
 </infotexts>
