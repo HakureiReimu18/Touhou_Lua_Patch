@@ -42,7 +42,7 @@
 	<affix.prefix.sturdy>‖color:255,255,255,255‖坚固‖color:end‖‖color:255,255,255,255‖</affix.prefix.sturdy>
 	<affix.desc.sturdy>受到的伤害 -3%</affix.desc.sturdy>
 	<affix.prefix.keen>‖color:255,255,255,255‖锐利‖color:end‖‖color:255,255,255,255‖</affix.prefix.keen>
-	<affix.desc.keen>伤害 +5%</affix.desc.keen>
+	<affix.desc.keen>近战武器伤害 +5%</affix.desc.keen>
 	<affix.prefix.steady>‖color:255,255,255,255‖稳手‖color:end‖‖color:255,255,255,255‖</affix.prefix.steady>
 	<affix.desc.steady>射速 +6%</affix.desc.steady>
 	<affix.prefix.balanced>‖color:255,255,255,255‖均衡‖color:end‖‖color:255,255,255,255‖</affix.prefix.balanced>
@@ -95,7 +95,7 @@
 	<affix.prefix.crown>‖color:255,64,64,255‖王冠‖color:end‖‖color:255,255,255,255‖</affix.prefix.crown>
 	<affix.desc.crown>弹匣最后一发弹药伤害 +30%</affix.desc.crown>
 	<affix.prefix.devoted>‖color:255,64,64,255‖专一‖color:end‖‖color:255,255,255,255‖</affix.prefix.devoted>
-	<affix.desc.devoted>变为双手握持，伤害 +60%</affix.desc.devoted>
+	<affix.desc.devoted>单手近战武器变为双手握持，伤害 +60%</affix.desc.devoted>
 	<affix.prefix.ragnarok>‖color:255,140,0,255‖诸神黄昏‖color:end‖‖color:255,255,255,255‖</affix.prefix.ragnarok>
 	<affix.desc.ragnarok>伤害 +14%；每 3 秒一次：50% 概率 12 烧伤+12 流血，30% 概率 0.5 秒眩晕</affix.desc.ragnarok>
 	<affix.prefix.immortal>‖color:255,140,0,255‖不朽‖color:end‖‖color:255,255,255,255‖</affix.prefix.immortal>
@@ -105,7 +105,7 @@
 	<affix.prefix.euphoria>‖color:255,64,64,255‖亢奋‖color:end‖‖color:255,255,255,255‖</affix.prefix.euphoria>
 	<affix.desc.euphoria>耐久大于20%时，使用后目标 45 秒内移速 +35%，持续恢复物理伤害并止血，附加 10 醉酒与 5 精神病</affix.desc.euphoria>
 	<affix.prefix.weightless>‖color:255,64,64,255‖失重‖color:end‖‖color:255,255,255,255‖</affix.prefix.weightless>
-	<affix.desc.weightless>穿戴时移速 +40%，受伤 -8%，眩晕积累 -0.1/s</affix.desc.weightless>
+	<affix.desc.weightless>穿戴时移速 +30%，受伤 -8%，眩晕积累 -0.1/s；受到攻击时反击：必定使攻击者眩晕 0.2 秒（1 秒冷却，不影响队友）</affix.desc.weightless>
 	<affix.prefix.priority>‖color:192,64,255,255‖优先‖color:end‖‖color:255,255,255,255‖</affix.prefix.priority>
 	<affix.desc.priority>放在最左侧（1号）快捷栏：伤害 +6%，射速/挥速 +6%</affix.desc.priority>
 	<affix.prefix.calm>‖color:192,64,255,255‖冷静‖color:end‖‖color:255,255,255,255‖</affix.prefix.calm>
@@ -116,7 +116,7 @@
 	<affix.prefix.steadfast>‖color:192,64,255,255‖稳定‖color:end‖‖color:255,255,255,255‖</affix.prefix.steadfast>
 	<affix.desc.steadfast>手持时：手部受伤不再导致瞄准抖动</affix.desc.steadfast>
 	<affix.prefix.thorns>‖color:192,64,255,255‖荆棘‖color:end‖‖color:255,255,255,255‖</affix.prefix.thorns>
-	<affix.descarmor.thorns>受到的伤害 -5%；受到攻击时反击：使攻击者流血 +5、撕裂伤 +3（1 秒冷却，不影响队友）</affix.descarmor.thorns>
+	<affix.descarmor.thorns>受到的伤害 -5%；受到攻击时反击：使攻击者流血 +8、撕裂伤 +5，50% 概率眩晕 0.3 秒（1 秒冷却，不影响队友）</affix.descarmor.thorns>
 	<affix.prefix.striding>‖color:74,144,255,255‖踏步‖color:end‖‖color:255,255,255,255‖</affix.prefix.striding>
 	<affix.desc.striding>受到的伤害 -4%；穿戴时腿部受伤不再导致减速</affix.desc.striding>
 	<affix.descarmor.striding>受到的伤害 -4%；穿戴时腿部受伤不再导致减速</affix.descarmor.striding>

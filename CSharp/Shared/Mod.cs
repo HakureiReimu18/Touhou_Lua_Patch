@@ -252,7 +252,7 @@ namespace Touhou.Affixes
             "cooldowndamagemult", "cooldowndamageinterval", "lastshotdamagemult", "forcetwohanded",
             "slot1damagemult", "slot1fireratemult", "noisemult",
             "noaimwobble", "nomovepenalty",
-            "thornsbleeding", "thornslacerations", "thornsinterval",
+            "thornsbleeding", "thornslacerations", "thornsstun", "thornsstunchance", "thornsinterval",
             "forcetwohandedranged", "massbonusmult", "massthreshold",
             "chargetimemult", "firstshotdamagemult", "lonewolfdamagemult",
             "stonerollonly"
@@ -315,6 +315,8 @@ namespace Touhou.Affixes
                     def.NoMovePenalty = bool.TryParse(element.Attribute("nomovepenalty")?.Value, out bool nmp) && nmp;
                     def.ThornsBleeding = ParseInvariantFloat(element.Attribute("thornsbleeding")?.Value, 0f);
                     def.ThornsLacerations = ParseInvariantFloat(element.Attribute("thornslacerations")?.Value, 0f);
+                    def.ThornsStun = ParseInvariantFloat(element.Attribute("thornsstun")?.Value, 0f);
+                    def.ThornsStunChance = ParseInvariantFloat(element.Attribute("thornsstunchance")?.Value, 1f);
                     def.ThornsInterval = ParseInvariantFloat(element.Attribute("thornsinterval")?.Value, 2f);
                     def.ForceTwoHandedRanged = bool.TryParse(element.Attribute("forcetwohandedranged")?.Value, out bool fthr) && fthr;
                     def.MassBonusMult = ParseInvariantFloat(element.Attribute("massbonusmult")?.Value, 1f);
@@ -376,7 +378,7 @@ namespace Touhou.Affixes
                 AnyNoiseAffixes = AffixDefs.Values.Any(a => Math.Abs(a.NoiseMult - 1f) > 0.0001f);
                 AnyAimWobbleAffixes = AffixDefs.Values.Any(a => a.NoAimWobble);
                 AnyMovePenaltyAffixes = AffixDefs.Values.Any(a => a.NoMovePenalty);
-                AnyThornsAffixes = AffixDefs.Values.Any(a => a.ThornsBleeding > 0f || a.ThornsLacerations > 0f);
+                AnyThornsAffixes = AffixDefs.Values.Any(a => a.ThornsBleeding > 0f || a.ThornsLacerations > 0f || a.ThornsStun > 0f);
                 AnyMassBonusAffixes = AffixDefs.Values.Any(a => a.MassBonusMult > 1f);
                 AnyChargeTimeAffixes = AffixDefs.Values.Any(a => Math.Abs(a.ChargeTimeMult - 1f) > 0.0001f);
                 AnyFirstShotAffixes = AffixDefs.Values.Any(a => a.FirstShotDamageMult > 1f);
@@ -1481,6 +1483,7 @@ namespace Touhou.Affixes
             float noAmmoSave = 1f, noDurabilitySave = 1f;
             float cooldownMult = 1f, cooldownInterval = 0f;
             float massMult = 1f, massThreshold = float.MaxValue;
+            float thornsStunMiss = 1f;
             foreach (var p in parts)
             {
                 // 蓄力耦合逐部件判定：部件同时带蓄力+增伤且物品无蓄力 → 该部件增伤不进合成
@@ -1511,7 +1514,13 @@ namespace Touhou.Affixes
                 c.NoMovePenalty |= p.NoMovePenalty;
                 c.ThornsBleeding += p.ThornsBleeding;
                 c.ThornsLacerations += p.ThornsLacerations;
-                if (p.ThornsBleeding > 0f || p.ThornsLacerations > 0f)
+                if (p.ThornsStun > 0f)
+                {
+                    c.ThornsStun += p.ThornsStun;
+                    // 眩晕概率按"都不触发"的补数累积（两件各 50% → 75%），语义与 ammo/durability 概率一致
+                    thornsStunMiss *= 1f - p.ThornsStunChance;
+                }
+                if (p.ThornsBleeding > 0f || p.ThornsLacerations > 0f || p.ThornsStun > 0f)
                     c.ThornsInterval = Math.Min(c.ThornsInterval, p.ThornsInterval);
                 c.ForceTwoHandedRanged |= p.ForceTwoHandedRanged;
                 if (p.MassBonusMult > 1f)
@@ -1527,6 +1536,7 @@ namespace Touhou.Affixes
             }
             c.AmmoSaveChance = 1f - noAmmoSave;
             c.DurabilitySaveChance = 1f - noDurabilitySave;
+            c.ThornsStunChance = 1f - thornsStunMiss; // 无眩晕部件时为 0，ThornsStun=0 时本就不触发
             c.CooldownDamageMult = cooldownMult;
             if (cooldownInterval > 0f) c.CooldownDamageInterval = cooldownInterval;
             c.MassBonusMult = massMult;
@@ -2513,10 +2523,14 @@ namespace Touhou.Affixes
         public bool NoAimWobble;
         // 踏步：腿部受伤不再减速
         public bool NoMovePenalty;
-        // 荆棘：反给攻击者的流血强度
+        // 受击反击（荆棘/失重共用）：反给攻击者的流血强度
         public float ThornsBleeding = 0f;
-        // 荆棘：撕裂伤强度
+        // 受击反击：撕裂伤强度
         public float ThornsLacerations = 0f;
+        // 受击反击：反给攻击者的眩晕秒数（0 = 无眩晕反伤）
+        public float ThornsStun = 0f;
+        // 受击反击：眩晕反伤的触发概率（1 = 必定眩晕，失重用默认值）
+        public float ThornsStunChance = 1f;
         public float ThornsInterval = 2f;
         // 专注：单手远程改双手握持
         public bool ForceTwoHandedRanged;

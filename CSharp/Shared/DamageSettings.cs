@@ -64,6 +64,7 @@ namespace Touhou.Damage
             DamageConfig.Load();
             DamageValues.Load();
             DamagePatcher.Register(harmony);
+            DamageNet.Register();   // 联机传输（照 BondNet）：权限校验 / 状态广播 / 拒绝反馈
 
             LuaCsSetup.Instance.Hook.Add("roundStart", "Touhou.Damage.RoundStart", OnRoundStart);
             LuaCsSetup.Instance.Hook.Add("think", "Touhou.Damage.Think", OnThink);
@@ -71,8 +72,10 @@ namespace Touhou.Damage
 
             // 新实例上线：对已存在物品做一次归一 + 应用（首次启动时通常无物品，是空操作）
             DamagePatcher.ApplyAll();
+            // 联机客户端：主动拉一次服务器状态（设置页显示用）
+            if (!DamageNet.IsAuthority) DamageNet.RequestState();
 
-            DamageLog.Log("伤害设置插件已加载（应用器生效）");
+            DamageLog.Log("伤害设置插件已加载（应用器 + 联机传输）");
         }
 
         public void Dispose()
@@ -98,7 +101,11 @@ namespace Touhou.Damage
         static int thinkCounter;
         static object OnThink(object[] args)
         {
-            // 玩家值文件轮询（命令 / UI / 手改都会落盘）：约 1 秒检查一次 mtime
+            // 文件桥每帧检查：设置页「保存」写请求文件 → 权威端本机应用 / 客户端发服务器；
+            // 客户端收到服务器状态后把镜像写进本地 TouhouDamageState.txt 供设置页显示
+            DamageBridge.Tick();
+
+            // 玩家值文件轮询（命令 / 手改都会落盘）：约 1 秒检查一次 mtime
             if (++thinkCounter < 60) return null;
             thinkCounter = 0;
             try
@@ -129,12 +136,14 @@ namespace Touhou.Damage
                     var a = CommandArgs(args);
                     if (a.Length < 3) { DamageLog.Warn("用法：damage_set <组> <damage|pen|def> <值>"); return; }
                     if (!DamagePatcher.IsAuthority) { DamageLog.Warn("仅主机/单机可改数值"); return; }
+                    var before = DamageValues.Snapshot();
                     if (!DamageValues.SetValue(a[0], a[1], a[2], out var err))
                     {
                         DamageLog.Warn($"damage_set 失败：{err}");
                         return;
                     }
                     DamagePatcher.ApplyAll();
+                    DamageBridge.AnnounceAfterChange(before, DamageNet.LocalPlayerName());
                     string label = DamageConfig.Groups.TryGetValue(a[0], out var grp) ? $"（{grp.Label}，{grp.Items.Count} 件）" : "";
                     DamageLog.Log($"已设置：{a[0]}{label} {a[1]} = {a[2]}");
                 }, null, false);
@@ -143,8 +152,10 @@ namespace Touhou.Damage
                 {
                     if (!DamagePatcher.IsAuthority) { DamageLog.Warn("仅主机/单机可改数值"); return; }
                     var a = CommandArgs(args);
+                    var before = DamageValues.Snapshot();
                     DamageValues.ResetToDefaults(a.Length > 0 ? a[0] : "all");
                     DamagePatcher.ApplyAll();
+                    DamageBridge.AnnounceAfterChange(before, DamageNet.LocalPlayerName());
                     DamageLog.Log($"已重置为默认值：{(a.Length > 0 ? a[0] : "all")}");
                 }, null, false);
             game.AddCommand("damage_apply", "强制全量重应用（调试用）",
@@ -159,12 +170,22 @@ namespace Touhou.Damage
                         DamageLog.Warn("用法：damage_lv <1|2|3>");
                         return;
                     }
+                    var before = DamageValues.Snapshot();
                     if (!DamageValues.ApplyTier(lv, out var err)) { DamageLog.Warn($"档位应用失败：{err}"); return; }
                     DamagePatcher.ApplyAll();
+                    DamageBridge.AnnounceAfterChange(before, DamageNet.LocalPlayerName());
                     DamageLog.Log($"已应用档位 LV{lv}（各分组按档位写入，可用 damage_list 查看）");
                 }, null, false);
             game.AddCommand("damage_probe", "对象级探测：damage_probe <物品identifier>，打印该物品各数据点的底值/当前值/跟踪状态",
                 args => DamageDump.Probe(CommandArgs(args).FirstOrDefault()), null, false);
+            game.AddCommand("damage_rescan", "重新扫描名字含「东方」的模组并自动收录可补强物品（新增/更新模组后用）",
+                args =>
+                {
+                    if (!DamagePatcher.IsAuthority) { DamageLog.Warn("仅主机/单机可改数值"); return; }
+                    DamageConfig.ForceAutoCollect();
+                    DamagePatcher.ApplyAll();
+                    DamageLog.Log(DamageConfig.LastAutoScanSummary);
+                }, null, false);
         }
 
         /// <summary>命令参数形状兼容：LuaCs 可能给 object[]{"a"}、object[]{ string[]{"a","b"} } 或混合。</summary>
@@ -214,6 +235,9 @@ namespace Touhou.Damage
         public readonly Dictionary<int, DamageTier> Tiers = new Dictionary<int, DamageTier>();
 
         public readonly HashSet<string> Items = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>联动模组兼容：按物品 tag 收录（&lt;Tag name="…"/&gt;，内容加载后展开）。</summary>
+        public readonly HashSet<string> Tags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>一个档位预设（LV1 略弱于补强 / LV2 等于补强 / LV3 补强×2）。</summary>
@@ -245,11 +269,21 @@ namespace Touhou.Damage
         public static readonly Dictionary<string, DamageGroup> ByItem = new Dictionary<string, DamageGroup>(StringComparer.OrdinalIgnoreCase);
         public static int FileCount;
         public static string LastError = "";
+        /// <summary>跨包 &lt;Exclude id="…"/&gt;：任何包的配置都能排除某些物品（含自动收录的）。</summary>
+        public static readonly HashSet<string> Excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        /// <summary>合并过的配置文件名（damage_list 展示，便于排查联动模组是否生效）。</summary>
+        public static readonly List<string> MergedFiles = new List<string>();
+
+        static bool autoScanDone;
+        /// <summary>最近一次自动收录的摘要（damage_list / 日志显示）。</summary>
+        public static string LastAutoScanSummary = "";
 
         public static void Load()
         {
             Groups.Clear();
             ByItem.Clear();
+            Excluded.Clear();
+            MergedFiles.Clear();
             FileCount = 0;
             LastError = "";
             DamageTypes.Clear();
@@ -272,6 +306,7 @@ namespace Touhou.Damage
                     if (!File.Exists(path)) continue;
                     MergeFile(path, pkg.Name);
                     FileCount++;
+                    MergedFiles.Add(pkg.Name);
                 }
             }
             catch (Exception ex)
@@ -280,6 +315,8 @@ namespace Touhou.Damage
                 DamageLog.Warn($"配置扫描失败：{ex.Message}");
             }
 
+            AutoCollect();
+
             RebuildIndex();
             ValidateAgainstContent();
 
@@ -287,6 +324,233 @@ namespace Touhou.Damage
                 DamageLog.Warn($"未找到任何 {FileName}（预期位置：{ConfigPath}）");
             else
                 DamageLog.Log($"配置已加载：文件 {FileCount}，分组 {Groups.Count}，物品条目 {ByItem.Count}");
+        }
+
+        /// <summary>强制重扫（damage_rescan：新增/更新东方模组后不用重启）。</summary>
+        public static void ForceAutoCollect()
+        {
+            autoScanDone = false;
+            Load();
+        }
+
+        /// <summary>
+        /// 自动收录（2026-10-06）：直接遍历**已加载的物品 prefab**，把来源内容包名字含「东方」、
+        /// 且"可补强"（有 damageModifier 防护数据 / Attack/StatusEffect/Projectile/MeleeWeapon 等伤害数据）的物品
+        /// 并进对应分组；显式清单里的 id 不动（显式优先）。每个会话只扫一次，`damage_rescan` 强制重扫。
+        /// 归类规则：带 damageModifier → 凭依武装（Hyouibana）/ 潜水服（路径或 id 含 diving）/ 头饰（其它防护装束）；
+        /// 带 Turret 或 turretammosource 标签 → 舰炮（含 SpawnItem/Containable 引用的东方弹体闭包）；
+        /// 其余可补强武器 → 专属（泛用武器在显式清单里已收录）。
+        /// 用 prefab 而不是扫文件：恰好等于游戏真正加载的物品，且不会有 XML 引用被误当成定义。
+        /// </summary>
+        public static void AutoCollect()
+        {
+            if (autoScanDone) return;
+            var prefabs = ItemPrefab.Prefabs;
+            if (prefabs == null || !prefabs.Any()) return;   // 内容尚未加载：不标记完成，等下一轮（roundStart）再扫
+            autoScanDone = true;
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var g in Groups.Values)
+                foreach (var id in g.Items) known.Add(id);
+            var addedPerGroup = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var eastables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var turretRoots = new List<XElement>();
+            var pkgNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var byTag = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            int scanned = 0, added = 0;
+
+            try
+            {
+                foreach (var kvp in prefabs.AllPrefabs)
+                {
+                    ItemPrefab prefab = null;
+                    try { prefab = kvp.Value?.ActivePrefab ?? kvp.Value?.BasePrefab; } catch { }
+                    if (prefab == null) continue;
+                    string id, pkgName;
+                    XElement el;
+                    try
+                    {
+                        id = prefab.Identifier.Value;
+                        // 用“基础定义”的来源判断是否东方原创：东方包对原版物品的 Override 不算（那些物品不该被整体纳管）
+                        string basePkg = null;
+                        try { basePkg = kvp.Value?.BasePrefab?.ContentPackage?.Name; } catch { }
+                        pkgName = basePkg ?? prefab.ContentPackage?.Name;
+                        el = prefab.ConfigElement;
+                    }
+                    catch { continue; }
+                    if (string.IsNullOrEmpty(id) || el == null) continue;
+
+                    // tag 索引（给联动模组的 <Tag name="…"/> 用，不限内容包来源）
+                    try
+                    {
+                        if (prefab.Tags != null)
+                        {
+                            foreach (var t in prefab.Tags)
+                            {
+                                if (t.Value == null) continue;
+                                if (!byTag.TryGetValue(t.Value, out var list))
+                                {
+                                    list = new List<string>();
+                                    byTag[t.Value] = list;
+                                }
+                                list.Add(id);
+                            }
+                        }
+                    }
+                    catch { }
+
+                    if (string.IsNullOrEmpty(pkgName) || !pkgName.Contains("东方")) continue;
+                    if (Excluded.Contains(id)) continue;
+                    pkgNames.Add(pkgName);
+                    eastables.Add(id);
+                    scanned++;
+                    if (known.Contains(id)) continue;
+                    string gid = ClassifyAutoItem(el, prefab, id);
+                    if (gid == null || !Groups.TryGetValue(gid, out var g)) continue;
+                    known.Add(id);
+                    g.Items.Add(id);
+                    added++;
+                    addedPerGroup[gid] = addedPerGroup.TryGetValue(gid, out var c) ? c + 1 : 1;
+                    if (gid == "turret") turretRoots.Add(el);
+                }
+
+                // 联动模组兼容：展开各组 <Tag name="…"/>（按物品 tag 收录，被 <Exclude> 的不收）
+                foreach (var g in Groups.Values)
+                {
+                    if (g.Tags.Count == 0) continue;
+                    foreach (var tag in g.Tags)
+                    {
+                        if (!byTag.TryGetValue(tag, out var list))
+                        {
+                            DamageLog.Warn($"配置里的 <Tag name=\"{tag}\"/> 没匹配到任何物品（分组 {g.Id}）");
+                            continue;
+                        }
+                        foreach (var id in list)
+                        {
+                            if (string.IsNullOrEmpty(id) || Excluded.Contains(id) || known.Contains(id)) continue;
+                            known.Add(id);
+                            g.Items.Add(id);
+                            added++;
+                            addedPerGroup[g.Id] = addedPerGroup.TryGetValue(g.Id, out var c3) ? c3 + 1 : 1;
+                        }
+                    }
+                }
+
+                // 舰炮弹药闭包：弹箱生成/容纳的弹体也并进舰炮组（只跟东方包里的物品，与生成器同口径）
+                if (turretRoots.Count > 0 && Groups.TryGetValue("turret", out var turret))
+                {
+                    var queue = new Queue<string>();
+                    foreach (var el2 in turretRoots) CollectItemRefs(el2, queue);
+                    while (queue.Count > 0)
+                    {
+                        string id = queue.Dequeue();
+                        if (Excluded.Contains(id) || !eastables.Contains(id) || !known.Add(id)) continue;
+                        turret.Items.Add(id);
+                        added++;
+                        addedPerGroup["turret"] = addedPerGroup.TryGetValue("turret", out var c2) ? c2 + 1 : 1;
+                        try
+                        {
+                            if (prefabs.ContainsKey(id))
+                            {
+                                var sub = prefabs[id];
+                                if (sub?.ConfigElement != null) CollectItemRefs(sub.ConfigElement, queue);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch (Exception ex) { DamageLog.Warn($"自动收录出错：{ex.Message}"); }
+
+            sw.Stop();
+            var parts = addedPerGroup.OrderByDescending(kv => kv.Value)
+                .Select(kv => $"{kv.Key} +{kv.Value}");
+            LastAutoScanSummary = added > 0
+                ? $"自动收录：东方包 {pkgNames.Count} 个 / 见过 {scanned} 件 / 新增 {added} 件（{string.Join("，", parts)}），用时 {sw.ElapsedMilliseconds} ms"
+                : $"自动收录：东方包 {pkgNames.Count} 个 / 见过 {scanned} 件 / 无新增（用时 {sw.ElapsedMilliseconds} ms）";
+            DamageLog.Log(LastAutoScanSummary);
+        }
+
+        static string ClassifyAutoItem(XElement el, ItemPrefab prefab, string id)
+        {
+            bool hasDefense = false;
+            foreach (var d in el.Descendants())
+            {
+                if (d.Name.LocalName.Equals("damageModifier", StringComparison.OrdinalIgnoreCase))
+                { hasDefense = true; break; }
+            }
+            if (hasDefense)
+            {
+                if (id.StartsWith("Touhou_Hyouibana_Armor", StringComparison.OrdinalIgnoreCase)) return "hyouibana";
+                string f = "";
+                try { f = (prefab.FilePath?.Value ?? "").Replace('\\', '/').ToLowerInvariant(); } catch { }
+                if (id.IndexOf("diving", StringComparison.OrdinalIgnoreCase) >= 0 || f.Contains("/diving/")) return "divingsuit";
+                return "headwear";   // 其它带防护的穿戴物并入头饰组（可在配置里显式改派）
+            }
+            try
+            {
+                if (prefab.Tags != null)
+                {
+                    foreach (var t in prefab.Tags)
+                        if (t.Value != null && t.Value.Equals("turretammosource", StringComparison.OrdinalIgnoreCase)) return "turret";
+                }
+            }
+            catch { }
+
+            bool hasTurret = false, attackLike = false;
+            foreach (var d in el.Descendants())
+            {
+                switch (d.Name.LocalName)
+                {
+                    case "Turret": hasTurret = true; break;
+                    case "Attack":
+                    case "Projectile":
+                    case "MeleeWeapon":
+                    case "RangedWeapon":
+                        attackLike = true; break;
+                }
+                if (hasTurret && attackLike) break;
+            }
+            if (hasTurret) return "turret";
+            // "可补强"= 真的能打出白名单伤害：武器组件，或带有白名单类型 affliction 的 StatusEffect（医疗/涂装类会被排除）
+            if (!attackLike && !HasScalableAffliction(el)) return null;
+            return "exclusive";
+        }
+
+        /// <summary>元素里是否引用了白名单伤害类型的 affliction（按已加载的 AfflictionPrefab 判类型）。</summary>
+        static bool HasScalableAffliction(XElement el)
+        {
+            foreach (var d in el.Descendants())
+            {
+                if (d.Name.LocalName != "Affliction") continue;
+                string id = (string)d.Attribute("identifier");
+                if (string.IsNullOrEmpty(id)) continue;
+                try
+                {
+                    if (AfflictionPrefab.Prefabs == null || !AfflictionPrefab.Prefabs.ContainsKey(id)) continue;
+                    var type = AfflictionPrefab.Prefabs[id]?.AfflictionType.Value;
+                    if (!string.IsNullOrEmpty(type) && DamageTypes.Contains(type)) return true;
+                }
+                catch { }
+            }
+            return false;
+        }
+
+        static void CollectItemRefs(XElement el, Queue<string> queue)
+        {
+            foreach (var sub in el.Descendants())
+            {
+                string raw = null;
+                if (sub.Name.LocalName == "SpawnItem") raw = (string)sub.Attribute("identifiers");
+                else if (sub.Name.LocalName == "Containable") raw = (string)sub.Attribute("items");
+                if (string.IsNullOrEmpty(raw)) continue;
+                foreach (var tok in raw.Split(','))
+                {
+                    var t = tok.Trim();
+                    if (t.Length > 0 && t.IndexOf(' ') < 0) queue.Enqueue(t);
+                }
+            }
         }
 
         static void MergeFile(string path, string sourceName)
@@ -382,15 +646,39 @@ namespace Touhou.Damage
                     string iid = (string)itemEl.Attribute("id");
                     if (!string.IsNullOrEmpty(iid)) g.Items.Add(iid.Trim());
                 }
+                // 联动模组兼容：<Tag name="my_mod_danmu"/> 按物品 tag 收录（内容加载后由 AutoCollect 展开）
+                foreach (var tagEl in el.Elements("Tag"))
+                {
+                    string tag = (string)tagEl.Attribute("name");
+                    if (string.IsNullOrEmpty(tag)) tag = tagEl.Value;
+                    if (!string.IsNullOrWhiteSpace(tag)) g.Tags.Add(tag.Trim());
+                }
+            }
+
+            // 联动模组兼容：根级 <Exclude id="…"/>（可在任意包的配置文件里写，排除自动收录/显式收录的物品）
+            foreach (var exEl in root.Elements("Exclude"))
+            {
+                string eid = (string)exEl.Attribute("id");
+                if (string.IsNullOrEmpty(eid)) eid = exEl.Value.Trim();
+                if (!string.IsNullOrEmpty(eid)) Excluded.Add(eid);
             }
         }
 
         static void RebuildIndex()
         {
+            // 先应用跨包 <Exclude>（排除的物品连同分组归属一起剔除，之后重载也不会再被收录）
+            if (Excluded.Count > 0)
+            {
+                foreach (var g in Groups.Values)
+                {
+                    foreach (var iid in Excluded) g.Items.Remove(iid);
+                }
+            }
             foreach (var g in Groups.Values)
             {
                 foreach (var iid in g.Items)
                 {
+                    if (Excluded.Contains(iid)) continue;
                     if (ByItem.TryGetValue(iid, out var prev) && prev != g)
                         DamageLog.Warn($"物品 {iid} 同时出现在分组 {prev.Id} 与 {g.Id}，以后者为准");
                     ByItem[iid] = g;
@@ -624,6 +912,10 @@ namespace Touhou.Damage
             try
             {
                 LuaCsLogger.LogMessage($"[伤害] 配置：文件 {DamageConfig.FileCount} · 分组 {DamageConfig.Groups.Count} · 物品条目 {DamageConfig.ByItem.Count}", Color.LightGreen);
+                if (DamageConfig.MergedFiles.Count > 0)
+                    LuaCsLogger.LogMessage($"[伤害] 合并来源：{string.Join("、", DamageConfig.MergedFiles)}" + (DamageConfig.Excluded.Count > 0 ? $" · 排除 {DamageConfig.Excluded.Count} 件" : ""), Color.LightGray);
+                if (!string.IsNullOrEmpty(DamageConfig.LastAutoScanSummary))
+                    LuaCsLogger.LogMessage($"[伤害] {DamageConfig.LastAutoScanSummary}", Color.LightGreen);
                 LuaCsLogger.LogMessage($"[伤害] 规则：DamageTypes=[{string.Join(",", DamageConfig.DamageTypes)}] · EffectTargets=[{DamageConfig.EffectTargets}] · 减伤上限={Fmt(DamageConfig.DefenseReductionCap)}", Color.LightGreen);
                 if (DamageConfig.Groups.Count == 0)
                 {
@@ -805,7 +1097,7 @@ namespace Touhou.Damage
                     ? $"防御 M={Fmt(DamageValues.GetDefense(g.Id))}"
                     : $"伤害 ×{Fmt(DamageValues.GetDamage(g.Id))}";
                 LuaCsLogger.LogMessage($"[伤害] 探测 [{g.Id}] {identifier}：{entries.Count} 个数据点 · {axis} · 权威端={DamagePatcher.IsAuthority}", Color.LightGreen);
-                LuaCsLogger.LogMessage($"[伤害]   诊断：构造补丁已挂载={DamagePatcher.HookRegistered} · 钩子累计应用 {DamagePatcher.HookAppliedObjects} 个对象 · 上次全量归一转除 {DamagePatcher.LastNormalizedObjects} 个", Color.LightGray);
+                LuaCsLogger.LogMessage($"[伤害]   诊断：构造补丁已挂载={DamagePatcher.HookRegistered} · 钩子累计应用 {DamagePatcher.HookAppliedObjects} 个对象 · 上次全量实际写入 {DamagePatcher.LastWrittenObjects} 个 · 上次全量归一转除 {DamagePatcher.LastNormalizedObjects} 个", Color.LightGray);
 
                 int shown = 0;
                 foreach (var e in entries)

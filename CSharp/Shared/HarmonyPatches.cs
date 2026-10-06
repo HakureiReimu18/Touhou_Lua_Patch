@@ -1017,11 +1017,17 @@ namespace Touhou.Affixes
                 if (item == null) continue;
                 if (seen != null && seen.Contains(item)) continue;
                 if (!Helpers.TryGetAffix(item, out var def)) continue;
-                if (def.ThornsBleeding <= 0f && def.ThornsLacerations <= 0f) continue;
+                if (def.ThornsBleeding <= 0f && def.ThornsLacerations <= 0f && def.ThornsStun <= 0f) continue;
                 if (!CooldownDamageState.Proc(item, def.ThornsInterval)) continue;
                 (seen ??= new List<Item>(2)).Add(item);
                 ApplyThornsAffliction(attacker, "bleeding", def.ThornsBleeding);
                 ApplyThornsAffliction(attacker, "lacerations", def.ThornsLacerations);
+                // 眩晕反伤：stun 的强度即秒数，打断攻击者动作；按概率触发（荆棘为 50%）
+                if (def.ThornsStun > 0f
+                    && Rand.Range(0f, 1f, Rand.RandSync.Unsynced) < def.ThornsStunChance)
+                {
+                    ApplyThornsAffliction(attacker, "stun", def.ThornsStun);
+                }
             }
         }
 

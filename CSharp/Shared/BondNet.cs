@@ -90,6 +90,9 @@ namespace Touhou.Bond
                             w.WriteString(c.Name);
                         }
                     });
+                    // 顺带补推配对全量状态：打开面板即可看到当前绑定对象（回巡回/重连后同样生效）
+                    SendTo(sender, NET_PAIRS, WritePairsState);
+                    SendYouFor(sender);
                 });
                 ReceiveCompat(NET_CFGGET, args =>
                 {
@@ -312,31 +315,46 @@ namespace Touhou.Bond
             ClientSend(NET_CAND, w => { });
         }
 
+        /// <summary>回合切换后延迟全量推送的到期时刻（由结算滴答驱动；0 = 无待推送）。
+        /// 客户端镜像只在配对变化时更新，回巡回/重连后需要主动补推一次</summary>
+        public static double PendingStatePushAt;
+
+        static void WritePairsState(IWriteMessage w)
+        {
+            var pairs = BondMatch.DistinctPairs().ToList();
+            w.WriteUInt16((ushort)pairs.Count);
+            foreach (var p in pairs)
+            {
+                w.WriteString(p.IdA); w.WriteString(p.NameA);
+                w.WriteString(p.IdB); w.WriteString(p.NameB);
+            }
+        }
+
+        /// <summary>把某客户端的绑定对象名推给他（无配对推空串，顺带清掉陈旧显示）</summary>
+        static void SendYouFor(Client client)
+        {
+            if (client == null) return;
+            string myId = BondMatch.IdOf(client);
+            string partner = "";
+            foreach (var p in BondMatch.DistinctPairs())
+            {
+                if (p.Has(myId)) { partner = p.OtherName(myId); break; }
+            }
+            SendTo(client, NET_YOU, w => w.WriteString(partner));
+        }
+
         // 单人没网就写本地镜像
         public static void BroadcastPairs()
         {
-            var pairs = BondMatch.DistinctPairs().ToList();
             if (GameMain.NetworkMember == null)
             {
-                SyncLocalMirror(pairs);
+                SyncLocalMirror(BondMatch.DistinctPairs().ToList());
                 return;
             }
-            Broadcast(NET_PAIRS, w =>
-            {
-                w.WriteUInt16((ushort)pairs.Count);
-                foreach (var p in pairs)
-                {
-                    w.WriteString(p.IdA); w.WriteString(p.NameA);
-                    w.WriteString(p.IdB); w.WriteString(p.NameB);
-                }
-            });
-            foreach (var p in pairs)
-            {
-                var clientA = BondMatch.FindClientById(p.IdA);
-                var clientB = BondMatch.FindClientById(p.IdB);
-                if (clientA != null) SendTo(clientA, NET_YOU, w => w.WriteString(p.NameB));
-                if (clientB != null) SendTo(clientB, NET_YOU, w => w.WriteString(p.NameA));
-            }
+            Broadcast(NET_PAIRS, WritePairsState);
+            // 给所有在线客户端推"你的对象"（空串也会发，保证陈旧显示被清掉）
+            foreach (var client in GameMain.NetworkMember.ConnectedClients)
+                SendYouFor(client);
         }
 
         // 单人模式权威和客户端同一进程，直接写镜像；MyPartnerName 按本机角色算

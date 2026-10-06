@@ -117,7 +117,8 @@ namespace Touhou.Synergy
                     foreach (var e in SynergyConfig.Entries)
                     {
                         SynergyLog.Log($"[{e.Id}] 成员：{string.Join(" + ", e.Members.ConvertAll(m => m.Display))} " +
-                                       $"| 范围：{e.Scope} | 检测：{e.Detect} | 存活判定：{(e.AliveOnly ? "是" : "否")} | 模式：{e.Mode}");
+                                       $"| 范围：{e.Scope} | 优先级：{e.Priority} | 互斥：{e.Exclusive} " +
+                                       $"| 检测：{e.Detect} | 存活判定：{(e.AliveOnly ? "是" : "否")} | 模式：{e.Mode}");
                         foreach (var g in e.Grants)
                             SynergyLog.Log($"    → {g.Aff} 给 {g.To}（强度 {g.Strength}）");
                     }
@@ -129,9 +130,9 @@ namespace Touhou.Synergy
 
     // ==================== 判定节拍 ====================
     // 挂点与 MainThreadSchedulerPatch / RagdollScaleTickPatch 相同：客户端/单人挂 GameMain.Update，
-    // 专用服务器挂 GameServer.Update。两边都用反射解析、不依赖编译期符号
-    // （实测 LuaCs 编译模组时的预处理符号只有 CLIENT，`#if SERVER` 不会成立，
-    //  所以不能照抄 homing 的 #if 分流写法）。
+    // 专用服务器挂 GameServer.Update（在 DedicatedServer.dll，编译期不一定引用得到，用反射解析）。
+    // 这里必须编译期分流：服务端程序集里没有 GameMain.Paused 这类客户端专有成员，
+    // 不加 #if 会在服务端编译时直接 CS1061（实测踩过，整个程序集编译失败）。
     [HarmonyPatch]
     public static class SynergyTickPatch
     {
@@ -140,27 +141,39 @@ namespace Touhou.Synergy
             // flags 必须带 NonPublic：Update 在 XNA 里是 protected override（公开化程序集里才是 public），
             // 只按 Public 找运行时会拿到 null，补丁整个打不上
             const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-
+#if SERVER
+            // 服务端上下文只认 GameServer.Update：GameMain.Update 在这里要么不存在、要么不会被调用
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var t = asm.GetType("Barotrauma.Networking.GameServer");
+                var m = t?.GetMethod("Update", flags);
+                if (m != null) return m;
+            }
+            SynergyLog.Warn("SynergyTickPatch: 找不到 GameServer.Update，羁绊不会生效");
+            return null;
+#else
             var m = typeof(GameMain).GetMethod("Update", flags);
             if (m != null) return m;
-
-            // 专用服务器：GameServer 在 DedicatedServer.dll，逐个程序集找
+            // 兜底：客户端上下文找不到 GameMain.Update 时再试 GameServer
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
                 var t = asm.GetType("Barotrauma.Networking.GameServer");
                 m = t?.GetMethod("Update", flags);
                 if (m != null) return m;
             }
-
             SynergyLog.Warn("SynergyTickPatch: 找不到每帧 Update 挂点，羁绊不会生效");
             return null;
+#endif
         }
 
         static void Postfix()
         {
             // 纯客户端上下文不跑；单人（NetworkMember == null）与服务器（IsServer）跑
             if (GameMain.NetworkMember != null && !GameMain.NetworkMember.IsServer) return;
+#if !SERVER
+            // 暂停菜单是客户端专有功能：GameMain.Paused 在服务端程序集里不存在，必须编译期分流
             if (GameMain.Instance != null && GameMain.Instance.Paused) return;
+#endif
             SynergyEngine.Tick();
         }
     }
@@ -169,6 +182,14 @@ namespace Touhou.Synergy
 
     public enum SynergyScope { SameSub, SameTeam, Anywhere }
     public enum SynergyMode { WhilePresent, RoundStart }
+
+    /// <summary>互斥范围：多条羁绊同时成立时，谁能和谁并存。</summary>
+    public enum ExclusiveKind
+    {
+        None,       // 默认：可与其他羁绊同时生效（现状行为）
+        Members,    // 与共用至少一个成员角色的其他羁绊互斥
+        All,        // 与任何同时成立的羁绊互斥
+    }
 
     /// <summary>成员检测范围：谁有资格算"在场成员"。</summary>
     public enum DetectScope
@@ -206,6 +227,8 @@ namespace Touhou.Synergy
         public bool AliveOnly = true;
         public DetectScope Detect = DetectScope.Crew;
         public SynergyMode Mode = SynergyMode.WhilePresent;
+        public int Priority;                                  // 越大越优先；缺省 0（同优先级按配置顺序）
+        public ExclusiveKind Exclusive = ExclusiveKind.None;  // 互斥范围；缺省 none
         public readonly List<SynergyMember> Members = new List<SynergyMember>(2);
         public readonly List<SynergyGrant> Grants = new List<SynergyGrant>(2);
     }
@@ -316,6 +339,8 @@ namespace Touhou.Synergy
                 AliveOnly = ParseBool(el.Attribute("alive_only"), true),
                 Detect = ParseDetect((string)el.Attribute("detect")),
                 Mode = ParseMode((string)el.Attribute("mode")),
+                Priority = ParsePriority(el.Attribute("priority")),
+                Exclusive = ParseExclusive((string)el.Attribute("exclusive")),
             };
 
             foreach (var m in el.Elements("Member"))
@@ -433,6 +458,30 @@ namespace Touhou.Synergy
             }
         }
 
+        static int ParsePriority(XAttribute attr)
+        {
+            if (attr == null) return 0;
+            string raw = attr.Value.Trim();
+            if (raw.Length == 0) return 0;
+            if (int.TryParse(raw, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out int v)) return v;
+            SynergyLog.Warn($"未知的 priority=\"{raw}\"，按 0 处理");
+            return 0;
+        }
+
+        static ExclusiveKind ParseExclusive(string raw)
+        {
+            switch ((raw ?? "").Trim().ToLowerInvariant())
+            {
+                case "members": case "true": return ExclusiveKind.Members;
+                case "all": return ExclusiveKind.All;
+                case "": case "none": case "false": return ExclusiveKind.None;
+                default:
+                    SynergyLog.Warn($"未知的 exclusive=\"{raw}\"，按 none 处理");
+                    return ExclusiveKind.None;
+            }
+        }
+
         static DetectScope ParseDetect(string raw)
         {
             switch ((raw ?? "").Trim().ToLowerInvariant())
@@ -484,6 +533,8 @@ namespace Touhou.Synergy
                     "     alive_only  默认 true；false = 尸体也算在场\n" +
                     "     detect      crew(默认，玩家+玩家队 AI 船员) / players(只认玩家) / any(不限)\n" +
                     "     mode        while_present(默认) / round_start(开局 10 秒窗口内成立即锁定到巡回结束)\n" +
+                    "     priority    整数，越大越优先（默认 0；同优先级按配置顺序，靠前的赢）\n" +
+                    "     exclusive   none(默认，可共存) / members(与共用成员的羁绊互斥) / all(与任何羁绊互斥)\n" +
                     "     <Member>    aff=\"装束身份 affliction\" 或 item=\"装束物品 identifier\"（二选一，至少 2 个）\n" +
                     "     <Grant>     aff=\"要发的增益\" to=\"member:1|member:2|members|crew\" strength=\"1\"\n" +
                     "     装束身份 aff 全表见 Docs/角色羁绊系统-设计方案.md 附录 A -->\n" +
@@ -538,8 +589,34 @@ namespace Touhou.Synergy
 
         static double nextTick;
         static double roundStartTime = -1.0;
-        // round_start 模式：开局窗口内成立 → 记录当拍目标，之后只对这批目标续命
-        static readonly Dictionary<string, List<Character>> lockedTargets = new Dictionary<string, List<Character>>(StringComparer.OrdinalIgnoreCase);
+
+        // round_start 模式：开局窗口内成立 → 把成员与当拍目标快照一起记下来，之后只对这批目标续命。
+        // 被互斥压制时不删记录：优先级让开后能自动恢复发放，不必重新满足开局窗口。
+        sealed class LockRecord
+        {
+            public readonly List<Character> Members = new List<Character>();
+            public readonly List<Character> Targets = new List<Character>();
+        }
+        static readonly Dictionary<string, LockRecord> lockedTargets = new Dictionary<string, LockRecord>(StringComparer.OrdinalIgnoreCase);
+
+        // 本拍"成立"的条目：池化复用，避免每拍 new；Members 每拍 Clear 后重填。
+        sealed class ActiveEntry
+        {
+            public SynergyEntry Entry;
+            public int Order;                 // 配置顺序（越小越靠前），同优先级时用它打破平手
+            public bool Locked;               // round_start：是否已锁定（"成立"不代表已锁定）
+            public readonly List<Character> Members = new List<Character>(4);
+        }
+        static ActiveEntry[] activePool = new ActiveEntry[0];
+        static int activeCount;
+
+        // ② 选择的复用缓冲：索引数组 + 选中标记 + 压制者下标（-1 = 未被压制）
+        static int[] orderCache = new int[0];
+        static bool[] selectedCache = new bool[0];
+        static int[] winnerCache = new int[0];
+        // 静态比较委托：priority 降序、Order 升序。Comparer.Create 只在静态初始化时建一次，
+        // 排序热路径不再 new 任何比较器/闭包。
+        static readonly IComparer<int> orderComparer = Comparer<int>.Create(CompareActiveOrder);
 
         static readonly InvSlotType[] OutfitSlots = { InvSlotType.InnerClothes, InvSlotType.OuterClothes };
 
@@ -640,6 +717,9 @@ namespace Touhou.Synergy
             candidates.Clear();
             granted.Clear();
             lockedTargets.Clear();
+            // 池对象留着复用，只把 Members 清空、计数归零
+            for (int i = 0; i < activeCount; i++) activePool[i].Members.Clear();
+            activeCount = 0;
         }
 
         public static void Tick()
@@ -674,7 +754,7 @@ namespace Touhou.Synergy
                 candidates.Add(c);
             }
             lastCandidates = candidates.Count;
-            if (candidates.Count == 0) { lastFormed = 0; return; }
+            if (candidates.Count == 0) { lastFormed = 0; activeCount = 0; return; }
 
             // 2) 在场索引：每角色只遍历一次自己的 affliction 列表
             for (int i = 0; i < presentByAff.Length; i++) presentByAff[i].Clear();
@@ -713,70 +793,210 @@ namespace Touhou.Synergy
                 }
             }
 
-            // 3) 逐条判定
+            // 3) 三段式：① 收集成立条目 → ② 按优先级做互斥裁决 → ③ 发放/撤销
             double sinceRoundStart = roundStartTime >= 0.0 ? now - roundStartTime : double.MaxValue;
 
-            int formed = 0;
+            CollectActive(sinceRoundStart);
+            lastFormed = activeCount;   // "成立"数在裁决前统计，被压制的不算沉默，只是没发放
+            SelectActive();
+            ApplyActive(now);
+        }
+
+        // ---------- ① 收集成立条目 ----------
+
+        static ActiveEntry AcquireActive()
+        {
+            if (activeCount >= activePool.Length)
+            {
+                int len = Math.Max(8, activePool.Length * 2);
+                var bigger = new ActiveEntry[len];
+                Array.Copy(activePool, bigger, activePool.Length);
+                activePool = bigger;
+            }
+            var ae = activePool[activeCount];
+            if (ae == null) { ae = new ActiveEntry(); activePool[activeCount] = ae; }
+            return ae;
+        }
+
+        static ActiveEntry PushActive(SynergyEntry entry, bool locked)
+        {
+            var ae = AcquireActive();
+            ae.Entry = entry;
+            ae.Order = activeCount;   // 收集顺序 = 配置顺序，同优先级时靠前者先选
+            ae.Locked = locked;
+            ae.Members.Clear();
+            activeCount++;
+            return ae;
+        }
+
+        static void CollectActive(double sinceRoundStart)
+        {
+            activeCount = 0;
             foreach (var entry in SynergyConfig.Entries)
             {
                 if (entry.Mode == SynergyMode.RoundStart)
                 {
-                    if (EvaluateRoundStart(entry, sinceRoundStart, now)) formed++;
+                    if (lockedTargets.TryGetValue(entry.Id, out var rec))
+                    {
+                        // 已锁定：不再重判条件，成员取锁定记录（被压制后优先级让开能自动恢复）
+                        PushActive(entry, true).Members.AddRange(rec.Members);
+                    }
+                    else if (sinceRoundStart <= RoundStartWindow && PickMembers(entry, picked))
+                    {
+                        // 窗口内首次成立：先不锁定，等②选完再锁——被压制就不该占用锁定资格
+                        PushActive(entry, false).Members.AddRange(picked);
+                    }
+                }
+                else if (PickMembers(entry, picked))
+                {
+                    PushActive(entry, false).Members.AddRange(picked);
+                }
+            }
+        }
+
+        // ---------- ② 互斥裁决 ----------
+
+        static int CompareActiveOrder(int x, int y)
+        {
+            var a = activePool[x];
+            var b = activePool[y];
+            int byPriority = b.Entry.Priority.CompareTo(a.Entry.Priority);  // 数字越大越靠前
+            if (byPriority != 0) return byPriority;
+            return a.Order.CompareTo(b.Order);                              // 同优先级按配置顺序，靠前者先选
+        }
+
+        static bool Conflicts(ActiveEntry a, ActiveEntry b)
+        {
+            var ka = a.Entry.Exclusive;
+            var kb = b.Entry.Exclusive;
+            if (ka == ExclusiveKind.All || kb == ExclusiveKind.All) return true;
+            if (ka == ExclusiveKind.None && kb == ExclusiveKind.None) return false;
+            // 至少一条是 members：只有共用成员角色才算冲突
+            foreach (var m in a.Members)
+                if (m != null && b.Members.Contains(m)) return true;
+            return false;
+        }
+
+        static void SelectActive()
+        {
+            if (orderCache.Length < activeCount)
+            {
+                int len = Math.Max(activeCount, orderCache.Length * 2);
+                orderCache = new int[len];
+                selectedCache = new bool[len];
+                winnerCache = new int[len];
+            }
+
+            for (int i = 0; i < activeCount; i++)
+            {
+                orderCache[i] = i;
+                selectedCache[i] = false;
+                winnerCache[i] = -1;
+            }
+            Array.Sort(orderCache, 0, activeCount, orderComparer);
+
+            for (int i = 0; i < activeCount; i++)
+            {
+                int idx = orderCache[i];
+                var ae = activePool[idx];
+                for (int j = 0; j < i; j++)
+                {
+                    int other = orderCache[j];
+                    if (!selectedCache[other]) continue;
+                    if (!Conflicts(ae, activePool[other])) continue;
+
+                    // 与已选中条目冲突 → 本拍不发放；记下压制者，供③撤销时打日志
+                    winnerCache[idx] = other;
+                    if (SynergyConfig.Debug)
+                        SynergyLog.Debug($"羁绊「{ae.Entry.Id}」被「{activePool[other].Entry.Id}」压制（互斥 {ae.Entry.Exclusive} / {activePool[other].Entry.Exclusive}）");
+                    break;
+                }
+                if (winnerCache[idx] < 0) selectedCache[idx] = true;
+            }
+        }
+
+        // ---------- ③ 应用 ----------
+
+        static void ApplyActive(double now)
+        {
+            for (int i = 0; i < activeCount; i++)
+            {
+                var ae = activePool[i];
+                if (!selectedCache[i])
+                {
+                    int winner = winnerCache[i];
+                    RevokeAll(ae.Entry, winner >= 0 ? activePool[winner].Entry.Id : null);
                     continue;
                 }
 
-                if (PickMembers(entry, picked)) { GrantAll(entry, picked, now); formed++; }
-                else RevokeAll(entry);
+                if (ae.Entry.Mode != SynergyMode.RoundStart) { GrantAll(ae.Entry, ae.Members, now); continue; }
+
+                if (!ae.Locked) LockRoundStart(ae);
+                if (lockedTargets.TryGetValue(ae.Entry.Id, out var rec)) RefreshLocked(rec, ae.Entry, now);
             }
-            lastFormed = formed;
+
+            // 池外条目 = 本拍条件不成立（成员散开/死亡等）：同样要撤销已发过的增益。
+            // 不能指望 duration 兜底——duration<=0 的常驻增益会永远留在身上。
+            foreach (var entry in SynergyConfig.Entries)
+            {
+                if (IsCollected(entry)) continue;
+                RevokeAll(entry, null);
+            }
         }
 
-        static bool EvaluateRoundStart(SynergyEntry entry, double sinceRoundStart, double now)
+        static bool IsCollected(SynergyEntry entry)
         {
-            if (lockedTargets.TryGetValue(entry.Id, out var targets))
-            {
-                // 已锁定：只对当时的目标续命（脱装/换人不撤销，直到巡回结束）
-                buffer.Clear();
-                foreach (var c in targets)
-                {
-                    if (c == null || c.Removed) continue;
-                    if (entry.AliveOnly && c.IsDead) continue;
-                    buffer.Add(c);
-                }
-                targets.Clear();
-                targets.AddRange(buffer);
-                foreach (var c in targets) GrantAllGrants(entry, c, now);
-                return true;
-            }
+            for (int i = 0; i < activeCount; i++)
+                if (activePool[i].Entry == entry) return true;
+            return false;
+        }
 
-            if (sinceRoundStart > RoundStartWindow) return false;
-            if (!PickMembers(entry, picked)) return false;
-
-            // 锁定：把当拍的目标快照下来，之后不再重新判定条件
-            var snapshot = new List<Character>(8);
+        // 首次锁定：把成员与当拍目标快照写进记录；之后只对快照续命（脱装/换人不撤销）
+        static void LockRoundStart(ActiveEntry ae)
+        {
+            var entry = ae.Entry;
+            var rec = new LockRecord();
+            rec.Members.AddRange(ae.Members);
             foreach (var g in entry.Grants)
             {
                 // CollectCrew 会先 Clear 再填，所以先收进 buffer 再并入快照
                 if (g.Target == GrantTarget.Crew)
                 {
-                    CollectCrew(entry, picked[0], buffer);
-                    snapshot.AddRange(buffer);
+                    CollectCrew(entry, ae.Members[0], buffer);
+                    rec.Targets.AddRange(buffer);
                 }
-                else if (g.Target == GrantTarget.MemberIndex) snapshot.Add(picked[g.MemberIndex]);
-                else snapshot.AddRange(picked);
+                else if (g.Target == GrantTarget.MemberIndex) rec.Targets.Add(ae.Members[g.MemberIndex]);
+                else rec.Targets.AddRange(ae.Members);
             }
-
-            lockedTargets[entry.Id] = Dedupe(snapshot);
-            SynergyLog.Log($"羁绊「{entry.Id}」在开局窗口内成立，锁定到巡回结束（目标 {lockedTargets[entry.Id].Count} 个）");
-            return true;
+            DedupeInPlace(rec.Targets);
+            lockedTargets[entry.Id] = rec;
+            ae.Locked = true;
+            SynergyLog.Log($"羁绊「{entry.Id}」在开局窗口内成立，锁定到巡回结束（目标 {rec.Targets.Count} 个）");
         }
 
-        static List<Character> Dedupe(List<Character> src)
+        static void RefreshLocked(LockRecord rec, SynergyEntry entry, double now)
         {
-            var result = new List<Character>(src.Count);
-            foreach (var c in src)
-                if (c != null && !result.Contains(c)) result.Add(c);
-            return result;
+            buffer.Clear();
+            foreach (var c in rec.Targets)
+            {
+                if (c == null || c.Removed) continue;
+                if (entry.AliveOnly && c.IsDead) continue;
+                buffer.Add(c);
+            }
+            rec.Targets.Clear();
+            rec.Targets.AddRange(buffer);
+            foreach (var c in rec.Targets) GrantAllGrants(entry, c, now);
+        }
+
+        // 原地去重（保留首次出现）：锁定只发生一次，用 IndexOf 与既有 Contains 同一套相等语义
+        static void DedupeInPlace(List<Character> list)
+        {
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                var c = list[i];
+                if (c == null) { list.RemoveAt(i); continue; }
+                if (list.IndexOf(c) != i) list.RemoveAt(i);
+            }
         }
 
         // ---------- 成员判定 ----------
@@ -925,12 +1145,17 @@ namespace Touhou.Synergy
             }
         }
 
-        static void RevokeAll(SynergyEntry entry)
+        // suppressedBy != null 表示本次撤销是互斥裁决压下来的（而非条件不成立）。
+        // 日志放在 early return 之后：只有确实发过、这次真的撤销了才打，不会每拍刷屏。
+        static void RevokeAll(SynergyEntry entry, string suppressedBy = null)
         {
             buffer.Clear();
             foreach (var kv in granted)
                 if (kv.Value.ContainsKey(entry.Id)) buffer.Add(kv.Key);
             if (buffer.Count == 0) return;
+
+            if (suppressedBy != null)
+                SynergyLog.Log($"羁绊「{entry.Id}」被「{suppressedBy}」压制，撤销增益");
 
             foreach (var c in buffer)
             {

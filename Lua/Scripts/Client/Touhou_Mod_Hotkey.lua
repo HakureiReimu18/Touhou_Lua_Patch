@@ -173,17 +173,14 @@ local L = {
         dmg_lv1 = "LV1（略弱于补强）",
         dmg_lv2 = "LV2（等于补强）",
         dmg_lv3 = "LV3（补强×2）",
-        dmg_lv_applied = "已应用档位：%s（约 1 秒内生效）",
         dmg_lv_missing = "（配置里没有档位数据，请更新 Config/damage_settings.xml）",
         dmg_mp_loading = "（正在从主机获取伤害设置…）",
         dmg_readonly_short = "只读：需要管理员权限",
-        dmg_submitted = "已提交给主机，正在应用…",
-        dmg_submitted_short = "已提交，等待主机应用…",
-        dmg_lv_submitted = "已提交档位：%s（等待主机应用）",
-        dmg_noedit_reason = "没有修改权限（需要管理员/ConsoleCommands 权限）",
-        dmg_noedit_toast = "没有修改权限：联机时修改需要管理员权限（ConsoleCommands）",
+        dmg_submitted = "已提交，约 1 秒内生效",
+        dmg_submitted_short = "已提交，等待生效…",
+        dmg_lv_submitted = "已提交档位：%s（约 1 秒内生效）",
+        dmg_noedit_toast = "提交失败：无法写入请求文件（目录被占用？）",
         dmg_denied_generic = "服务器拒绝了本次修改",
-        dmg_mp_timeout = "提交后主机没有回应（C# 应用器可能未加载）",
         dmg_denied_prefix = "⚠ ",
         menu_hotkey = "快捷键设置",
         cl_settings = "装束锁定设置",
@@ -308,17 +305,14 @@ local L = {
         dmg_lv1 = "LV1 (below buff mod)",
         dmg_lv2 = "LV2 (= buff mod)",
         dmg_lv3 = "LV3 (buff mod ×2)",
-        dmg_lv_applied = "Tier applied: %s (takes effect within ~1s)",
         dmg_lv_missing = "(No tier data in config - update Config/damage_settings.xml)",
         dmg_mp_loading = "(Fetching damage settings from the host...)",
         dmg_readonly_short = "Read-only: admin permission required",
-        dmg_submitted = "Submitted to the host, applying...",
-        dmg_submitted_short = "Submitted - waiting for host",
-        dmg_lv_submitted = "Tier submitted: %s (waiting for host)",
-        dmg_noedit_reason = "No permission to modify (admin/ConsoleCommands required)",
-        dmg_noedit_toast = "No permission: editing requires admin rights (ConsoleCommands) in multiplayer",
+        dmg_submitted = "Submitted, takes effect within ~1s",
+        dmg_submitted_short = "Submitted - applying...",
+        dmg_lv_submitted = "Tier submitted: %s (within ~1s)",
+        dmg_noedit_toast = "Submit failed: could not write the request file",
         dmg_denied_generic = "The server rejected the change",
-        dmg_mp_timeout = "No response from the host after submitting (is the C# part loaded?)",
         dmg_denied_prefix = "⚠ ",
         menu_hotkey = "Hotkey settings",
         cl_settings = "Costume Lock Settings",
@@ -1310,29 +1304,19 @@ local function hb_slider_row(layout, height, label, min, max, fmt, get, set)
 end
 
 -- ==================== 武器伤害与防具抗性设置页（damage） ====================
--- C# 侧 Touhou.Damage：状态快照 TouhouDamageState.txt（分组元数据 + 当前值 + 默认值 + 已应用值），
--- 本页「保存」写 TouhouDamageConfig.txt，C# 每秒查 mtime 后重载、全量重应用并回写状态。
-local dmg_state = nil       -- 解析后的状态（含 stamp/patched 与分组）
+-- 数据流（联机全由 C# 负责传输，本页不碰网络）：
+--   本页「保存/档位/重置」→ 写 TouhouDamageRequest.txt；
+--   C# 桥接（DamageBridge）：权威端本机应用 / 客户端发服务器；
+--   服务器应用后广播状态 → 客户端 C# 把状态写进本机 TouhouDamageState.txt（本页只读它）。
+local dmg_state = nil       -- 解析后的状态（含 stamp/patched 与分组、canedit/denied）
 local dmg_state_raw = nil   -- 原始文本（变化检测）
 local dmg_groups = {}       -- 分组数组（显示顺序）
 local dmg_selected = nil    -- 选中分组 id
 local dmg_pending = {}      -- 编辑暂存：gid -> { damage / penmode / penvalue / defense }
 local dmg_dirty = false     -- 有未保存编辑
 local dmg_poll_counter = 0
-
--- 联机（服务端 Touhou_Damage_Settings.lua）：请求-应答 + 权限门槛 + 主机广播。
--- 联机时状态只放内存（不读本地文件，防本地旧快照覆盖主机状态）；单机仍走文件轮询。
-local DMG_MSG_STATE  = "TLE_DMG_STATE"    -- S→全体：状态快照
-local DMG_MSG_STATEP = "TLE_DMG_STATEP"   -- S→单个：同上 + can_edit
-local DMG_MSG_GET    = "TLE_DMG_GET"      -- C→S：请求状态
-local DMG_MSG_SET    = "TLE_DMG_SET"      -- C→S：提交玩家值全文
-local DMG_MSG_DENIED = "TLE_DMG_DENIED"   -- S→单个：拒绝原因
-local dmg_mp_can_edit = true    -- 服务器下发的编辑权限（最终以服务端校验为准）
-local dmg_mp_denied = nil       -- 服务器的拒绝原因（下次提交 / 收到新状态时清除）
-local dmg_mp_submitted = false  -- 已提交，等待主机应用
-local dmg_mp_submit_ticks = 0   -- 提交后等待的轮询次数（超时兜底）
-local dmg_mp_refresh = false    -- 收到网络状态，挂起重建设置页
-local dmg_mp_get_counter = 99   -- 打开页面后尽快主动拉取一次状态（>=10 即发）
+local dmg_last_submit_at = -1  -- 上次提交时刻（os.clock），用于状态行短暂提示
+local dmg_last_denied_shown = nil -- 已弹窗过的拒绝原因（避免重复弹）
 
 local function dmg_num(v)
     return tonumber(v) or 0
@@ -1347,6 +1331,10 @@ local function dmg_parse_state(text)
                 st.stamp = v
             elseif k == "patched.items" or k == "patched.objects" then
                 st.patched[k] = v
+            elseif k == "canedit" then
+                st.canedit = (v == "1")
+            elseif k == "denied" then
+                st.denied = v
             else
                 local gid, prop = string.match(k, "^group%.([^.]+)%.(.+)$")
                 if gid ~= nil then
@@ -1425,10 +1413,10 @@ local function dmg_fmt_num(v)
     return string.format("%.4g", v)
 end
 
--- 玩家值全文（格式与 C# DamageValues.Load 的解析一致）
+-- 玩家值全文（写进请求文件；C# 桥接解析同一格式）
 local function dmg_build_config_text()
     local lines = {
-        "# 东方-武器伤害与防具抗性设置 · 玩家值（设置页 / damage_set 写入，C# 每秒热加载）",
+        "# 东方-武器伤害与防具抗性设置 · 玩家值（设置页写入请求文件，C# 桥接处理）",
         "# 键：damage.<组>=倍率 · pen.<组>=add:<加值> 或 multiply:<乘数> · def.<组>=防御倍率",
         "ver=1",
     }
@@ -1446,90 +1434,28 @@ local function dmg_build_config_text()
     return table.concat(lines, "\n")
 end
 
--- 本进程是否权威端（单机 / 主机）。联机主机直接写文件、读本地快照，不走网络回环；
--- 兜底判定：SERVER 全局（主机进程为 true）或 Game.Server 可用（部分上下文只有它有服务端属性）
-local function dmg_is_authority()
+-- 当前是否可编辑：联机时看服务器下发的 canedit（本地无状态时先按可编辑显示，服务端仍是最终门槛）
+local function dmg_can_edit()
     if Game.IsSingleplayer then return true end
-    if SERVER == true then return true end
-    local ok, srv = pcall(function() return Game.Server end)
-    return ok and srv ~= nil
+    if dmg_state ~= nil and dmg_state.canedit == false then return false end
+    return true
 end
 
--- 保存玩家值：单机/主机直接写文件；纯客户端提交给服务端验权限后写入。
--- 返回 "ok"（已保存）/ "pending"（已提交，等主机应用）/ nil（失败或无权限）
+-- 提交玩家值：只写请求文件（TouhouDamageRequest.txt），传输/应用/权限全由 C# 桥接负责。
+-- 返回 true 表示请求已落盘。
 local function dmg_write_config()
-    if File == nil and dmg_is_authority() then return nil end
+    if File == nil then return false end
     local text = dmg_build_config_text()
-    if dmg_is_authority() then
-        local ok = pcall(function()
-            File.WriteAllText(hb_dir_file("TouhouDamageConfig.txt"), text)
-        end)
-        return ok and "ok" or nil
-    end
-    if not dmg_mp_can_edit then
-        dmg_mp_denied = T("dmg_noedit_reason")
-        return nil
-    end
-    if Networking == nil or Networking.Start == nil or Networking.Send == nil then return nil end
-    local sent = false
-    pcall(function()
-        local msg = Networking.Start(DMG_MSG_SET)
-        msg.WriteString(text)
-        Networking.Send(msg)
-        sent = true
+    local ok = pcall(function()
+        File.WriteAllText(hb_dir_file("TouhouDamageRequest.txt"), text)
     end)
-    if sent then
-        dmg_mp_denied = nil
-        dmg_mp_submitted = true
-        dmg_mp_submit_ticks = 0
+    if ok then
+        dmg_last_submit_at = os.clock and os.clock() or -1
     end
-    return sent and "pending" or nil
+    return ok
 end
 
--- 联机：请求服务端发一份最新状态（打开页面 / 平时约 5 秒 / 等应用时 0.5 秒）
-local function dmg_mp_request_state()
-    if Game.IsSingleplayer then return end
-    if Networking == nil or Networking.Start == nil or Networking.Send == nil then return end
-    pcall(function()
-        local msg = Networking.Start(DMG_MSG_GET)
-        Networking.Send(msg)
-    end)
-end
-
-local function dmg_mp_on_state(message, read_edit_flag)
-    -- 主机/单机权威端以本地快照为准（C# 直接写），不吃广播，免得两种文本源来回刷
-    if dmg_is_authority() then return end
-    local text = nil
-    pcall(function() text = message.ReadString() end)
-    if type(text) ~= "string" or text == "" then return end
-    if read_edit_flag then
-        local ok, flag = pcall(function() return message.ReadBoolean() end)
-        if ok then dmg_mp_can_edit = flag == true end
-    end
-    dmg_set_state_from_text(text)
-    dmg_mp_submitted = false
-    dmg_mp_submit_ticks = 0
-    dmg_mp_denied = nil
-    if not dmg_dirty then dmg_sync_pending() end
-    dmg_mp_refresh = true
-end
-
-local function dmg_mp_on_denied(message)
-    local reason = nil
-    pcall(function() reason = message.ReadString() end)
-    dmg_mp_denied = (type(reason) == "string" and reason ~= "") and reason or T("dmg_denied_generic")
-    dmg_mp_submitted = false
-    dmg_mp_submit_ticks = 0
-    dmg_mp_refresh = true
-end
-
-if not Game.IsSingleplayer and Networking ~= nil and Networking.Receive ~= nil then
-    Networking.Receive(DMG_MSG_STATE, function(message) dmg_mp_on_state(message, false) end)
-    Networking.Receive(DMG_MSG_STATEP, function(message) dmg_mp_on_state(message, true) end)
-    Networking.Receive(DMG_MSG_DENIED, function(message) dmg_mp_on_denied(message) end)
-end
-
--- 档位快选：把全部组按档位值（配置 XML 的 Tier）写入暂存并保存（一键生效）
+-- 档位快选：把全部组按档位值（配置 XML 的 Tier）写入暂存并提交（一键生效）
 local function dmg_apply_tier(level)
     local applied = false
     for _, g in ipairs(dmg_groups) do
@@ -1551,12 +1477,8 @@ local function dmg_apply_tier(level)
         return
     end
     dmg_dirty = false
-    local res = dmg_write_config()
     local label = "LV" .. tostring(level)
-    if res == "ok" then
-        pcall(function() GUI.AddMessage(string.format(T("dmg_lv_applied"), label), Color(150, 255, 150, 255)) end)
-        print(T("log_prefix") .. string.format(T("dmg_lv_applied"), label))
-    elseif res == "pending" then
+    if dmg_write_config() then
         pcall(function() GUI.AddMessage(string.format(T("dmg_lv_submitted"), label), Color(150, 255, 150, 255)) end)
         print(T("log_prefix") .. string.format(T("dmg_lv_submitted"), label))
     else
@@ -1694,14 +1616,10 @@ local function open_menu()
 
         local btn_damage = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("damage_settings")))
         btn_damage.OnClicked = function()
-            -- 武器伤害与防具抗性设置是本菜单的子页面（单机读 TouhouDamageState.txt 快照；联机向主机请求）
+            -- 武器伤害与防具抗性设置是本菜单的子页面（读 TouhouDamageState.txt / 写 TouhouDamageRequest.txt，传输由 C# 桥接）
             dmg_state = nil
             dmg_dirty = false
             dmg_selected = nil
-            if Game.IsMultiplayer then
-                dmg_mp_refresh = false
-                dmg_mp_get_counter = 99  -- 打开页面后首次轮询就拉取一次主机状态
-            end
             menu_page = "damage"
             pcall(open_menu)
             return true
@@ -2102,25 +2020,25 @@ local function open_menu()
                 dmg_selected = dmg_groups[1].id
             end
 
-            -- 联机提示合并进状态行（不新增行，避免布局溢出）：只读 / 拒绝原因 / 已提交
+            -- 状态行：应用计数/时间 + 联机提示（只读 / 拒绝原因 / 刚提交）
             do
                 local status_text = string.format(T("dmg_status_fmt"),
                     tostring(dmg_state.patched["patched.items"] or "?"),
                     tostring(dmg_state.patched["patched.objects"] or "?"),
                     tostring(dmg_state.stamp or ""))
                 if Game.IsMultiplayer then
-                    if not dmg_mp_can_edit then
+                    if not dmg_can_edit() then
                         status_text = status_text .. " · " .. T("dmg_readonly_short")
-                    elseif dmg_mp_denied ~= nil then
-                        status_text = status_text .. " · " .. T("dmg_denied_prefix") .. dmg_mp_denied
-                    elseif dmg_mp_submitted then
+                    elseif dmg_state.denied ~= nil and dmg_state.denied ~= "" then
+                        status_text = status_text .. " · " .. T("dmg_denied_prefix") .. dmg_state.denied
+                    elseif dmg_last_submit_at >= 0 and (os.clock and (os.clock() - dmg_last_submit_at) < 8) then
                         status_text = status_text .. " · " .. T("dmg_submitted_short")
                     end
                 end
                 add_text(Vector2(1, HB_H), layout.RectTransform, status_text, GUI.Alignment.Center)
             end
 
-            -- 档位快选：一键写入全部组（LV1 略弱 / LV2 等补强 / LV3 补强×2），随后自动保存
+            -- 档位快选：一键写入全部组（LV1 略弱 / LV2 等补强 / LV3 补强×2），随后自动提交
             do
                 local tier_row = add_row(layout, HB_H)
                 local btn_lv1 = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), tier_row.RectTransform), RawLString(T("dmg_lv1")))
@@ -2139,10 +2057,10 @@ local function open_menu()
                     return true
                 end
                 -- 联机无权限时只读展示（真正的门槛在服务端，这里只是 UI 反馈）
-                if Game.IsMultiplayer then
-                    btn_lv1.Enabled = dmg_mp_can_edit
-                    btn_lv2.Enabled = dmg_mp_can_edit
-                    btn_lv3.Enabled = dmg_mp_can_edit
+                if not dmg_can_edit() then
+                    btn_lv1.Enabled = false
+                    btn_lv2.Enabled = false
+                    btn_lv3.Enabled = false
                 end
             end
 
@@ -2208,7 +2126,7 @@ local function open_menu()
                             pcall(open_menu)
                             return true
                         end
-                        if Game.IsMultiplayer then mode_btn.Enabled = dmg_mp_can_edit end
+                        if not dmg_can_edit() then mode_btn.Enabled = false end
                     end
                     local pen_mult = (p.penmode == "multiply")
                     dmg_slider_row(right_col, RC_H, T("dmg_pen_value"),
@@ -2218,20 +2136,16 @@ local function open_menu()
                         function(v) p.penvalue = v end)
                 end
 
-                -- 保存 / 重置
+                -- 保存 / 重置（都只是把玩家值写进请求文件，应用/同步由 C# 桥接完成）
                 do
                     local row = add_row(right_col, RC_H)
                     local save_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), RawLString(T("dmg_save")))
                     save_btn.OnClicked = function()
-                        local res = dmg_write_config()
-                        if res == "ok" then
+                        if dmg_write_config() then
                             dmg_dirty = false
-                            pcall(function() GUI.AddMessage(T("dmg_saved"), Color(150, 255, 150, 255)) end)
-                            print(T("log_prefix") .. T("dmg_saved"))
-                        elseif res == "pending" then
-                            dmg_dirty = false
-                            pcall(function() GUI.AddMessage(T("dmg_submitted"), Color(150, 255, 150, 255)) end)
-                            print(T("log_prefix") .. T("dmg_submitted"))
+                            local msg = Game.IsSingleplayer and T("dmg_saved") or T("dmg_submitted")
+                            pcall(function() GUI.AddMessage(msg, Color(150, 255, 150, 255)) end)
+                            print(T("log_prefix") .. msg)
                         else
                             pcall(function() GUI.AddMessage(T("dmg_noedit_toast"), Color(255, 140, 120, 255)) end)
                         end
@@ -2249,21 +2163,18 @@ local function open_menu()
                             end
                         end
                         dmg_dirty = false
-                        local res = dmg_write_config()
-                        if res == "ok" then
-                            pcall(function() GUI.AddMessage(T("dmg_reset_done"), Color(150, 255, 150, 255)) end)
-                            print(T("log_prefix") .. T("dmg_reset_done"))
-                        elseif res == "pending" then
-                            pcall(function() GUI.AddMessage(T("dmg_submitted"), Color(150, 255, 150, 255)) end)
-                            print(T("log_prefix") .. T("dmg_submitted"))
+                        if dmg_write_config() then
+                            local msg = Game.IsSingleplayer and T("dmg_reset_done") or T("dmg_submitted")
+                            pcall(function() GUI.AddMessage(msg, Color(150, 255, 150, 255)) end)
+                            print(T("log_prefix") .. msg)
                         else
                             pcall(function() GUI.AddMessage(T("dmg_noedit_toast"), Color(255, 140, 120, 255)) end)
                         end
                         return true
                     end
-                    if Game.IsMultiplayer then
-                        save_btn.Enabled = dmg_mp_can_edit
-                        reset_btn.Enabled = dmg_mp_can_edit
+                    if not dmg_can_edit() then
+                        save_btn.Enabled = false
+                        reset_btn.Enabled = false
                     end
                 end
 
@@ -2785,43 +2696,28 @@ Hook.Add("think", "touhou_hotkey_settings", function()
             end
         end
 
-        -- 伤害/防具设置页：单机 0.5 秒轮询状态快照；联机走主机请求-应答（不读本地文件，
-        -- 防本地旧快照覆盖主机状态）。有未保存编辑时不重建（保住暂存值）。
+        -- 伤害/防具设置页：0.5 秒轮询状态快照（单机/主机由权威端 C# 写；联机由客户端 C# 把服务器
+        -- 下发的状态写进本地文件，传输不经过本脚本）。有未保存编辑时不重建（保住暂存值）。
         if menu_page == "damage" then
             dmg_poll_counter = dmg_poll_counter + 1
             if dmg_poll_counter >= 30 then
                 dmg_poll_counter = 0
                 pcall(function()
-                    if not dmg_is_authority() then
-                        -- 纯客户端：只请求服务端（状态放内存）。已提交等应用时 0.5 秒一拉，平时 5 秒一拉
-                        dmg_mp_get_counter = dmg_mp_get_counter + 1
-                        if dmg_mp_get_counter >= (dmg_mp_submitted and 1 or 10) then
-                            dmg_mp_get_counter = 0
-                            dmg_mp_request_state()
-                        end
-                        if dmg_mp_submitted then
-                            dmg_mp_submit_ticks = dmg_mp_submit_ticks + 1
-                            if dmg_mp_submit_ticks >= 20 then  -- 约 10 秒没回应（C# 应用器没跑？）就放弃等待
-                                dmg_mp_submitted = false
-                                dmg_mp_submit_ticks = 0
-                                dmg_mp_denied = T("dmg_mp_timeout")
-                            end
-                        end
-                        if dmg_mp_refresh then
-                            dmg_mp_refresh = false
-                            if not dmg_dirty and not hb_mouse_held() then
-                                pcall(open_menu)
-                            end
-                        end
-                        return
-                    end
-                    -- 单机 / 主机：读本地快照（C# 就写在这台机器上）
                     if File == nil then return end
                     local path = hb_dir_file("TouhouDamageState.txt")
                     if not File.Exists(path) then return end
                     local text = File.ReadAllText(path)
                     if text ~= nil and text ~= dmg_state_raw then
                         dmg_set_state_from_text(text)
+                        -- 服务器拒绝：弹窗提示一次（状态行那点小字太容易被忽略）
+                        local denied = dmg_state.denied
+                        if denied ~= nil and denied ~= "" and denied ~= dmg_last_denied_shown then
+                            dmg_last_denied_shown = denied
+                            pcall(function() GUI.AddMessage(T("dmg_denied_prefix") .. denied, Color(255, 140, 120, 255)) end)
+                            print(T("log_prefix") .. "服务器拒绝了本次修改：" .. denied)
+                        elseif denied == nil or denied == "" then
+                            dmg_last_denied_shown = nil
+                        end
                         if not dmg_dirty and not hb_mouse_held() then
                             pcall(open_menu)
                         end

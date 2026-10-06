@@ -65,6 +65,8 @@ namespace Touhou.Homing
             targetCache.Clear();
         }
 
+        public static int ActiveCount => rounds.Count;
+
         /// <summary>Projectile.Shoot postfix 入口。</summary>
         public static void OnProjectileShot(Projectile proj, Character user)
         {
@@ -256,6 +258,7 @@ namespace Touhou.Homing
 
             // 同一帧同一射手只解算一次（Tick 每帧开头清空本表）
             if (targetCache.TryGetValue(shooter, out Character cached)) return cached;
+            HomingProfiler.Scans++;
 
             // 每个实体只取一次 WorldPosition，之后一律拿 X/Y 做标量运算，不反复生成 Vector2
             Vector2 shooterPosition = shooter.WorldPosition;

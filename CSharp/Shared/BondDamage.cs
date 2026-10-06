@@ -179,6 +179,12 @@ namespace Touhou.Bond
             try
             {
                 if (!Touhou.Affixes.Mod.IsGameplayAuthority) return;
+                // 回合开始后延迟补推配对状态（客户端镜像刷新）
+                if (BondNet.PendingStatePushAt > 0 && now >= BondNet.PendingStatePushAt)
+                {
+                    BondNet.PendingStatePushAt = 0;
+                    BondNet.BroadcastPairs();
+                }
                 if (BondState.Pairs.Count == 0) { BondState.Wearers.Clear(); return; }
 
                 RebuildWearers();

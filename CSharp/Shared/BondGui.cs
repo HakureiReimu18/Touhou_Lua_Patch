@@ -29,8 +29,6 @@ namespace Touhou.Bond
         static string hotkeyPath;
         static DateTime hotkeyMtime;
         static double nextHotkeyReload;
-        static bool charmWorn;
-        static double nextCharmCheck;
 
         public static bool IsOpen => window != null;
 
@@ -134,10 +132,13 @@ namespace Touhou.Bond
             {
                 string myName = Character.Controlled?.Name;
 
+                // 状态行附带佩戴提示（每次刷新算一次，不在每帧路径上）
+                bool wearing = Character.Controlled != null && BondShare.FindCharm(Character.Controlled) != null;
                 statusText.Text = RichString.Rich(
-                    string.IsNullOrEmpty(BondClientState.MyPartnerName)
+                    (string.IsNullOrEmpty(BondClientState.MyPartnerName)
                         ? "当前没有绑定对象"
-                        : $"当前绑定对象：{BondClientState.MyPartnerName}", null);
+                        : $"当前绑定对象：{BondClientState.MyPartnerName}")
+                    + (wearing ? "" : "（未佩戴绑定护符）"), null);
 
                 bool denyFresh = !string.IsNullOrEmpty(BondClientState.LastDenied) &&
                                  Timing.TotalTime - BondClientState.LastDeniedAt < 10.0;
@@ -267,6 +268,16 @@ namespace Touhou.Bond
             }
         }
 
+        /// <summary>鼠标是否停在打开的绑定面板上（防止鼠标键热键把点击面板当成关窗）</summary>
+        static bool IsMouseOverOpenPanel()
+        {
+            var over = GUI.MouseOn;
+            if (over == null || window == null) return false;
+            for (var rt = over.RectTransform; rt != null; rt = rt.Parent)
+                if (rt.GUIComponent == window) return true;
+            return false;
+        }
+
         [HarmonyPatch]
         public static class BondGuiFramePatch
         {
@@ -309,24 +320,22 @@ namespace Touhou.Bond
                     if (GUI.KeyboardDispatcher.Subscriber != null) return; // 聊天框/输入框激活时不触发
                     if (GameMain.Instance != null && GameMain.Instance.Paused) return; // 1.12.7 里 Paused 是实例属性
 
-                    var me = Character.Controlled;
-                    // 穿戴检测 0.25s 节流：FindCharm 每次要扫全身装备槽，不值得每帧跑
-                    double now2 = Timing.TotalTime;
-                    if (now2 >= nextCharmCheck)
-                    {
-                        nextCharmCheck = now2 + 0.25;
-                        charmWorn = me != null && !me.IsDead && !me.Removed && BondShare.FindCharm(me) != null;
-                    }
-                    if (!charmWorn)
-                    {
-                        if (BondGui.IsOpen) BondGui.Close();
-                        return;
-                    }
                     // 不用 PlayerInput.KeyHit：固定步长帧卡顿时一帧会跑两次，双触发 = 开+关秒关
                     bool keyDown = hotkeyMouse != null
                         ? MouseButtonHeld(hotkeyMouse)
                         : PlayerInput.GetKeyboardState.IsKeyDown(hotkey);
-                    if (keyDown && !BondGui.hotkeyWasDown) BondGui.Toggle();
+                    if (keyDown && !BondGui.hotkeyWasDown)
+                    {
+                        if (BondGui.IsOpen)
+                        {
+                            // 鼠标在面板内时不响应（热键为鼠标键时，点击面板不会把窗口关掉）
+                            if (!IsMouseOverOpenPanel()) BondGui.Close();
+                        }
+                        else
+                        {
+                            BondGui.Toggle(); // 不检测穿戴：面板随时可开，缔结由服务端校验护符
+                        }
+                    }
                     BondGui.hotkeyWasDown = keyDown;
                 }
                 catch { }

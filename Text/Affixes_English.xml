@@ -33,7 +33,7 @@
 	<affix.prefix.sturdy>‖color:255,255,255,255‖Sturdy‖color:end‖‖color:255,255,255,255‖</affix.prefix.sturdy>
 	<affix.desc.sturdy>Damage taken -3%</affix.desc.sturdy>
 	<affix.prefix.keen>‖color:255,255,255,255‖Keen‖color:end‖‖color:255,255,255,255‖</affix.prefix.keen>
-	<affix.desc.keen>Damage +5%</affix.desc.keen>
+	<affix.desc.keen>Melee weapon damage +5%</affix.desc.keen>
 	<affix.prefix.steady>‖color:255,255,255,255‖Steady‖color:end‖‖color:255,255,255,255‖</affix.prefix.steady>
 	<affix.desc.steady>Fire rate +6%</affix.desc.steady>
 	<affix.prefix.balanced>‖color:255,255,255,255‖Balanced‖color:end‖‖color:255,255,255,255‖</affix.prefix.balanced>
@@ -86,7 +86,7 @@
 	<affix.prefix.crown>‖color:255,64,64,255‖Crown‖color:end‖‖color:255,255,255,255‖</affix.prefix.crown>
 	<affix.desc.crown>The last round in the magazine deals +30% damage</affix.desc.crown>
 	<affix.prefix.devoted>‖color:255,64,64,255‖Devoted‖color:end‖‖color:255,255,255,255‖</affix.prefix.devoted>
-	<affix.desc.devoted>Becomes two-handed; damage +60%</affix.desc.devoted>
+	<affix.desc.devoted>One-handed melee weapons become two-handed; damage +60%</affix.desc.devoted>
 	<affix.prefix.ragnarok>‖color:255,140,0,255‖Ragnarok‖color:end‖‖color:255,255,255,255‖</affix.prefix.ragnarok>
 	<affix.desc.ragnarok>Damage +14%; every 3s: 50% chance of 12 burn + 12 bleeding, 30% chance of 0.5s stun</affix.desc.ragnarok>
 	<affix.prefix.immortal>‖color:255,140,0,255‖Immortal‖color:end‖‖color:255,255,255,255‖</affix.prefix.immortal>
@@ -96,7 +96,7 @@
 	<affix.prefix.euphoria>‖color:255,64,64,255‖Euphoria‖color:end‖‖color:255,255,255,255‖</affix.prefix.euphoria>
 	<affix.desc.euphoria>On use: target gains +35% speed for 45s, slowly heals internal damage and bleeding, plus 10 drunk and 5 psychosis</affix.desc.euphoria>
 	<affix.prefix.weightless>‖color:255,64,64,255‖Weightless‖color:end‖‖color:255,255,255,255‖</affix.prefix.weightless>
-	<affix.desc.weightless>While worn: +40% speed, -8% damage taken, stun builds up 0.1/s slower</affix.desc.weightless>
+	<affix.desc.weightless>While worn: +30% speed, -8% damage taken, stun builds up 0.1/s slower; when hit, retaliates with a guaranteed 0.2s stun on the attacker (1s cooldown, does not affect teammates)</affix.desc.weightless>
 	<affix.prefix.priority>‖color:192,64,255,255‖Priority‖color:end‖‖color:255,255,255,255‖</affix.prefix.priority>
 	<affix.desc.priority> Placed in the leftmost (Slot 1) quick slot: Damage +6%, Fire/Swing Speed +6%</affix.desc.priority>
 	<affix.prefix.calm>‖color:192,64,255,255‖Calm‖color:end‖‖color:255,255,255,255‖</affix.prefix.calm>
@@ -107,7 +107,7 @@
 	<affix.prefix.steadfast>‖color:192,64,255,255‖Steadfast‖color:end‖‖color:255,255,255,255‖</affix.prefix.steadfast>
 	<affix.desc.steadfast>While held: injured arms no longer cause aim wobble</affix.desc.steadfast>
 	<affix.prefix.thorns>‖color:192,64,255,255‖Thorns‖color:end‖‖color:255,255,255,255‖</affix.prefix.thorns>
-	<affix.descarmor.thorns>Damage taken -5%; when hit, retaliates: attacker suffers +5 bleeding and +3 lacerations (1s cooldown, does not affect teammates)</affix.descarmor.thorns>
+	<affix.descarmor.thorns>Damage taken -5%; when hit, retaliates: attacker suffers +8 bleeding, +5 lacerations, 50% chance of 0.3s stun (1s cooldown, does not affect teammates)</affix.descarmor.thorns>
 	<affix.prefix.striding>‖color:74,144,255,255‖Striding‖color:end‖‖color:255,255,255,255‖</affix.prefix.striding>
 	<affix.desc.striding>Damage taken -4%; while worn, injured legs no longer slow you down</affix.desc.striding>
 	<affix.descarmor.striding>Damage taken -4%; while worn, injured legs no longer slow you down</affix.descarmor.striding>

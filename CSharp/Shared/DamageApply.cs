@@ -368,6 +368,152 @@ namespace Touhou.Damage
         }
 
         static string Fmt(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
+
+        // ==================== 联机请求（设置页文件桥 / 服务器收提交共用） ====================
+
+        /// <summary>一条待应用的改动（联机请求解析结果）。</summary>
+        public sealed class Change
+        {
+            public string Gid = "";
+            public string Axis = "";    // damage / pen / def
+            public string Mode = "add"; // 仅 pen
+            public float Value;
+        }
+
+        /// <summary>解析并校验玩家值文本（damage./pen./def. 三类键；范围与分组规则与命令一致）。</summary>
+        public static bool TryParseChanges(IEnumerable<string> lines, out List<Change> changes, out string error)
+        {
+            changes = new List<Change>();
+            error = "";
+            int count = 0;
+            foreach (var raw in lines)
+            {
+                string line = (raw ?? "").Trim();
+                if (line.Length == 0 || line.StartsWith("#")) continue;
+                int eq = line.IndexOf('=');
+                if (eq <= 0) { error = $"行格式无效：{line}"; return false; }
+                string key = line.Substring(0, eq).Trim();
+                string val = line.Substring(eq + 1).Trim();
+                int dot = key.IndexOf('.');
+                if (dot <= 0) continue;   // ver=1 之类直接忽略
+                string axis = key.Substring(0, dot).ToLowerInvariant();
+                string gid = key.Substring(dot + 1);
+                if (!DamageConfig.Groups.TryGetValue(gid, out var grp)) { error = $"没有分组「{gid}」"; return false; }
+                if (grp.IsArmor && axis != "def") { error = $"「{gid}」（{grp.Label}）是防具组，只支持 def"; return false; }
+                if (!grp.IsArmor && axis == "def") { error = $"「{gid}」（{grp.Label}）是武器组，只支持 damage/pen"; return false; }
+
+                var ch = new Change { Gid = gid, Axis = axis };
+                if (axis == "damage")
+                {
+                    if (!TryParseFloat(val, out ch.Value)) { error = $"{gid} 的伤害倍率无效：{val}"; return false; }
+                    if (ch.Value < 0f || ch.Value > 10f) { error = $"{gid} 的伤害倍率超范围（0~10）：{val}"; return false; }
+                }
+                else if (axis == "def")
+                {
+                    if (!TryParseFloat(val, out ch.Value)) { error = $"{gid} 的防御倍率无效：{val}"; return false; }
+                    if (ch.Value < 0f || ch.Value > 10f) { error = $"{gid} 的防御倍率超范围（0~10）：{val}"; return false; }
+                }
+                else if (axis == "pen")
+                {
+                    string m = "add"; float v = 0f;
+                    if (!ParsePen(val, ref m, ref v)) { error = $"{gid} 的穿甲值无效：{val}"; return false; }
+                    if (m == "add" && (v < -1f || v > 1f)) { error = $"{gid} 的穿甲加值超范围（-1~1）：{val}"; return false; }
+                    if (m == "multiply" && (v < 0f || v > 10f)) { error = $"{gid} 的穿甲乘数超范围（0~10）：{val}"; return false; }
+                    ch.Mode = m; ch.Value = v;
+                }
+                else { error = $"未知轴「{axis}」（只支持 damage / pen / def）"; return false; }
+
+                if (++count > 512) { error = "条目过多"; return false; }
+                changes.Add(ch);
+            }
+            if (changes.Count == 0) { error = "没有可用的数值条目"; return false; }
+            return true;
+        }
+
+        /// <summary>写入改动并保存（不负责重应用/广播）。</summary>
+        public static void ApplyChanges(List<Change> changes)
+        {
+            foreach (var ch in changes)
+            {
+                if (!values.TryGetValue(ch.Gid, out var e)) continue;
+                switch (ch.Axis)
+                {
+                    case "damage": e.Damage = ch.Value; break;
+                    case "def": e.Defense = ch.Value; break;
+                    case "pen": e.PenMode = ch.Mode; e.PenValue = ch.Value; break;
+                }
+            }
+            SaveConfig();
+        }
+
+        /// <summary>改动前快照（命令路径用：命令自己改值，之后用它算差分公告）。</summary>
+        public sealed class GroupSnapshot
+        {
+            public float Damage, PenValue, Defense;
+            public string PenMode;
+        }
+
+        public static Dictionary<string, GroupSnapshot> Snapshot()
+        {
+            var snap = new Dictionary<string, GroupSnapshot>(StringComparer.OrdinalIgnoreCase);
+            foreach (var g in DamageConfig.Groups.Values)
+            {
+                if (!values.TryGetValue(g.Id, out var e)) continue;
+                snap[g.Id] = new GroupSnapshot
+                { Damage = e.Damage, PenMode = e.PenMode, PenValue = e.PenValue, Defense = e.Defense };
+            }
+            return snap;
+        }
+
+        /// <summary>对比快照与当前值的差分公告文本（命令路径在应用之后调用）。</summary>
+        public static List<string> DescribeDiffSince(Dictionary<string, GroupSnapshot> before)
+        {
+            var outList = new List<string>();
+            if (before == null) return outList;
+            foreach (var g in DamageConfig.Groups.Values)
+            {
+                if (!before.TryGetValue(g.Id, out var b) || !values.TryGetValue(g.Id, out var e)) continue;
+                string label = string.IsNullOrEmpty(g.Label) ? g.Id : g.Label;
+                var parts = new List<string>();
+                if (g.IsArmor)
+                {
+                    if (Math.Abs(b.Defense - e.Defense) > 0.0001f)
+                        parts.Add($"防御 {Fmt(b.Defense)}→{Fmt(e.Defense)}");
+                }
+                else
+                {
+                    if (Math.Abs(b.Damage - e.Damage) > 0.0001f)
+                        parts.Add($"伤害 ×{Fmt(b.Damage)}→×{Fmt(e.Damage)}");
+                    if (b.PenMode != e.PenMode || Math.Abs(b.PenValue - e.PenValue) > 0.0001f)
+                        parts.Add($"穿甲 {PenText(b.PenMode, b.PenValue)}→{PenText(e.PenMode, e.PenValue)}");
+                }
+                if (parts.Count > 0) outList.Add($"{label} {string.Join("、", parts)}");
+            }
+            return outList;
+        }
+
+        static string PenText(string mode, float v) => (mode == "multiply" ? "×" : "+") + Fmt(v);
+    }
+
+    /// <summary>状态文本工具：给客户端镜像/服务器广播用（剔除 applied.*，那是权威端的归一变基）。</summary>
+    public static class DamageDisplay
+    {
+        public static string StrippedStateText()
+        {
+            try
+            {
+                string path = DamageValues.StatePath;
+                if (!File.Exists(path)) return null;
+                var kept = new List<string>();
+                foreach (var line in File.ReadAllLines(path))
+                {
+                    if (line.StartsWith("applied.", StringComparison.OrdinalIgnoreCase)) continue;
+                    kept.Add(line);
+                }
+                return string.Join("\n", kept) + "\n";
+            }
+            catch (Exception ex) { DamageLog.Warn($"状态读取失败：{ex.Message}"); return null; }
+        }
     }
 
     /// <summary>
@@ -385,6 +531,7 @@ namespace Touhou.Damage
         static readonly ConditionalWeakTable<object, Box> snapshots = new ConditionalWeakTable<object, Box>();
         static bool registered;
         static int normalizedThisPass;   // 本次 ApplyAll 因未跟踪而做除法归一的次数
+        static int writtenThisPass;      // 本次 ApplyAll 真正写进对象（伤害/穿甲/防御）的次数
         static bool firstApplyDone;
 
         /// <summary>构造钩子是否已挂载（damage_probe 展示，用于判断新物品是否会被即时打补丁）。</summary>
@@ -393,6 +540,8 @@ namespace Touhou.Damage
         public static int HookAppliedObjects;
         /// <summary>上次 ApplyAll 的归一转除计数（首次实例化时的归一属正常，之后应恒为 0）。</summary>
         public static int LastNormalizedObjects;
+        /// <summary>上次 ApplyAll 实际写入对象的次数（=0 说明全是"中性跳过"，参数改了也不会生效）。</summary>
+        public static int LastWrittenObjects;
 
         public static bool IsAuthority =>
             GameMain.NetworkMember == null || GameMain.NetworkMember.IsServer;
@@ -462,6 +611,7 @@ namespace Touhou.Damage
             if (DamageConfig.Groups.Count == 0) return;
             int items = 0, objects = 0;
             normalizedThisPass = 0;
+            writtenThisPass = 0;
             try
             {
                 foreach (var item in Item.ItemList.ToList())
@@ -475,12 +625,13 @@ namespace Touhou.Damage
             }
             catch (Exception ex) { LogCapped($"应用扫描出错：{ex.Message}"); }
             LastNormalizedObjects = normalizedThisPass;
+            LastWrittenObjects = writtenThisPass;
             // 首次实例化（含 reloadlua）归一属正常；之后仍有归一转除，说明有新物品绕过了构造钩子，需要排查
             if (normalizedThisPass > 0 && firstApplyDone)
                 LogCapped($"注意：本次归一了 {normalizedThisPass} 个未跟踪对象（新物品未经构造钩子处理？用 damage_probe 检查钩子状态）");
             firstApplyDone = true;
             DamageValues.MarkApplied(items, objects);
-            DamageLog.Log($"应用完成：物品 {items}，数值对象 {objects}（归一 {normalizedThisPass}）");
+            DamageLog.Log($"应用完成：物品 {items}，数值对象 {objects}（实际写入 {writtenThisPass}，归一 {normalizedThisPass}）");
         }
 
         static int ApplyItem(Item item, DamageGroup g, bool freshObject)
@@ -566,7 +717,10 @@ namespace Touhou.Damage
             // 但「本次与上次都是中性」时一个字都不写——中性 = 完全不动（也避免替游戏同步双字段）。
             bool neutral = Math.Abs(factor - 1f) < 0.0001f;
             if (!(neutral && Math.Abs(DamageValues.AppliedDamage(g.Id) - 1f) < 0.0001f))
+            {
                 aff.SetStrength(baseVal * factor);
+                writtenThisPass++;
+            }
             return 1;
         }
 
@@ -601,7 +755,10 @@ namespace Touhou.Damage
                 float target = neutral ? basePen
                     : Math.Clamp(mode == "multiply" ? basePen * factor : basePen + factor, 0f, 1f);
                 if (Math.Abs(attack.Penetration - target) > 0.0001f)
+                {
                     attack.Penetration = target;
+                    writtenThisPass++;
+                }
             }
             return 1;
         }
@@ -635,7 +792,10 @@ namespace Touhou.Damage
             {
                 float target = TransformDefense(baseV, m);
                 if (Math.Abs(dm.DamageMultiplier - target) > 0.0001f)
+                {
                     dm.DamageMultiplier = target;
+                    writtenThisPass++;
+                }
             }
             return 1;
         }

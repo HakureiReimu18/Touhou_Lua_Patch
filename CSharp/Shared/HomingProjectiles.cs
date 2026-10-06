@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -7,6 +8,7 @@ using System.Xml.Linq;
 using Barotrauma;
 using Barotrauma.Items.Components;
 using Barotrauma.LuaCs;
+using FarseerPhysics;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 
@@ -49,7 +51,7 @@ namespace Touhou.Homing
         {
             if (oneTimeInitDone)
             {
-                HomingLog.Debug("OnLoadCompleted: 内容重载，补丁/命令已注册，跳过");
+                HomingLog.Log("OnLoadCompleted: 内容重载，补丁/命令已注册，跳过");
                 return;
             }
             oneTimeInitDone = true;
@@ -489,7 +491,7 @@ namespace Touhou.Homing
     {
         static void Postfix(Projectile __instance, Character user)
         {
-            HomingLaunchCommon.OnProjectileLaunched(__instance.Item, __instance, user, "shoot");
+            HomingLaunchCommon.OnProjectileLaunched(__instance.Item, __instance, user);
         }
     }
 
@@ -518,28 +520,17 @@ namespace Touhou.Homing
                 else
                     HomingLog.Warn("找不到 Turret.GetFriendlyTeam，自动炮塔射弹将无法追踪");
             }
-            HomingLaunchCommon.OnProjectileLaunched(__0, __0.GetComponent<Projectile>(), __1, "turret", teamHint);
+            HomingLaunchCommon.OnProjectileLaunched(__0, __0.GetComponent<Projectile>(), __1, teamHint);
         }
     }
 
-    /// <summary>两个发射入口的公共逻辑：探针日志 + 追踪登记。</summary>
+    /// <summary>两个发射入口的公共逻辑：追踪登记。</summary>
     public static class HomingLaunchCommon
     {
-        static readonly Dictionary<string, int> probeCounts = new Dictionary<string, int>();
-        static double nextSummary;
-
-        public static void ResetProbe()
-        {
-            probeCounts.Clear();
-            nextSummary = 0;
-        }
-
-        public static void OnProjectileLaunched(Item item, Projectile proj, Character user, string source,
+        public static void OnProjectileLaunched(Item item, Projectile proj, Character user,
                                                 CharacterTeamType? teamHint = null)
         {
             if (item == null) return;
-            Probe(item, proj, user, source, teamHint);
-
             if (!HomingConfig.Enabled) return;
             // 服务端权威：纯客户端上下文不登记
             if (GameMain.NetworkMember != null && !GameMain.NetworkMember.IsServer) return;
@@ -551,44 +542,9 @@ namespace Touhou.Homing
             CharacterTeamType team;
             if (user != null) team = user.TeamID;
             else if (teamHint.HasValue) team = teamHint.Value;
-            else
-            {
-                HomingLog.Debug($"user=null 且无队伍信息，跳过登记：{item.Prefab.Identifier.Value}");
-                return;
-            }
+            else return; // user=null 且无队伍信息：无法判定敌我，不登记
+
             HomingTracker.Register(item, p, user, team);
-        }
-
-        static void Probe(Item item, Projectile proj, Character user, string source, CharacterTeamType? teamHint)
-        {
-            if (!HomingLog.DebugMode) return;
-            string id = item.Prefab.Identifier.Value;
-            if (!probeCounts.TryGetValue(id, out int n))
-            {
-                string context = GameMain.NetworkMember == null ? "SP"
-                    : GameMain.NetworkMember.IsServer ? "server" : "client";
-                string userDesc = user != null ? $"{user.Name}(bot={user.IsBot}, team={user.TeamID})"
-                    : teamHint.HasValue ? $"null(team={teamHint.Value})" : "null";
-                string launcher = proj != null && proj.Launcher != null
-                    ? proj.Launcher.Prefab.Identifier.Value : "null";
-                string speed = item.body == null ? "no-body"
-                    : item.body.LinearVelocity.Length().ToString("F1");
-                HomingLog.Log($"[{context}/{source}] 首发 {id}: hitscan={(proj != null && proj.Hitscan)}, " +
-                              $"user={userDesc}, launcher={launcher}, |v|={speed}");
-                probeCounts[id] = 1;
-            }
-            else
-            {
-                probeCounts[id] = n + 1;
-            }
-
-            if (Timing.TotalTime >= nextSummary && probeCounts.Count > 0)
-            {
-                nextSummary = Timing.TotalTime + 10.0;
-                var parts = new List<string>();
-                foreach (var kv in probeCounts) parts.Add($"{kv.Key}×{kv.Value}");
-                HomingLog.Debug($"发射统计: {string.Join(", ", parts)}");
-            }
         }
     }
 
@@ -617,8 +573,7 @@ namespace Touhou.Homing
         static void Postfix()
         {
             if (GameMain.NetworkMember == null || !GameMain.NetworkMember.IsServer) return;
-            HomingTracker.Tick();
-            MonarchTracker.Tick();
+            HomingProfiler.RunTrackers();
         }
     }
 #else
@@ -630,8 +585,7 @@ namespace Touhou.Homing
             // 纯客户端上下文不跑；单人（null）与 listen server 宿主（IsServer）跑
             if (GameMain.NetworkMember != null && !GameMain.NetworkMember.IsServer) return;
             if (GameMain.Instance != null && GameMain.Instance.Paused) return;
-            HomingTracker.Tick();
-            MonarchTracker.Tick();
+            HomingProfiler.RunTrackers();
         }
     }
 #endif
@@ -665,11 +619,6 @@ namespace Touhou.Homing
 
         public static void Register(Item item, HomingParams p, Character shooter, CharacterTeamType team)
         {
-            if (shooter == null && p.Mode == HomingMode.Mouse)
-            {
-                // 自动炮塔没有鼠标可引导，mouse 模式永远捕获不到目标
-                HomingLog.Debug($"{item.Prefab.Identifier.Value}：无射手（自动炮塔）配 mouse 模式无效，请改用 velocity");
-            }
             if (entries.Count >= HomingConfig.MaxActive) return;
             // 捕获时刻按槽位错峰，避免同帧集体扫描
             double jitter = (entries.Count % 8) / 8.0 * p.AcquireInterval;
@@ -698,12 +647,6 @@ namespace Touhou.Homing
                 Item item = e.Item;
                 if (item.Removed || now >= e.ExpireAt || item.body == null)
                 {
-                    if (HomingLog.DebugMode)
-                    {
-                        string reason = item.Removed ? "已移除" : now >= e.ExpireAt ? "超时" : "失去物理体";
-                        HomingLog.Debug($"{item.Prefab.Identifier.Value} 退出追踪：{reason}" +
-                                        $"（目标={(e.Target != null ? e.Target.Name : "无")}）");
-                    }
                     entries[i] = entries[entries.Count - 1];
                     entries.RemoveAt(entries.Count - 1);
                     continue;
@@ -742,13 +685,8 @@ namespace Touhou.Homing
                 if (due && scansLeft > 0 && (target == null || !p.LockOn))
                 {
                     scansLeft--;
+                    HomingProfiler.Scans++;
                     Character newTarget = Acquire(e, vel);
-                    if (HomingLog.DebugMode && newTarget != e.Target)
-                    {
-                        HomingLog.Debug(newTarget != null
-                            ? $"{item.Prefab.Identifier.Value} 锁定 {newTarget.Name}"
-                            : $"{item.Prefab.Identifier.Value} 未捕获到目标");
-                    }
                     if (newTarget != e.Target) e.MinDist = float.MaxValue; // 换目标才重置，LockOn=false 重扫到同一个不算换
                     e.Target = newTarget;
                     target = newTarget;
@@ -769,9 +707,7 @@ namespace Touhou.Homing
                 {
                     if (e.MinDist <= p.PassHitDist && !item.HiddenInGame)
                     {
-                        bool damaged = HomingFallbackHit.Apply(item, e.Shooter, target);
-                        if (HomingLog.DebugMode)
-                            HomingLog.Debug($"{item.Prefab.Identifier.Value} 穿身补伤：最近距离 {e.MinDist:F0}，补刀={damaged}");
+                        HomingFallbackHit.Apply(item, e.Shooter, target);
                         entries[i] = entries[entries.Count - 1];
                         entries.RemoveAt(entries.Count - 1);
                         continue;
@@ -856,6 +792,24 @@ namespace Touhou.Homing
     public static class HomingFallbackHit
     {
         /// <summary>
+        /// 引擎是否已经对受害者登记过命中（Hits 里出现过该角色的肢体）。
+        /// removeonhit=true 的弹引擎命中后会置 HiddenInGame，调用方的判断已覆盖；
+        /// removeonhit=false 的穿透弹 HiddenInGame 永远不置位，必须靠这个兜底防双倍伤害。
+        /// </summary>
+        public static bool EngineAlreadyHit(Item round, Entity target)
+        {
+            Projectile proj = round.GetComponent<Projectile>();
+            if (proj == null) return false;
+            Character victim = ResolveVictim(target);
+            if (victim == null || victim.AnimController == null) return false;
+            foreach (var hitBody in proj.Hits)
+            {
+                if (hitBody?.UserData is Limb hitLimb && hitLimb.character == victim) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// 挨打的是谁：角色目标直接用；鱼叉目标是反查它插到的四肢所属的角色
         /// （君王场景里弹追的是鱼叉，不是人，光看目标解析不出受害者）。
         /// </summary>
@@ -870,48 +824,170 @@ namespace Touhou.Homing
         /// <summary>补一次命中并把射弹移除；解析不出受害者就只移除不补伤。返回是否真的补上了伤害。</summary>
         public static bool Apply(Item round, Character shooter, Entity target)
         {
-            bool damaged = TryDamage(round, shooter, ResolveVictim(target));
-            Entity.Spawner?.AddItemToRemoveQueue(round);
+            // 引擎已经命中过（穿透弹场景）就什么都不做，防双倍伤害 / 双倍效果
+            if (EngineAlreadyHit(round, target)) return false;
+
+            if (shooter != null && shooter.Removed) shooter = null;
+            Character victim = ResolveVictim(target);
+            Limb limb = ResolveLimb(victim);
+            // 引擎路径里弹停在命中接触点（目标表面），伤害位置、爆炸、溅射子弹的生成点全在那里；
+            // 兜底路径弹已飞过目标，不挪回去的话溅射子弹会生成在目标体内/身后的几何里，
+            // 出生即碰撞触发自己的 OnImpact → Condition-100 →"瞬间消失"。
+            RepositionToImpactPoint(round, victim, limb);
+            // 复刻引擎 RemoveOnHit 命中时的处置：冻结刚体。挪位后残余速度会再次朝目标飞，
+            // 不冻结可能在移除生效前撞出第二次命中（双倍伤害/效果）。
+            if (round.body?.FarseerBody != null) round.body.FarseerBody.Enabled = false;
+            bool damaged = TryDamage(round, shooter, victim, limb);
+            // 复刻引擎 HandleProjectileCollision 的命中善后：OnSuccess/OnFailure + OnImpact 状态效果
+            // （散射生成、爆炸、音效、粒子都挂在这些效果上），并广播客户端事件。
+            // 未复刻引擎对"被击中肢体自身 attack"的反击效果（怪物受击反应类），当前需求不涉及。
+            ApplyHitEffects(round, shooter, victim, limb);
+            if (!round.Removed) Entity.Spawner?.AddItemToRemoveQueue(round);
             return damaged;
         }
 
-        static bool TryDamage(Item round, Character shooter, Character victim)
+        /// <summary>躯干优先、其次第一个未断肢体；补伤、命中效果与挪位共用同一个肢体。</summary>
+        static Limb ResolveLimb(Character victim)
         {
-            if (victim == null || victim.AnimController == null) return false;
+            if (victim?.AnimController == null) return null;
+            Limb limb = victim.AnimController.GetLimb(LimbType.Torso);
+            if (limb != null && !limb.IsSevered) return limb;
+            var limbs = victim.AnimController.Limbs;
+            for (int i = 0; i < limbs.Length; i++)
+            {
+                Limb candidate = limbs[i];
+                if (candidate != null && !candidate.IsSevered) return candidate;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 把弹挪回"可见命中点"：以被击肢体自身为锚点，沿来向退到肢体表面外 0.15 米。
+        /// 用 WorldPosition 差值做平移（自动处理潜艇/关卡坐标系差异），换算成 SimPosition 增量后
+        /// SetTransform（增量法帧无关：WorldPosition = 帧偏移 + ToDisplayUnits(SimPosition)）。
+        /// </summary>
+        static void RepositionToImpactPoint(Item round, Character victim, Limb limb)
+        {
+            if (victim == null || limb == null || round.body == null) return;
+            Vector2 vel = round.body.LinearVelocity;
+            if (vel.LengthSquared() < 0.0001f) return;
+            Vector2 dir = Vector2.Normalize(vel);
+            // 锚在被击肢体自身（比角色整体中心准），沿来向退到肢体表面外一点点：
+            // - 余量保留 0.15 米：贴太紧会生成在肢体内部"出生即碰撞"（旧 bug）；0.15 米在弹速下
+            //   约 3 毫秒，朝怪物飞的溅射弹会在生成后一帧内命中，观感等同"在怪物身上命中"（引擎路径）；
+            // - 不再设 1 米保底：大余量会让小目标出现明显的"飞一段才命中"空档（实测反馈）；
+            // - GetMaxExtent() 是最大半程尺寸，恒 ≥ 任何方向的真实表面距离（圆形体精确），
+            //   估算只会偏外不会偏内，偏外的部分就是上述那 0.15 米以内的余量。
+            Vector2 anchor = limb.WorldPosition;
+            float extentSim = Math.Max(limb.body?.GetMaxExtent() ?? 0f, 0.2f) + 0.15f;
+            Vector2 desiredWorld = anchor - dir * ConvertUnits.ToDisplayUnits(extentSim);
+            Vector2 simDelta = ConvertUnits.ToSimUnits(desiredWorld - round.WorldPosition);
+            if (float.IsNaN(simDelta.X) || float.IsInfinity(simDelta.X) ||
+                float.IsNaN(simDelta.Y) || float.IsInfinity(simDelta.Y)) return;
+            round.SetTransform(round.SimPosition + simDelta, round.body.Rotation);
+        }
+
+        static bool TryDamage(Item round, Character shooter, Character victim, Limb limb)
+        {
+            if (victim == null || victim.AnimController == null || limb == null) return false;
             Projectile proj = round.GetComponent<Projectile>();
             if (proj == null || proj.Attack == null) return false;
 
-            Limb limb = victim.AnimController.GetLimb(LimbType.Torso);
-            if (limb == null || limb.IsSevered)
-            {
-                limb = null;
-                var limbs = victim.AnimController.Limbs;
-                for (int i = 0; i < limbs.Length; i++)
-                {
-                    Limb candidate = limbs[i];
-                    if (candidate != null && !candidate.IsSevered) { limb = candidate; break; }
-                }
-            }
-            if (limb == null) return false;
-
-            if (shooter != null && shooter.Removed) shooter = null;
             proj.Attack.DoDamageToLimb(shooter, limb, round.WorldPosition, 1.0f, false);
             return true;
+        }
+
+        static void ApplyHitEffects(Item round, Character shooter, Character victim, Limb limb)
+        {
+            if (victim == null || limb == null || round.Removed) return;
+            if (GameMain.NetworkMember != null && !GameMain.NetworkMember.IsServer) return;
+            Projectile proj = round.GetComponent<Projectile>();
+            if (proj == null) return;
+
+            ActionType conditional = ActionType.OnSuccess;
+            // 与引擎同一掷骰：Rand.Range(0, 0.5, RandSync.Unsynced) > DegreeOfSuccess（IL 验证 1.12.7）
+            if (shooter != null && Rand.Range(0.0f, 0.5f, Rand.RandSync.Unsynced) > proj.DegreeOfSuccess(shooter))
+            {
+                conditional = ActionType.OnFailure;
+            }
+
+            proj.ApplyStatusEffects(conditional, 1.0f, victim, limb, useTarget: victim, user: shooter);
+            proj.ApplyStatusEffects(ActionType.OnImpact, 1.0f, victim, limb, useTarget: victim, user: shooter);
+
+            // 与引擎一致：效果在服务端执行后广播给客户端做本地表现（音效/粒子/客户端效果）
+            if (GameMain.NetworkMember is { IsServer: true } server)
+            {
+                server.CreateEntityEvent(round,
+                    new Item.ApplyStatusEffectEventData(conditional, proj, victim, limb, victim, round.WorldPosition));
+                server.CreateEntityEvent(round,
+                    new Item.ApplyStatusEffectEventData(ActionType.OnImpact, proj, victim, limb, victim, round.WorldPosition));
+            }
+        }
+    }
+
+    /// <summary>
+    /// 轻量性能自测：Enabled 打开时，每 5 秒汇总一条 tick 耗时 / 活跃追踪数 /
+    /// 角色表扫描次数到控制台，在真实弹幕场景里核对性能，不靠估算。
+    /// 关闭时 RunTrackers 只走两个 Tick 的空表早退路径，计时开销为零。
+    /// </summary>
+    public static class HomingProfiler
+    {
+        /// <summary>性能自测开关（默认关；排查性能时改 true，测完改回）。</summary>
+        public static bool Enabled = false;
+
+        /// <summary>周期内角色表全量扫描次数（通用追踪与君王共用计数），Frame 汇总后清零。</summary>
+        public static int Scans;
+
+        static long totalTicks;
+        static long maxTicks;
+        static int frames;
+        static double nextLog = -1;
+
+        public static void RunTrackers()
+        {
+            if (!Enabled)
+            {
+                HomingTracker.Tick();
+                MonarchTracker.Tick();
+                return;
+            }
+            long t0 = Stopwatch.GetTimestamp();
+            HomingTracker.Tick();
+            MonarchTracker.Tick();
+            Frame(Stopwatch.GetTimestamp() - t0);
+        }
+
+        static void Frame(long elapsed)
+        {
+            frames++;
+            totalTicks += elapsed;
+            if (elapsed > maxTicks) maxTicks = elapsed;
+            double now = Timing.TotalTime;
+            if (nextLog < 0) { nextLog = now + 5.0; return; }
+            if (now < nextLog) return;
+            nextLog = now + 5.0;
+
+            double toUs = 1_000_000.0 / Stopwatch.Frequency;
+            double avgUs = frames > 0 ? totalTicks * toUs / frames : 0;
+            LuaCsLogger.LogMessage($"[追踪][perf] 近 {frames} 帧：tick 均 {avgUs:F1} µs/帧，峰 {maxTicks * toUs:F0} µs，" +
+                                   $"累计 {totalTicks * toUs / 1000.0:F2} ms；活跃追踪 {HomingTracker.ActiveCount}+{MonarchTracker.ActiveCount}，" +
+                                   $"目标扫描 {Scans} 次", Color.LightGray);
+            frames = 0;
+            totalTicks = 0;
+            maxTicks = 0;
+            Scans = 0;
         }
     }
 
     public static class HomingLog
     {
-        public static bool DebugMode = false; // 调试时改为 true
+        /// <summary>低频信息日志开关（插件加载、配置加载、外部注册等）。默认关，排查用。</summary>
+        public static bool Verbose = false;
 
         public static void Log(string msg)
         {
-            if (DebugMode) LuaCsLogger.LogMessage($"[追踪] {msg}", Color.LightGreen);
+            if (Verbose) LuaCsLogger.LogMessage($"[追踪] {msg}", Color.LightGreen);
         }
         public static void Warn(string msg) => LuaCsLogger.LogMessage($"[追踪] {msg}", Color.Orange);
-        public static void Debug(string msg)
-        {
-            if (DebugMode) LuaCsLogger.LogMessage($"[追踪][dbg] {msg}", Color.LightGray);
-        }
     }
 }

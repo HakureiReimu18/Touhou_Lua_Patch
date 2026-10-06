@@ -1,23 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 由 _dev/gen_damage_groups.py 生成（2026-10-05）。改动请重跑脚本，或直接改本文件。 -->
-<!-- 规则见 Docs/武器伤害与防具抗性设置-设计稿.md：伤害倍率只乘 DamageTypes 白名单里的 affliction；
-     StatusEffect 语境只看 EffectTargets；穿甲支持 add/multiply 二选一生效；防具走 defense。 -->
-<!-- 跨组归并（优先级 turret > exclusive > general > divingsuit > hyouibana > headwear）：Touhou_Magic_Ray_Gun_Light（general → turret） -->
+<!--
+  东方-武器伤害与防具抗性设置（配置文件）
+
+  这里登记的是「哪些物品允许玩家调整伤害和防御」。玩家在游戏里打开设置页按组调整，
+  这份文件只负责把物品分好组，不决定玩家最终用多少倍率。
+
+  三种常用改法：
+    加物品：找到对应分组，在它的 </Group> 前面加一行  <Item id="物品id"/>
+    加分组：自己写一组，例如  <Group id="my_group" label="我的武器" kind="weapon" ...>
+    排除物品：写一行  <Exclude id="物品id"/>（连自动收录进来的物品也能排除掉）
+
+  <Group> 每个属性的意思：
+    label             设置页里显示的分组名
+    kind              weapon = 武器（能调伤害、穿甲）；armor = 防具（能调防御）
+    defaultDamage     默认伤害倍率。1.0 = 完全不动原伤害（推荐就填 1.0，增强让玩家自己调）
+    penetrationMode   穿甲怎么算：add = 在原穿甲上「加」一个数；multiply = 「乘」一个数
+    penetrationValue  上面那个数。add 模式一般 0 ~ 0.2；multiply 模式填 1.0 表示不变
+    defaultDefense    默认防御倍率。1.0 = 完全不动；1.2 = 防具的减伤效果变成 1.2 倍
+                      （比如原本挡 50% 伤害的潜水服，会变成挡 60%）
+
+  <Tier> 是设置页顶部三个快捷按钮（LV1/LV2/LV3）的数据：
+    LV1 比老的「东方装备补强补丁」稍弱一点，LV2 和它完全一样，LV3 是它的两倍。
+  <Item> 是分组里的物品 id；<Tag name="…"/> 按物品自带的 tag 批量收录，不用一个个列。
+
+  这份文件由 _dev/gen_damage_groups.py 自动生成（2026-10-06）；手改的内容在下一次重跑脚本时会被覆盖。
+-->
+<!--
+  给联动模组作者：你的模组里只要放一个同名文件 Config/damage_settings.xml，
+  用下面的写法就能把自己的物品接进来，多个模组的这份文件会自动合并，不需要写代码：
+    加进已有分组：  <Group id="exclusive"><Item id="你的物品id"/></Group>
+    按 tag 收录：    <Group id="general"><Tag name="你的物品tag"/></Group>
+    自己新开一组：  <Group id="自定义id" label="显示名" kind="weapon" defaultDamage="1.0" ...>
+    排除某个物品：  <Exclude id="物品id"/>
+  详细说明见 Docs/联动模组兼容说明.md。
+-->
+<!-- 这些物品同时出现在好几个分组里，只能归一个组；下面按“舰炮 > 专属 > 泛用 > 潜水服 > 凭依 > 头饰”的顺序归好了：
+     Touhou_Magic_Ray_Gun_Light（general → turret）；Touhou_Magic_Ray_Gun_Ammo（general → turret） -->
 <DamageSettings version="1">
+  <!-- 三条全局规则，一般不用动 -->
   <Rules>
+    <!-- 只有这四种伤害会被倍率放大：普通伤害、烧伤、流血、失血。
+         眩晕、物品自身损耗（itemdamage）之类不会被放大。 -->
     <DamageTypes>damage,burn,bleeding,bloodloss</DamageTypes>
+    <!-- 只放大“打在人身上”的效果（四肢、正在使用的目标等）；
+         涂装、加状态这类效果不受影响。 -->
     <EffectTargets>Limb,UseTarget,AllLimbs,LastLimb</EffectTargets>
-    <!-- 防御倍率的减伤上限（1.0 = 不设限）；高防御装备在 M&gt;1 时可能逼近免伤，可下调 -->
+    <!-- 防具最多能把伤害减到多少：1.0 = 不限（可能叠到几乎免伤）。
+         觉得太硬就调小，比如 0.9 = 最多减少 90% 伤害。 -->
     <DefenseReductionCap value="1.0"/>
   </Rules>
 
   <Group id="exclusive" label="专属武器" kind="weapon" defaultDamage="1.0" penetrationMode="add" penetrationValue="0.0">
-    <!-- 档位预设：LV1 略弱于补强 / LV2 等于补强 / LV3 补强×2（设置页一键应用） -->
+    <!-- 下面是设置页三个快捷按钮的数据：LV1 略弱于补强补丁 / LV2 与补强持平 / LV3 补强的两倍 -->
     <Tier level="1" damage="1.4" penMode="add" penValue="0.04"/>
     <Tier level="2" damage="1.5" penMode="add" penValue="0.05"/>
     <Tier level="3" damage="3.0" penMode="add" penValue="0.1"/>
-    <!-- 以下 2 个 id 当前内容包中未找到（保留以兼容更新/变体内容包）：
-         Danmu04, Lightning_Kanameishi_Bolt -->
+    <!-- 下面 2 个物品 id 在当前模组内容里没找到（可能是旧版本或变体包里的东西）；
+         先留着，等它出现时会自动生效：Danmu04, Lightning_Kanameishi_Bolt -->
     <Item id="Danmu04"/>
     <Item id="Touhou_Hakkero_Bullet01"/>
     <Item id="Touhou_Hakkero_Bullet02"/>
@@ -177,10 +216,236 @@
     <Item id="Touhou_Calamity_Wither_Bloom_Bullet"/>
     <Item id="Touhou_Malevolent_Fantasy_Bullet"/>
     <Item id="Touhou_Fallen_Ears_Grain"/>
+    <Item id="Touhou_Hakkero"/>
+    <Item id="Touhou_Hakkero_Star_Bottle"/>
+    <Item id="Touhou_Hakkero_Bullet04"/>
+    <Item id="Touhou_Hakkero_Ammo01"/>
+    <Item id="Touhou_Hakkero_Ammo02"/>
+    <Item id="Touhou_Hakkero_Ammo03"/>
+    <Item id="Stardust_Reverie_Danmu_Spawn"/>
+    <Item id="Fake_Hakkero"/>
+    <Item id="Touhou_Homing_Amulet"/>
+    <Item id="Touhou_Homing_Amulet_Ammo"/>
+    <Item id="Freeze_Icicle_Fall"/>
+    <Item id="Remilia_Gungnier"/>
+    <Item id="Touhou_Gungnier"/>
+    <Item id="youmusmg"/>
+    <Item id="Youmu_Smgmagazine"/>
+    <Item id="Youmu_Smgmagazine_Plus"/>
+    <Item id="youmuceremonialsword2_Spawn"/>
+    <Item id="Phoenix_Tail"/>
+    <Item id="Aya_Circular_Fan"/>
+    <Item id="Aya_Maple_Leaves"/>
+    <Item id="Touhou_Elements_Book"/>
+    <Item id="Elements_Mu_Bolt"/>
+    <Item id="Elements_Jin_Bolt_Shrapnel"/>
+    <Item id="Elements_Shui_Bolt_Shrapnel"/>
+    <Item id="Elements_Yang_Bolt_Shrapnel"/>
+    <Item id="Elements_Yin_Bolt_Shrapnel"/>
+    <Item id="Touhou_Concentrated_Energy_Arc_Emitter"/>
+    <Item id="Touhou_Concentrated_Energy_Arc_Emitter_Ammo"/>
+    <Item id="Touhou_Concentrated_Energy_Arc_Emitter_Bullet"/>
+    <Item id="Lightning_Kanameishi_Bolt_Spawn"/>
+    <Item id="Tengu_Shield"/>
+    <Item id="Tengu_Shield_Huge"/>
+    <Item id="Yuka_Parasol"/>
+    <Item id="Yuka_Parasol_Spawn"/>
+    <Item id="FlandreTalent4_Spawn"/>
+    <Item id="Touhou_Cyber_Homing_Amulet"/>
+    <Item id="Touhou_Aya_Camera"/>
+    <Item id="Touhou_Aya_Maple_Film"/>
+    <Item id="Touhou_Frozen_Frog"/>
+    <Item id="Touhou_Perfect_Snowflake"/>
+    <Item id="Touhou_Love_Maze"/>
+    <Item id="Touhou_Strange_Phone"/>
+    <Item id="Touhou_Scorching_Ray_Gun"/>
+    <Item id="Touhou_Scorching_Ray_Gun_Ammo"/>
+    <Item id="Touhou_Alice_Magic_Book"/>
+    <Item id="Touhou_Alice_Magic_Book_Ammo"/>
+    <Item id="Touhou_Alice_Magic_Book_Bolt_Shrapnel"/>
+    <Item id="Touhou_Sun_Cannon"/>
+    <Item id="Touhou_Lunar_Orbit_Gun"/>
+    <Item id="Touhou_Lunar_Orbit_Gun_Ammo"/>
+    <Item id="Touhou_Brilliant_Star_Spawn"/>
+    <Item id="Touhou_Sakuya_Knife_Iron"/>
+    <Item id="Touhou_Sakuya_Knife_Iron_Ammo"/>
+    <Item id="Touhou_Sakuya_Knife_Ether"/>
+    <Item id="Touhou_Sakuya_Knife_Ether_Ammo"/>
+    <Item id="Touhou_Luna_Clock"/>
+    <Item id="Blunderbuss"/>
+    <Item id="Touhou_Lunatic_Blass_Spawn"/>
+    <Item id="Touhou_Lunar_Energy_Assault_Rifle"/>
+    <Item id="Touhou_Lunar_Energy_Magazine"/>
+    <Item id="Touhou_Waterwheel_Gun"/>
+    <Item id="Touhou_Waterwheel_Gun_Magazine"/>
+    <Item id="Touhou_Yukari_Folding_Fan"/>
+    <Item id="Touhou_Yukari_Folding_Fan_Ammo"/>
+    <Item id="Three_Fairies_Triple_Heavy_Crossbows"/>
+    <Item id="Touhou_Crystal_Pistol"/>
+    <Item id="Touhou_Crystal_Pistol_Ammo"/>
+    <Item id="Touhou_Ceremonial_Dagger_Spawn"/>
+    <Item id="Touhou_Maple_Leaf_Revolver"/>
+    <Item id="Touhou_Royal_Diamond_Ring"/>
+    <Item id="Touhou_Royal_Diamond_Ring_Ammo"/>
+    <Item id="Touhou_Rose_Wand"/>
+    <Item id="Touhou_Rose_Wand_Ammo"/>
+    <Item id="Touhou_Merry_MobilePhone"/>
+    <Item id="Touhou_Pellen_Gun"/>
+    <Item id="Touhou_Pellen_Bottle"/>
+    <Item id="Touhou_Unknown_X"/>
+    <Item id="Touhou_Unknown_X_Ammo"/>
+    <Item id="Touhou_Minus_K"/>
+    <Item id="Touhou_Minus_K_Ammo"/>
+    <Item id="Touhou_Stagnant_Comet"/>
+    <Item id="Touhou_Stagnant_Comet_Ammo"/>
+    <Item id="Touhou_Metamorphosis"/>
+    <Item id="Touhou_Metamorphosis_Ammo"/>
+    <Item id="Touhou_Feather_Wings"/>
+    <Item id="Touhou_Feather_Wings_Ammo"/>
+    <Item id="Touhou_Leaves_Thorns"/>
+    <Item id="Touhou_Leaves_Thorns_Ammo"/>
+    <Item id="Touhou_Feather_Wings_Spawn"/>
+    <Item id="Touhou_Sakuya_Knife_Lunatic"/>
+    <Item id="Touhou_Sakuya_Knife_Lunatic_Ammo"/>
+    <Item id="Touhou_Closed_Third_Eye"/>
+    <Item id="Touhou_Closed_Third_Eye_Ammo01"/>
+    <Item id="Touhou_Closed_Third_Eye_Spawn"/>
+    <Item id="Touhou_Onmyo_Ball"/>
+    <Item id="Touhou_Onmyo_Ball_Ammo"/>
+    <Item id="Touhou_Cyclone_Electromagnetic_Gun"/>
+    <Item id="Touhou_Cyclone_Electromagnetic_Gun_Ammo"/>
+    <Item id="Touhou_Flandre_Destroyer"/>
+    <Item id="Touhou_Flandre_Destroyer_Ammo"/>
+    <Item id="Touhou_Night_Dance"/>
+    <Item id="Touhou_Night_Dance_Ammo"/>
+    <Item id="Touhou_Blessings_Sunflowers"/>
+    <Item id="Touhou_Blessings_Sunflowers_Ammo01"/>
+    <Item id="Touhou_Blessings_Sunflowers_Ammo02"/>
+    <Item id="Touhou_Noh_Performance_Fan"/>
+    <Item id="Touhou_Noh_Performance_Fan_Ammo"/>
+    <Item id="Touhou_Kappa_Sniper_Cannon"/>
+    <Item id="Touhou_Kappa_Sniper_Cannon_Ammo"/>
+    <Item id="Touhou_Whisper_Half_Phantom"/>
+    <Item id="Touhou_Whisper_Half_Phantom_Ammo01"/>
+    <Item id="Touhou_Whisper_Half_Phantom_Ammo02"/>
+    <Item id="Touhou_Tengu_Special_Task_Assault_Rifle"/>
+    <Item id="Touhou_Tengu_Special_Task_Assault_Rifle_Ammo01"/>
+    <Item id="Touhou_Tengu_Special_Task_Assault_Rifle_Ammo02"/>
+    <Item id="Touhou_Komainu_Blaze"/>
+    <Item id="Touhou_Komainu_Blaze_Ammo"/>
+    <Item id="Touhou_Lunar_Phantasm"/>
+    <Item id="Touhou_Lunar_Phantasm_Ammo"/>
+    <Item id="Touhou_Lunar_Phantasm_Sight"/>
+    <Item id="Touhou_Prayer_Wind_Bracer"/>
+    <Item id="Touhou_Prayer_Wind_Bracer_Ammo"/>
+    <Item id="Touhou_Arcane_Rune_Cannon"/>
+    <Item id="Touhou_Arcane_Rune_Cannon_Ammo"/>
+    <Item id="Touhou_Petal_Tempest"/>
+    <Item id="Touhou_Petal_Tempest_Ammo"/>
+    <Item id="Touhou_Bloom_Herald"/>
+    <Item id="Touhou_Bloom_Herald_Ammo"/>
+    <Item id="Touhou_Stars_Stripes_Anarchy_Cannon"/>
+    <Item id="Touhou_Stars_Stripes_Anarchy_Cannon_Ammo"/>
+    <Item id="Touhou_Boundary_Rift_Cannon"/>
+    <Item id="Touhou_Boundary_Rift_Cannon_Ammo"/>
+    <Item id="Touhou_Unidentified_Phenomena_Emitter"/>
+    <Item id="Touhou_Unidentified_Phenomena_Emitter_Ammo"/>
+    <Item id="Touhou_Maskwheel_Resonator_Rifle"/>
+    <Item id="Touhou_Maskwheel_Resonator_Rifle_Ammo"/>
+    <Item id="Touhou_Superconducting_Electromagnetic_Gun"/>
+    <Item id="Touhou_Superconducting_Electromagnetic_Gun_Ammo"/>
+    <Item id="Touhou_Superconducting_Electromagnetic_Gun_Bullet_Extra"/>
+    <Item id="Touhou_Boundary_Purifier"/>
+    <Item id="Touhou_Boundary_Purifier_Ammo"/>
+    <Item id="Touhou_Lunacy_Phosphor_Torch"/>
+    <Item id="Touhou_Lunacy_Phosphor_Torch_Ammo"/>
+    <Item id="Touhou_Sun_Dart_Phase_Gun"/>
+    <Item id="Touhou_Sun_Dart_Phase_Gun_Ammo"/>
+    <Item id="Touhou_Astrolite_Split_Caster"/>
+    <Item id="Touhou_Astrolite_Split_Caster_Ammo"/>
+    <Item id="Touhou_TidalInk_Rail_Caster"/>
+    <Item id="Touhou_TidalInk_Rail_Caster_Ammo"/>
+    <Item id="Touhou_Mental_Image_Deconstructor"/>
+    <Item id="Touhou_Subconscious_Decoder"/>
+    <Item id="Touhou_Lunar_Probability_Correction_Gun"/>
+    <Item id="Touhou_Lunar_Probability_Correction_Gun_Ammo"/>
+    <Item id="Touhou_Deviation_Erasure_Rifle"/>
+    <Item id="Touhou_Deviation_Erasure_Rifle_Ammo"/>
+    <Item id="Touhou_HouraiEmbers_Fireseed_Repeater"/>
+    <Item id="Touhou_HouraiEmbers_Fireseed_Repeater_Ammo"/>
+    <Item id="Touhou_MistyLake_Shatterice_Sprayer"/>
+    <Item id="Touhou_MistyLake_Shatterice_Sprayer_Ammo"/>
+    <Item id="Touhou_ScarletNight_Hailstorm"/>
+    <Item id="Touhou_ScarletNight_Hailstorm_Ammo"/>
+    <Item id="Touhou_Crowfeather_RapidShooter"/>
+    <Item id="Touhou_Crowfeather_RapidShooter_Ammo"/>
+    <Item id="Touhou_Aunn_Square_Shield"/>
+    <Item id="Touhou_Sunyori_Ceremony_Rifle"/>
+    <Item id="Touhou_Sunyori_Ceremony_Rifle_Ammo"/>
+    <Item id="Touhou_Evernight_Sunyori_Ceremony_Rifle"/>
+    <Item id="Touhou_Evernight_Sunyori_Ceremony_Rifle_Ammo01"/>
+    <Item id="Touhou_Evernight_Sunyori_Ceremony_Rifle_Ammo02"/>
+    <Item id="Touhou_Evernight_Sunyori_Ceremony_Rifle_Ammo03"/>
+    <Item id="Touhou_Evernight_Sunyori_Ceremony_Rifle_Ammo04"/>
+    <Item id="Touhou_Evernight_Sunyori_Ceremony_Rifle_Bullet04_Spawn"/>
+    <Item id="Touhou_Evernight_Sunyori_Ceremony_Rifle_Ammo05"/>
+    <Item id="Touhou_Hourai_Bullet_Branches"/>
+    <Item id="Touhou_Hourai_Bullet_Branches_Ammo"/>
+    <Item id="Touhou_Hourai_Bullet_Branches_Bolt02"/>
+    <Item id="Touhou_PrayerInjector_Gun"/>
+    <Item id="Touhou_PrayerInjector_Gun_Ammo"/>
+    <Item id="Touhou_PrayerInjector_Gun_Ammo_Spawn01"/>
+    <Item id="Touhou_PrayerInjector_Gun_Bullet01"/>
+    <Item id="Touhou_PrayerInjector_Gun_Ammo_Spawn02"/>
+    <Item id="Touhou_PrayerInjector_Gun_Bullet02"/>
+    <Item id="Touhou_PrayerInjector_Gun_Ammo_Spawn03"/>
+    <Item id="Touhou_PrayerInjector_Gun_Bullet03"/>
+    <Item id="Touhou_PrayerInjector_Gun_Ammo_Spawn04"/>
+    <Item id="Touhou_PrayerInjector_Gun_Bullet04"/>
+    <Item id="Touhou_Starsea_Aurora"/>
+    <Item id="Touhou_Starsea_Aurora_Ammo"/>
+    <Item id="Touhou_HeartbeatScatter"/>
+    <Item id="Touhou_HeartbeatScatter_Ammo"/>
+    <Item id="Touhou_Moriya_Duality_Carbine"/>
+    <Item id="Touhou_Moriya_Duality_Carbine_Ammo01"/>
+    <Item id="Touhou_Moriya_Duality_Carbine_Ammo02"/>
+    <Item id="Touhou_Saigyou_Ayakashi_Branch_Gun"/>
+    <Item id="Touhou_Saigyou_Ayakashi_Branch_Gun_Ammo"/>
+    <Item id="Touhou_Higanbana_Arbiter"/>
+    <Item id="Touhou_Higanbana_Arbiter_Ammo"/>
+    <Item id="Touhou_Hand_of_Creation"/>
+    <Item id="Touhou_Hand_of_Creation_Ammo"/>
+    <Item id="Touhou_Genesis_Engine"/>
+    <Item id="Touhou_Genesis_Engine_Ammo"/>
+    <Item id="Touhou_Chimeric_Dreamer"/>
+    <Item id="Touhou_Chimeric_Dreamer_Ammo"/>
+    <Item id="Touhou_Crimson_Contract"/>
+    <Item id="Touhou_Crimson_Contract_Ammo"/>
+    <Item id="Touhou_Forbidden_Book_Indexer"/>
+    <Item id="Touhou_Forbidden_Book_Indexer_Ammo"/>
+    <Item id="Touhou_Ruby_Pistol"/>
+    <Item id="Touhou_Ruby_Pistol_Ammo"/>
+    <Item id="Touhou_Calamity_Torrent"/>
+    <Item id="Touhou_Calamity_Torrent_Ammo"/>
+    <Item id="Touhou_Misfortune_Recovery_Gun"/>
+    <Item id="Touhou_Misfortune_Recovery_Gun_Ammo"/>
+    <Item id="Touhou_Calamity_Wither_Bloom"/>
+    <Item id="Touhou_Calamity_Wither_Bloom_Ammo"/>
+    <Item id="Touhou_Malevolent_Fantasy"/>
+    <Item id="Touhou_Malevolent_Fantasy_Ammo"/>
+    <Item id="Touhou_Gaudy_Tax_Collector"/>
+    <Item id="Touhou_Gaudy_Tax_Collector_Ammo"/>
+    <Item id="Touhou_Gaudy_Tax_Collector_Bullet"/>
+    <Item id="Touhou_Foam_Queen"/>
+    <Item id="Touhou_Foam_Queen_Ammo"/>
+    <Item id="Touhou_Foam_Queen_Bullet"/>
+    <Item id="Touhou_Bustling_World"/>
+    <Item id="Touhou_Bustling_World_Ammo"/>
+    <Item id="Touhou_Bustling_World_Bullet"/>
   </Group>
 
   <Group id="general" label="泛用武器" kind="weapon" defaultDamage="1.0" penetrationMode="add" penetrationValue="0.0">
-    <!-- 档位预设：LV1 略弱于补强 / LV2 等于补强 / LV3 补强×2（设置页一键应用） -->
+    <!-- 下面是设置页三个快捷按钮的数据：LV1 略弱于补强补丁 / LV2 与补强持平 / LV3 补强的两倍 -->
     <Tier level="1" damage="1.25" penMode="add" penValue="0.04"/>
     <Tier level="2" damage="1.35" penMode="add" penValue="0.05"/>
     <Tier level="3" damage="2.7" penMode="add" penValue="0.1"/>
@@ -260,10 +525,134 @@
     <Item id="Touhou_Alpha_Omega_Bullet"/>
     <Item id="Touhou_Mixer_Gun_Bullet"/>
     <Item id="Touhou_Corrupted_Shotgun_Bullet"/>
+    <Item id="Mine_Blast"/>
+    <Item id="Hompson_Contender"/>
+    <Item id="Touhou_Origin_Bullet"/>
+    <Item id="Touhou_Winchester"/>
+    <Item id="Fire_Element_Book"/>
+    <Item id="Fire_Element_Book_Ammo"/>
+    <Item id="Water_Element_Book"/>
+    <Item id="Water_Element_Book_Ammo"/>
+    <Item id="Iron_Element_Book"/>
+    <Item id="Iron_Element_Book_Ammo"/>
+    <Item id="Earth_Element_Book"/>
+    <Item id="Earth_Element_Book_Ammo"/>
+    <Item id="Touhou_Eternal_Night_Bow"/>
+    <Item id="Touhou_Rippling"/>
+    <Item id="Touhou_Rippling_Bolt_Spawn"/>
+    <Item id="Touhou_Blue_Rose"/>
+    <Item id="Touhou_Candy_Cannon"/>
+    <Item id="Touhou_Candy_Cannon_Plus"/>
+    <Item id="Touhou_Sugar_Coated_Cannonball"/>
+    <Item id="Touhou_Huge_Sugar_Coated_Cannonball"/>
+    <Item id="Touhou_Life_Needle"/>
+    <Item id="Touhou_Tide"/>
+    <Item id="Touhou_Miniature_Earth_Moon_System"/>
+    <Item id="Touhou_Tide_Bolt_Spawn"/>
+    <Item id="Touhou_Lunarquake"/>
+    <Item id="Touhou_Lunar_Center"/>
+    <Item id="Baka_grenade"/>
+    <Item id="Touhou_Treatment_Grenade"/>
+    <Item id="Touhou_Sparkfire_Shotgun"/>
+    <Item id="Touhou_Deceit"/>
+    <Item id="Touhou_Aphelion"/>
+    <Item id="Touhou_Aphelion_Ammo"/>
+    <Item id="Touhou_Aphelion_Ammo_Light"/>
+    <Item id="Touhou_Stellar_Staff"/>
+    <Item id="Touhou_Stellar_Staff_Ammo"/>
+    <Item id="Touhou_Charge_Rifle"/>
+    <Item id="Touhou_Charge_Rifle_Ammo"/>
+    <Item id="Touhou_Magic_Ray_Gun"/>
+    <Item id="Touhou_Mercy"/>
+    <Item id="Touhou_Mercy_Ammo"/>
+    <Item id="Touhou_Mercy_Barrel"/>
+    <Item id="Touhou_Mercy_Sight"/>
+    <Item id="Touhou_Repair_Gun"/>
+    <Item id="Touhou_Instant_Blue01"/>
+    <Item id="Touhou_Instant_Blue02"/>
+    <Item id="Touhou_Instant_Blue"/>
+    <Item id="Touhou_Instant_Blue_Ammo"/>
+    <Item id="Touhou_Merciless"/>
+    <Item id="Touhou_Merciless_Ammo"/>
+    <Item id="Touhou_Labyrinth"/>
+    <Item id="Touhou_Labyrinth_Ammo01"/>
+    <Item id="Touhou_Labyrinth_Ammo02"/>
+    <Item id="Touhou_Corrupted_Merciless"/>
+    <Item id="Touhou_Corrupted_Merciless_Ammo"/>
+    <Item id="Touhou_Corrupted_Deceit"/>
+    <Item id="Touhou_Corrupted_Aphelion"/>
+    <Item id="Touhou_Corrupted_Aphelion_Ammo"/>
+    <Item id="Touhou_Lightsmithing"/>
+    <Item id="Touhou_Lightsmithing_Ammo"/>
+    <Item id="Touhou_Night_Watcher"/>
+    <Item id="Touhou_Night_Watcher_Ammo"/>
+    <Item id="Touhou_Meniscate_Reflection"/>
+    <Item id="Touhou_Meniscate_Reflection_Ammo"/>
+    <Item id="Touhou_Knightmare_Shotgun"/>
+    <Item id="Touhou_Knightmare_Shotgun_Ammo01"/>
+    <Item id="Touhou_Knightmare_Shotgun_Ammo02"/>
+    <Item id="Touhou_Knightmare_Shotgun_Ammo03"/>
+    <Item id="Touhou_Knightmare_Submachine_Gun"/>
+    <Item id="Touhou_Knightmare_Submachine_Gun_Ammo01"/>
+    <Item id="Touhou_Knightmare_Submachine_Gun_Ammo02"/>
+    <Item id="Touhou_Knightmare_Experimental_Rifle"/>
+    <Item id="Touhou_Knightmare_Experimental_Rifle_Ammo01"/>
+    <Item id="Touhou_Knightmare_Experimental_Rifle_Ammo02"/>
+    <Item id="Touhou_Acid_Effect"/>
+    <Item id="Touhou_Knightmare_Grenade_Gun"/>
+    <Item id="Touhou_Knightmare_Grenade_Gun_Ammo"/>
+    <Item id="Touhou_Knightmare_Grenade_Gun_Bullet_Explosive"/>
+    <Item id="Touhou_Grenade_Pistol"/>
+    <Item id="Touhou_Bubble_Gun"/>
+    <Item id="Touhou_Bubble_Gun_Ammo"/>
+    <Item id="Touhou_Starkiller"/>
+    <Item id="Touhou_Starkiller_Ammo"/>
+    <Item id="Touhou_Starkiller_Grenade"/>
+    <Item id="Touhou_Starkiller_Grenade_Spawn"/>
+    <Item id="Touhou_Dissolution"/>
+    <Item id="Touhou_Dissolution_Ammo"/>
+    <Item id="Touhou_Mass_Shotgun"/>
+    <Item id="Touhou_Mass_Shotgun_Ammo"/>
+    <Item id="Touhou_Record_Scar"/>
+    <Item id="Touhou_Record_Scar_Ammo01"/>
+    <Item id="Touhou_Record_Scar_Ammo02"/>
+    <Item id="Touhou_Blast_Gun"/>
+    <Item id="Touhou_Blast_Gun_Ammo"/>
+    <Item id="Touhou_Blast_Gun_Bullet_Explosive"/>
+    <Item id="Touhou_TSM_Twilight"/>
+    <Item id="Touhou_TSM_Twilight_Ammo"/>
+    <Item id="Touhou_TSM_Corrupted_Twilight"/>
+    <Item id="Touhou_TSM_Corrupted_Twilight_Ammo"/>
+    <Item id="Touhou_TSM_AWM"/>
+    <Item id="Touhou_TSM_AWM_Ammo"/>
+    <Item id="Touhou_TSM_Corrupted_AWM"/>
+    <Item id="Touhou_TSM_Corrupted_AWM_Ammo"/>
+    <Item id="Touhou_TSM_AA12"/>
+    <Item id="Touhou_TSM_AA12_Ammo01"/>
+    <Item id="Touhou_TSM_AA12_Ammo02"/>
+    <Item id="Touhou_TSM_Corrupted_AA12"/>
+    <Item id="Touhou_TSM_Corrupted_AA12_Ammo"/>
+    <Item id="Touhou_Bone_Claw"/>
+    <Item id="Touhou_Bone_Claw_Ammo"/>
+    <Item id="Touhou_Acid_Fang"/>
+    <Item id="Touhou_Acid_Fang_Ammo"/>
+    <Item id="Touhou_Mage_Slayer"/>
+    <Item id="Touhou_Mage_Slayer_Ammo"/>
+    <Item id="Touhou_Savior"/>
+    <Item id="Touhou_Savior_Ammo"/>
+    <Item id="Touhou_Corrupted_Savior"/>
+    <Item id="Touhou_Corrupted_Savior_Ammo"/>
+    <Item id="Touhou_Anguish"/>
+    <Item id="Touhou_Nightfall"/>
+    <Item id="Touhou_Nightfall_Ammo"/>
+    <Item id="Touhou_Alpha_Omega"/>
+    <Item id="Touhou_Alpha_Omega_Ammo"/>
+    <Item id="Touhou_Mixer_Gun"/>
+    <Item id="Touhou_Mixer_Gun_Ammo"/>
   </Group>
 
   <Group id="turret" label="舰炮炮塔弹药" kind="weapon" defaultDamage="1.0" penetrationMode="add" penetrationValue="0.0">
-    <!-- 档位预设：LV1 略弱于补强 / LV2 等于补强 / LV3 补强×2（设置页一键应用） -->
+    <!-- 下面是设置页三个快捷按钮的数据：LV1 略弱于补强补丁 / LV2 与补强持平 / LV3 补强的两倍 -->
     <Tier level="1" damage="1.25" penMode="add" penValue="0.04"/>
     <Tier level="2" damage="1.35" penMode="add" penValue="0.05"/>
     <Tier level="3" damage="2.7" penMode="add" penValue="0.1"/>
@@ -304,7 +693,7 @@
   </Group>
 
   <Group id="divingsuit" label="潜水服" kind="armor" defaultDefense="1.0">
-    <!-- 档位预设：LV1 略弱于补强 / LV2 等于补强 / LV3 补强×2（设置页一键应用） -->
+    <!-- 下面是设置页三个快捷按钮的数据：LV1 略弱于补强补丁 / LV2 与补强持平 / LV3 补强的两倍 -->
     <Tier level="1" defense="1.1"/>
     <Tier level="2" defense="1.2"/>
     <Tier level="3" defense="1.4"/>
@@ -318,7 +707,7 @@
   </Group>
 
   <Group id="hyouibana" label="凭依武装" kind="armor" defaultDefense="1.0">
-    <!-- 档位预设：LV1 略弱于补强 / LV2 等于补强 / LV3 补强×2（设置页一键应用） -->
+    <!-- 下面是设置页三个快捷按钮的数据：LV1 略弱于补强补丁 / LV2 与补强持平 / LV3 补强的两倍 -->
     <Tier level="1" defense="1.1"/>
     <Tier level="2" defense="1.2"/>
     <Tier level="3" defense="1.4"/>
@@ -333,8 +722,8 @@
     <Item id="Touhou_Hyouibana_Armor07"/>
   </Group>
 
-  <Group id="headwear" label="装束头饰" kind="armor" defaultDefense="1.0">  <!-- 头饰组默认 1.0（不生效）；用档位/滑条启用，或直接删本组 -->
-    <!-- 档位预设：LV1 略弱于补强 / LV2 等于补强 / LV3 补强×2（设置页一键应用） -->
+  <Group id="headwear" label="装束头饰" kind="armor" defaultDefense="1.0">  <!-- 头饰默认不生效（1.0）；想让它生效就用档位/滑条调，或者直接删掉本组 -->
+    <!-- 下面是设置页三个快捷按钮的数据：LV1 略弱于补强补丁 / LV2 与补强持平 / LV3 补强的两倍 -->
     <Tier level="1" defense="1.1"/>
     <Tier level="2" defense="1.2"/>
     <Tier level="3" defense="1.4"/>

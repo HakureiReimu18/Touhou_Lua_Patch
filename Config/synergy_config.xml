@@ -1,43 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  角色羁绊配置（东方潜渊行动组）
-  ============================================================
-  一个 <Synergy> = 一组羁绊：列出的成员全部在场时，给指定目标挂增益 affliction。
+  角色羁绊配置
 
-  判定依据是"装束自己刷的身份 affliction"（每 0.5 秒刷一次、duration 1 秒，脱下 1 秒内消失），
-  所以脱装、换装、死亡、重生、中途加入都会在 0.5~2 秒内自动跟上，不需要事件系统。
-  装束身份 aff 全表见 Docs/角色羁绊系统-设计方案.md 附录 A（46 个）。
+  作用：让"某几个角色凑在一起"时获得增益。每条 <Synergy> 就是一组羁绊：
+  名单里的人同时在（默认还要同一条船），就给指定的人挂上增益状态。
 
-  其他模组想加羁绊：在自己的内容包里放一份 Config/synergy_config.xml 即可，
-  按模组加载顺序合并：不同 id 追加；同 id 由排后面的包整条覆盖；remove="true" 可删除已有条目。
+  "谁在场"是靠装束自带的一个隐藏状态判断的（每 0.5 秒刷新一次，脱衣服 1 秒内就消失），
+  所以换装、死亡、复活、中途加入都会自动跟上，一两秒内生效。
+  各套装束对应的状态名见 Docs/角色羁绊系统-设计方案.md 的附录。
 
-  <Synergy> 属性
-    id          （必填）全局唯一
-    scope       same_sub（默认，成员需同一条潜艇）/ same_team / anywhere
-    detect      crew（默认，玩家 + 玩家队 AI 船员）/ players（只认玩家操控的角色）
-                / any（不限，含中立/敌对角色）
-    alive_only  默认 true；false = 尸体/昏迷也算在场
-    mode        while_present（默认，条件成立就挂、断开就撤）
-                / round_start（开局 10 秒窗口内成立即锁定，目标持续到巡回结束）
-    remove      true = 删除同 id 条目（本条目不需要子元素）
+  别的模组也想加：在自己包里放一份同名文件 Config/synergy_config.xml 就行，会自动合并。
+  合并规则：不同的 id 直接追加；同一个 id 谁在后面谁的整条生效；写 remove="true" 可以删掉已有的条目。
 
-  <Member> 子元素（至少 2 个才成立）
-    aff="装束身份 affliction"   推荐：同一角色多套装束共用同一个身份 aff
-    item="装束物品 identifier"  备选：按穿戴的物品判定（会漏掉 Plus / Eclipse / 头饰变体）
+  <Synergy> 上能写的属性：
+    id          必填，随便起个不重复的名字
+    priority    越大越优先（默认 0）；一样大时先写的优先
+    exclusive   互斥规则：none = 可以和其他羁绊一起生效（默认）；
+                members = 和共用成员的羁绊互斥；all = 有它就排斥其他所有羁绊
+                互相冲突时按 priority 高的保留，被挤掉的会撤掉它的增益
+    scope       在哪算数：same_sub = 同一条船（默认）/ same_team = 同一队 / anywhere = 不限
+    detect      算谁在场：crew = 玩家和玩家队的 AI 船员（默认）/ players = 只算玩家自己控制的角色
+                / any = 谁都可以（包括中立、敌对角色）
+    alive_only  默认 true（死了/昏迷不算在场）；写 false 则尸体也算
+    mode        while_present = 人凑齐就生效、分开就取消（默认）；
+                round_start = 只在开局 10 秒内凑齐才生效，之后一直持续到本局结束
+    remove      写 true 就是删掉同 id 的那条，不用写子元素
 
-  <Grant> 子元素（要发的增益，affliction 必须已在某处注册）
-    aff="增益 affliction identifier"（必填）
-    to="member:1 | member:2 | members（默认）| crew（同船玩家队全队）"
-    strength="1"（默认 1；会被 aff 自己的 maxstrength 截断）
+  <Member> 子元素：名单，至少写 2 个人
+    aff="装束身份状态名"   推荐这样写：同一个角色的几套装束共用一个身份状态
+    item="装束物品id"      也可以直接按穿了哪件衣服判断（会漏掉 Plus / 特殊 / 头饰变体）
 
-  增益 affliction 必须带 duration（建议 2.0，判定节拍的 4 倍余量），断链时引擎也会主动移除一次。
-  数值（技能/抗性/移速/生命上限等）全部写在 affliction 定义里，本文件只管"谁在场、给谁发什么"。
+  <Grant> 子元素：要发的增益
+    aff="增益状态名"（必填）
+    to="member:1 / member:2 / members（默认，所有成员）/ crew（同船的全队）"
+    strength="1"（默认 1，超过状态自己的上限会被截断）
+
+  增益状态本身要带 duration（建议写 2.0，留够余量），人分开后也会被自动清掉。
+  具体加多少技能/抗性/移速/血上限，写在状态定义里；这个文件只管"谁在场、给谁发什么"。
 -->
 <Synergies>
 
   <!-- ===== 示例：灵梦 + 魔理沙同船，各拿一份增益 =====
-       启用前先在内容模组的 Touhou_Character_Afflictions.xml 里定义好这两个增益 aff，
-       否则加载时会被跳过并在日志里提示"增益 aff 未注册"。
+       用之前要先在内容模组的 Touhou_Character_Afflictions.xml 里把这两个增益状态定义好，
+       否则加载时会跳过，并在日志里提示"增益状态没定义"。
 
   <Synergy id="reimu_marisa" scope="same_sub" alive_only="true" mode="while_present">
     <Member aff="Touhou_Reimu_Character_Effect"/>

@@ -88,7 +88,11 @@ namespace Touhou.Bond
             BondState.PairHistoryThisRound.Clear();
             BondState.LastForcedPartner.Clear();
             if (GameMain.NetworkMember == null || GameMain.NetworkMember.IsServer)
+            {
                 BondMatch.LoadPairs();
+                // 延迟 3 秒补推一次全量配对状态，刷新客户端的绑定显示（等角色/物品就位）
+                BondNet.PendingStatePushAt = Timing.TotalTime + 3.0;
+            }
             return null;
         }
 
