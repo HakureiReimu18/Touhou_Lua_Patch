@@ -176,6 +176,7 @@ local L = {
         dmg_lv_missing = "（配置里没有档位数据，请更新 Config/damage_settings.xml）",
         dmg_mp_loading = "（正在从主机获取伤害设置…）",
         dmg_readonly_short = "只读：需要管理员权限",
+        dmg_item_overrides_fmt = "单件调整 %d 件（damage_item list 查看）",
         dmg_submitted = "已提交，约 1 秒内生效",
         dmg_submitted_short = "已提交，等待生效…",
         dmg_lv_submitted = "已提交档位：%s（约 1 秒内生效）",
@@ -308,6 +309,7 @@ local L = {
         dmg_lv_missing = "(No tier data in config - update Config/damage_settings.xml)",
         dmg_mp_loading = "(Fetching damage settings from the host...)",
         dmg_readonly_short = "Read-only: admin permission required",
+        dmg_item_overrides_fmt = "%d item(s) tuned individually (see damage_item list)",
         dmg_submitted = "Submitted, takes effect within ~1s",
         dmg_submitted_short = "Submitted - applying...",
         dmg_lv_submitted = "Tier submitted: %s (within ~1s)",
@@ -1331,6 +1333,8 @@ local function dmg_parse_state(text)
                 st.stamp = v
             elseif k == "patched.items" or k == "patched.objects" then
                 st.patched[k] = v
+            elseif k == "items" then
+                st.items = dmg_num(v)     -- 单件单独调整件数（damage_item）
             elseif k == "canedit" then
                 st.canedit = (v == "1")
             elseif k == "denied" then
@@ -2020,12 +2024,15 @@ local function open_menu()
                 dmg_selected = dmg_groups[1].id
             end
 
-            -- 状态行：应用计数/时间 + 联机提示（只读 / 拒绝原因 / 刚提交）
+            -- 状态行：应用计数/时间 + 单件调整提示 + 联机提示（只读 / 拒绝原因 / 刚提交）
             do
                 local status_text = string.format(T("dmg_status_fmt"),
                     tostring(dmg_state.patched["patched.items"] or "?"),
                     tostring(dmg_state.patched["patched.objects"] or "?"),
                     tostring(dmg_state.stamp or ""))
+                if (dmg_state.items or 0) > 0 then
+                    status_text = status_text .. " · " .. string.format(T("dmg_item_overrides_fmt"), dmg_state.items)
+                end
                 if Game.IsMultiplayer then
                     if not dmg_can_edit() then
                         status_text = status_text .. " · " .. T("dmg_readonly_short")

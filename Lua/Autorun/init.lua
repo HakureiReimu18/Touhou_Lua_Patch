@@ -1,9 +1,9 @@
 -- 东方潜渊行动组 Lua 补丁 —— 脚本装载入口
 -- 目录约定：
---   Lua/Scripts/Shared/           客户端与服务端共用（装束包收录表、通用工具、天赋工具）
---   Lua/Scripts/Client/           客户端表现（镜头、UI、热键、装束选择窗口）
+--   Lua/Scripts/Shared/           客户端与服务端共用（装束包/弹药袋收录表、通用工具、天赋工具）
+--   Lua/Scripts/Client/           客户端表现（镜头、UI、热键、装束选择窗口、弹药袋图标）
 --   Lua/Scripts/Server/Talents/   角色天赋（一个天赋一个文件，替代对应 XML 能力组/事件）
---   Lua/Scripts/Server/Systems/   玩法系统（料理、定价、装束、魔法武器、单轨等）
+--   Lua/Scripts/Server/Systems/   玩法系统（料理、定价、装束、弹药袋、魔法武器、单轨等）
 --   */Disabled/                   已停用但保留的脚本，要重启用就恢复下面注释里的 dofile
 
 TLE = {}
@@ -15,6 +15,10 @@ TLE.Path = table.pack(...)[1]
 -- ==================== 共用：客户端和服务端都要，必须先加载 ====================
 --装束包收录表：客户端选择窗口和服务端校验共用
 dofile(TLE.Path .. "/Lua/Scripts/Shared/CostumePack_Items.lua")
+--弹药袋收录表：客户端选择窗口和服务端校验共用（新增弹种改这一张表）
+--[[⚠ 封存（2026-10）：弹药袋体系统暂停，共享收录表不再加载；恢复时把这行与
+    Server/Systems/Touhou_AmmoPouch_Pack.lua、Client/Touhou_AmmoPouch_Pack_Client.lua 的反注释一起放开]]
+-- dofile(TLE.Path .. "/Lua/Scripts/Shared/AmmoPouch_Pack_Items.lua")
 --TH.* 通用小工具
 dofile(TLE.Path .. "/Lua/Scripts/Shared/helperfunctions.lua")
 --TouhouTalents.* 天赋通用工具（affliction 强度读写、敌我判定、武器判定等）
@@ -26,11 +30,16 @@ if Game.IsSingleplayer or SERVER then
 --[[    dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Cook.lua")]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Costume_Lock.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Costume_Pack.lua")
+    --[[⚠ 封存（2026-10）：弹药袋体系统暂停，服务端转换不再加载；恢复时把这行与
+        Shared/AmmoPouch_Pack_Items.lua、Client/Touhou_AmmoPouch_Pack_Client.lua 的反注释一起放开]]
+    -- dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_AmmoPouch_Pack.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Zero_Moment_Pendant.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Magic_Weapon_Bonus.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Magic_Weapon_Skill_Gain.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Hooked_Jade_Durability.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Pricer.lua")
+    --[[以太回收机：批量回收带等级的武器 → 以太层金属/副产物，见 Items/EtherRecycler.xml]]
+    dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Ether_Recycler.lua")
 
     -- ---- 角色天赋 ----
     --[[红美铃天赋「气与姿态」：须排在 Touhou_Magic_Weapon_Bonus.lua 之后（DamageMultiplier 补丁依赖其加载顺序）]]
@@ -71,7 +80,16 @@ dofile(TLE.Path.."/Lua/Scripts/Server/Talents/Iroha_Versatile_Adaptation.lua")
 dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Cam_Offset.lua")
 dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Costume_Lock_Client.lua")
 dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Costume_Pack_Client.lua")
+--[[⚠ 封存（2026-10）：弹药袋「选择弹药种类」窗口停载；恢复时把这行与
+    Shared/AmmoPouch_Pack_Items.lua、Server/Systems/Touhou_AmmoPouch_Pack.lua 的反注释一起放开]]
+-- dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_AmmoPouch_Pack_Client.lua")
+--[[弹药袋图标补丁：已停用 —— 弹药袋改成每种弹一个袋子（自带图标），而袋内容器又开着
+    hideitems 时代的"逐枚画在图标上"会把 5 枚待发弹重复画上去，作者反馈不要这个效果。
+    文件留在磁盘作回退保险；要恢复"画 1 枚弹种图标"的话再把它 dofile 回来并改成单枚绘制。]]
+-- dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Ammo_Pouch_Icons.lua")
 dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Mod_Hotkey.lua")
+--以太回收机的自定义面板驱动（面板本体是 C#：CSharp/Client/EtherRecyclerPanel.cs）
+dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Ether_Recycler_Panel.lua")
 --[[改名台功能已下线（归档至 _Archive），不再加载 Touhou_Renamer.lua]]
 --[[人偶指挥（隐形信标方案）已停用，与 Server 侧同步下线。
 dofile(TLE.Path.."/Lua/Scripts/Client/Disabled/Alice_Doll_Command_Client.lua")]]

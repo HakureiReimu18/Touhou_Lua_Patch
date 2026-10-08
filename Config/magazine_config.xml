@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--⚠ 封存（2026-10）：弹药袋系统暂停，本配置当前不会被读取（C# 插件已封存）；
+    重做时可直接沿用这份配置。恢复办法：CSharp/Shared/AmmoStorage.cs 的 SEALED 常量改 false
+    + filelist.xml 与 Lua/Autorun/init.lua 对应的注释放开。-->
+<!--
+  ============================================================
+  弹药袋体系 v5 · 配置（CSharp/Shared/AmmoStorage.cs 读取）
+  ============================================================
+  文件缺失时插件会自动生成同样的模板；下面每一项在代码里都有同等默认值，
+  文件删掉/写坏也能跑（只是退回代码默认表）。改完在游戏控制台执行 mag_reload 即时生效，
+  换巡回（roundStart）也会自动重载。
+
+  ── 数据模型（详细说明见 Items/AmmoStorage.xml） ──
+    · 每种弹一个袋子，袋子本身就是插进武器的那件东西（武器按 ammo tag 收它）。
+    · 袋子 condition = 袋内存量（余弹），上限 = XML 的 Health（这里可以按弹种单独调）。
+    · 袋内「待发实体弹」数 ∈ [0, min(N, condition)]，N = 该武器最大齐射弹数（下面 <Weapon readyRounds>），
+      = 引擎同一时刻看得见几发（齐射弹数）。
+      引擎只看得见这几发，"存量"与"待发弹"的换算是 C# 干的：
+        插弹药      → 吸收（实体物品移除）+ condition+1 → 补足待发弹；
+        开火        → 每实际消耗一发 condition−1 → 补足待发弹；
+        拖走一发待发弹 → condition−1 → 补足待发弹。
+      "补足待发弹"只从存量里挪，不凭空生弹。
+    · ★另一个量是"本次装填量"（下面 <Weapon magCap>）★：插袋进武器或按装填键时
+      装填量 = min(magCap, 袋内存量)，每打一发 −1，归 0 就拦开火要求重新装填。
+      存量是"储备"，装填量才是"这一轮能连打几发"——这样通用袋子不会把小容量武器变强。
+    · 打空（condition=0）或装填量 0 → 判「需要弹药」/「需要装填」，不会空放。
+
+  根节点属性：
+    allowUnlistedWeapons  未列在本文件的武器是否允许插袋子。默认 false = 拒绝插入并提示。
+    pouchRefillInterval   从存量补"待发实体弹"的最小间隔（秒）：插弹/开火触发的补弹都按它节流，
+                          默认 0.25。改大 = 上膛更慢（武器 reload 都比它长，一般不用动）。
+    loadKey               装填快捷键（XNA Keys 名，默认 R）。
+    reloadDelay           装填耗时（秒，默认 1.2）：装填时给武器加这么多 ReloadTimer。
+
+  <Pouch id ammo capacity [readyRounds]>
+      id          = 弹种袋 identifier（Lua 侧硬编码同一批名字，不要改名）
+      ammo        = 这个袋子专属的弹药 identifier
+      capacity    = 存量上限（与物品 XML 的 Health 取小的那个）
+      readyRounds = 可选：写死该袋子的 N。不写（或 0）就自动反查 ——
+                    先看它正插着的那把枪，再看"能用这种弹的武器"。
+
+  <Weapon id readyRounds magCap>
+      id          = 武器 identifier
+      readyRounds = 该武器最大齐射弹数（= 引擎的 ProjectileCount），也是它的袋子一次能"上膛"的待发弹数。
+                    必须与武器实际齐射数一致，否则齐射会打不满。
+      magCap      = ★该武器原本的装填上限★，取自武器 XML 里 ItemContainer 的 maxstacksize：
+                      转轮 18 / 蓝玫瑰 12 / 痛苦 5 / 喇叭枪 12 / 退魔 7。
+                    插袋或按装填键时"本次装填量" = min(magCap, 袋内存量)，打满要重新装填。
+                    写 magCap="0" = 不设上限（只受存量限制，等于不要这道闸，慎用）。
+      <Ammo id>   = 该武器允许的袋子弹种（写 tag 也行）。不匹配的袋子插不进去（退回原处 + 提示）；
+                    没列出的武器按 allowUnlistedWeapons 处理（默认拒绝）。
+      ※ <Weapon> 条目逐条覆盖代码默认表：没写到的默认武器仍按默认值生效。
+
+  ※ 空弹药袋（Touhou_Ammo_Pouch_Blank）不列在这里：它还没有弹种，选弹种由 Lua 侧完成。
+  ※ 「装填」按钮（XML 里的 uilabel.AmmoPouch_Load）的标记物（Touhou_Ammo_Fill_Marker）是 C# 内部约定，不需要配置。
+  ============================================================
+-->
+<AmmoPouchConfig allowUnlistedWeapons="false" pouchRefillInterval="0.25" loadKey="R" reloadDelay="1.2">
+
+  <!-- 弹种袋：容量 = 该弹种的存量上限 -->
+  <Pouch id="Touhou_Ammo_Pouch_Revolver" ammo="Touhou_Maple_Leaf_Revolver_Bullet" capacity="128"/>
+  <Pouch id="Touhou_Ammo_Pouch_BlueRose" ammo="Color_Up_Bullet" capacity="128"/>
+  <Pouch id="Touhou_Ammo_Pouch_Anguish" ammo="Touhou_Anguish_Bullet" capacity="128"/>
+  <Pouch id="Touhou_Ammo_Pouch_Blunderbuss" ammo="Mind_Bullet" capacity="128"/>
+  <Pouch id="Touhou_Ammo_Pouch_Winchester" ammo="Exorcism_Bullet" capacity="128"/>
+
+  <!--
+    武器：readyRounds 必须等于武器自己的齐射弹数（转轮/喇叭枪/退魔 = 1，蓝玫瑰 = 2，痛苦 = 5）
+          magCap 是该武器原本的装填上限（武器 XML 里 ItemContainer 的 maxstacksize）
+  -->
+  <Weapon id="Touhou_Maple_Leaf_Revolver" readyRounds="1" magCap="18">
+    <Ammo id="Touhou_Maple_Leaf_Revolver_Bullet"/>
+  </Weapon>
+
+  <Weapon id="Touhou_Blue_Rose" readyRounds="2" magCap="12">
+    <Ammo id="Color_Up_Bullet"/>
+  </Weapon>
+
+  <Weapon id="Touhou_Anguish" readyRounds="5" magCap="5">
+    <Ammo id="Touhou_Anguish_Bullet"/>
+  </Weapon>
+
+  <Weapon id="Blunderbuss" readyRounds="1" magCap="12">
+    <Ammo id="Mind_Bullet"/>
+  </Weapon>
+
+  <Weapon id="Touhou_Winchester" readyRounds="1" magCap="7">
+    <Ammo id="Exorcism_Bullet"/>
+  </Weapon>
+
+</AmmoPouchConfig>

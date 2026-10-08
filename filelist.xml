@@ -1,8 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<contentpackage name="东方潜渊行动组Lua补丁" modversion="1.1.0" corepackage="False" steamworkshopid="3578631758" gameversion="1.13.4.0">
+<contentpackage name="东方潜渊行动组Lua补丁" modversion="1.1.1" corepackage="False" steamworkshopid="3578631758" gameversion="1.13.4.0">
   <Item file="%ModDir%/Items/Item.xml" />
   <Item file="%ModDir%/Items/Tools.xml" />
   <Item file="%ModDir%/Items/Cooktop.xml" />
+  <Item file="%ModDir%/Items/EtherRecycler.xml" />
   <Item file="%ModDir%/Items/EnchantingStation.xml" />
   <Item file="%ModDir%/Items/BondCharm.xml" />
   <Item file="%ModDir%/Items/MartialArts.xml" />

@@ -4,4 +4,82 @@
   <entityname.Touhou_Scatter_Spell_Card_Cannon>散射符卡發射器</entityname.Touhou_Scatter_Spell_Card_Cannon>
   <entitydescription.Touhou_Scatter_Spell_Card_Cannon>低射速的散射符卡發射器，可以使用連射炮彈藥和相關類型的符卡。短暫蓄力後一次性噴射多枚射彈、呈扇形鋪開，單發傷害倍率更高，代價是每發消耗雙倍的彈藥耐久</entitydescription.Touhou_Scatter_Spell_Card_Cannon>
 
+  <!--以太回收機（批量回收系統，邏輯見 Lua/Scripts/Server/Systems/Touhou_Ether_Recycler.lua）-->
+  <entityname.Touhou_Ether_Recycler>以太回收機</entityname.Touhou_Ether_Recycler>
+  <entitydescription.Touhou_Ether_Recycler>一台把武器還原成以太層金屬的回收裝置。把帶魔法等級的武器／工具整批放進料欄，催化槽放入一個元素瓶（任意屬性），按下「開始回收」：等級 2/3/4/5 的物品會按 1/2/4/16 還原成以太層金屬，等級 1 的物品則還原成鍊金術副產物。每件消耗 1 點元素瓶耐久（瓶子打空會自行碎裂），處理耗時約 0.5 秒／件，可用「預覽產出」先看結果。</entitydescription.Touhou_Ether_Recycler>
+  <touhou.recycler.start>開始回收</touhou.recycler.start>
+  <touhou.recycler.analyze>預覽產出</touhou.recycler.analyze>
+  <touhou.recycler.noinput>進料欄裡沒有可回收的物品</touhou.recycler.noinput>
+  <touhou.recycler.nocatalyst>催化槽裡沒有元素瓶</touhou.recycler.nocatalyst>
+  <touhou.recycler.nocatalystcondition>元素瓶耐久不足（還差 %.0f）</touhou.recycler.nocatalystcondition>
+  <touhou.recycler.nooutputspace>輸出欄位空間不足，請先清空（需要 %d 格，目前空餘 %d 格）</touhou.recycler.nooutputspace>
+  <touhou.recycler.missingoutput>產出物品不存在：%s</touhou.recycler.missingoutput>
+  <touhou.recycler.isactive>回收機正在運行中</touhou.recycler.isactive>
+  <touhou.recycler.started>開始回收：%s（約 %.1f 秒）</touhou.recycler.started>
+  <touhou.recycler.analyze.tooltip>本批可回收 %d 件，預計產出：</touhou.recycler.analyze.tooltip>
+  <touhou.recycler.analyze.cost>預計消耗：元素瓶耐久 %.0f</touhou.recycler.analyze.cost>
+  <touhou.recycler.analyze.time>處理時間：約 %.1f 秒</touhou.recycler.analyze.time>
+  <touhou.recycler.input>進料</touhou.recycler.input>
+  <touhou.recycler.catalyst>催化</touhou.recycler.catalyst>
+  <touhou.recycler.output>輸出</touhou.recycler.output>
+  <touhou.recycler.input.hint>進料：放武器／道具（8 格）</touhou.recycler.input.hint>
+  <touhou.recycler.catalyst.hint>催化：放元素瓶（1 格）</touhou.recycler.catalyst.hint>
+  <touhou.recycler.output.hint>輸出：產物出現在這裡（4 格）</touhou.recycler.output.hint>
+  <touhou.recycler.panel.idle>待機</touhou.recycler.panel.idle>
+  <touhou.recycler.panel.prediction>預計產出：</touhou.recycler.panel.prediction>
+
+  <!--⚠ 封存（2026-10）：以下彈藥袋相關文本暫未啟用（物品已從 filelist 註解、Lua 已停載），
+      重做時一併恢復即可，鍵名與文案可直接沿用-->
+  <!--彈藥袋體系 v5：空彈藥袋 / 各彈種彈藥袋 / 裝填按鈕（物品定義見 Items/AmmoStorage.xml）-->
+  <entityname.Touhou_Ammo_Pouch_Blank>空彈藥袋</entityname.Touhou_Ammo_Pouch_Blank>
+  <entitydescription.Touhou_Ammo_Pouch_Blank>一個空袋子。拿在手上會彈出「選擇彈藥種類」視窗，選定後變成對應彈種的彈藥袋。彈藥袋直接插進武器當彈藥，袋裡那 128 是儲備；武器本身仍按原本的裝填量供彈，打滿一次裝填量就要重新裝填（按裝填鍵，或把袋子拔下來再插回）。</entitydescription.Touhou_Ammo_Pouch_Blank>
+  <entityname.Touhou_Ammo_Pouch_Revolver>轉輪彈藥袋</entityname.Touhou_Ammo_Pouch_Revolver>
+  <entitydescription.Touhou_Ammo_Pouch_Revolver>裝‖color:gui.yellow‖旋風子彈‖end‖的彈藥袋（儲備上限 128 發）。插進‖color:gui.yellow‖楓葉轉輪手槍‖end‖即可射擊：每次裝填能打 18 發（與武器原本的裝填量相同），打滿要重新裝填（按裝填鍵或拔插袋子）。把子彈拖進袋子會被收成儲備，按住 HUD 上的「裝填」按鈕可把背包裡的同種彈一次性裝進去。</entitydescription.Touhou_Ammo_Pouch_Revolver>
+  <entityname.Touhou_Ammo_Pouch_BlueRose>湛藍玫瑰彈藥袋</entityname.Touhou_Ammo_Pouch_BlueRose>
+  <entitydescription.Touhou_Ammo_Pouch_BlueRose>裝‖color:gui.yellow‖Color Up子彈‖end‖的彈藥袋（儲備上限 128 發）。插進‖color:gui.yellow‖湛藍玫瑰-改‖end‖即可射擊：每次裝填能打 12 發（與武器原本的裝填量相同），打滿要重新裝填（按裝填鍵或拔插袋子）。「快速點射」一次扣 2 發。</entitydescription.Touhou_Ammo_Pouch_BlueRose>
+  <entityname.Touhou_Ammo_Pouch_Anguish>痛苦彈藥袋</entityname.Touhou_Ammo_Pouch_Anguish>
+  <entitydescription.Touhou_Ammo_Pouch_Anguish>裝‖color:gui.yellow‖痛苦彈丸‖end‖的彈藥袋（儲備上限 128 發）。插進‖color:gui.yellow‖痛苦‖end‖即可射擊：每次裝填能打 5 發（與武器原本的裝填量相同），打滿要重新裝填（按裝填鍵或拔插袋子）。「霰彈射擊」一次扣 5 發。</entitydescription.Touhou_Ammo_Pouch_Anguish>
+  <entityname.Touhou_Ammo_Pouch_Blunderbuss>喇叭槍彈藥袋</entityname.Touhou_Ammo_Pouch_Blunderbuss>
+  <entitydescription.Touhou_Ammo_Pouch_Blunderbuss>裝‖color:gui.yellow‖心靈震顫‖end‖的彈藥袋（儲備上限 128 發）。插進‖color:gui.yellow‖喇叭槍‖end‖即可射擊：每次裝填能打 12 發（與武器原本的裝填量相同），打滿要重新裝填（按裝填鍵或拔插袋子）。把子彈拖進袋子會被收成儲備。</entitydescription.Touhou_Ammo_Pouch_Blunderbuss>
+  <entityname.Touhou_Ammo_Pouch_Winchester>退魔聖焰彈藥袋</entityname.Touhou_Ammo_Pouch_Winchester>
+  <entitydescription.Touhou_Ammo_Pouch_Winchester>裝‖color:gui.yellow‖祓魔霰彈‖end‖的彈藥袋（儲備上限 128 發）。插進‖color:gui.yellow‖退魔聖焰‖end‖即可射擊：每次裝填能打 7 發（與武器原本的裝填量相同），打滿要重新裝填（按裝填鍵或拔插袋子）。把子彈拖進袋子會被收成儲備。</entitydescription.Touhou_Ammo_Pouch_Winchester>
+  <!--彈藥袋 HUD 上的「裝填」按鈕（Items/AmmoStorage.xml 的 CustomInterface 引用這個鍵，缺了會顯示原始鍵名）-->
+  <uilabel.AmmoPouch_Load>裝填</uilabel.AmmoPouch_Load>
+
+  <!--裝填/攔開火的玩家提示（C# 走 GUI.AddMessage，像原版 ItemMsgAmmoRequired 那樣在螢幕上方滾動）-->
+  <touhou.ammopouch.msg.needreload>需要裝填：%s 已打滿 %d 發 —— 把彈藥袋拿在手裡點「裝填」（或按 %s 鍵）</touhou.ammopouch.msg.needreload>
+  <touhou.ammopouch.msg.reloaddone>裝填完成：%s（%d 發）</touhou.ammopouch.msg.reloaddone>
+  <touhou.ammopouch.msg.pouchempty>彈藥袋空了：%s 需要補充彈丸</touhou.ammopouch.msg.pouchempty>
+  <touhou.ammopouch.msg.pouchfull>彈藥袋已滿（%d）</touhou.ammopouch.msg.pouchfull>
+  <touhou.ammopouch.msg.wrongammo>%s 用不了這種彈（%s）</touhou.ammopouch.msg.wrongammo>
+  <touhou.ammopouch.msg.loaded>裝填：吸收 %d 發（存量 %d/%d）</touhou.ammopouch.msg.loaded>
+  <touhou.ammopouch.msg.nothingtoload>裝填：沒有可補的彈（%s 背包裡沒有 %s）</touhou.ammopouch.msg.nothingtoload>
+  <touhou.ammopouch.msg.noholder>裝填失敗：找不到彈藥袋的持有者</touhou.ammopouch.msg.noholder>
+  <touhou.ammopouch.msg.notallowed>這把槍用不了彈藥袋（%s 不在配置白名單裡）</touhou.ammopouch.msg.notallowed>
+
+  <!--空彈藥袋「選擇彈藥種類」視窗與伺服器提示（邏輯見 Lua/Scripts/Client/Touhou_AmmoPouch_Pack_Client.lua、Lua/Scripts/Server/Systems/Touhou_AmmoPouch_Pack.lua）-->
+  <touhou.ammopouch.window.title>選擇彈藥種類</touhou.ammopouch.window.title>
+  <touhou.ammopouch.window.hint>點擊一種彈藥袋換取，空袋隨之消耗</touhou.ammopouch.window.hint>
+  <touhou.ammopouch.window.empty>（暫無可選的彈藥袋，請檢查 AmmoPouch_Pack_Items.lua 的收錄表）</touhou.ammopouch.window.empty>
+  <touhou.ammopouch.window.noicon>（無圖標）</touhou.ammopouch.window.noicon>
+  <touhou.ammopouch.window.confirm>確認換取</touhou.ammopouch.window.confirm>
+  <touhou.ammopouch.window.cancel>返回</touhou.ammopouch.window.cancel>
+  <touhou.ammopouch.window.close>關閉 (Esc)</touhou.ammopouch.window.close>
+  <touhou.ammopouch.info.capacity>存量上限 %d 發</touhou.ammopouch.info.capacity>
+  <touhou.ammopouch.info.capacity.short>上限 %d 發</touhou.ammopouch.info.capacity.short>
+  <touhou.ammopouch.info.ammo>裝填：%s</touhou.ammopouch.info.ammo>
+  <touhou.ammopouch.name.revolver>轉輪彈藥袋</touhou.ammopouch.name.revolver>
+  <touhou.ammopouch.name.bluerose>湛藍玫瑰彈藥袋</touhou.ammopouch.name.bluerose>
+  <touhou.ammopouch.name.anguish>痛苦彈藥袋</touhou.ammopouch.name.anguish>
+  <touhou.ammopouch.name.blunderbuss>喇叭槍彈藥袋</touhou.ammopouch.name.blunderbuss>
+  <touhou.ammopouch.name.winchester>退魔聖焰彈藥袋</touhou.ammopouch.name.winchester>
+  <touhou.ammopouch.msg.nocharacter>角色不存在</touhou.ammopouch.msg.nocharacter>
+  <touhou.ammopouch.msg.invalid>請求參數無效</touhou.ammopouch.msg.invalid>
+  <touhou.ammopouch.msg.noblank>空彈藥袋不存在</touhou.ammopouch.msg.noblank>
+  <touhou.ammopouch.msg.notblank>目標物品不是空彈藥袋</touhou.ammopouch.msg.notblank>
+  <touhou.ammopouch.msg.notyours>空彈藥袋不在你的背包裡</touhou.ammopouch.msg.notyours>
+  <touhou.ammopouch.msg.notallowed>該彈藥袋不在可選清單裡：%s</touhou.ammopouch.msg.notallowed>
+  <touhou.ammopouch.msg.noprefab>目標彈藥袋不存在：%s</touhou.ammopouch.msg.noprefab>
+  <touhou.ammopouch.msg.servererror>換取失敗：伺服器內部錯誤</touhou.ammopouch.msg.servererror>
+
 </infotexts>

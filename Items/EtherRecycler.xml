@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Override>
+  <Items>
+    <!--
+      以太回收机（仪式台回收配方的批量自动化版本）
+      把入料栏里带 Touhou_Weapon_Level01..05 tag 的物品，按仪式台（Magic_Altar）的回收配方
+      批量还原成以太层金属/炼金术副产物；催化槽里的元素瓶按耐久消耗（每件 1 点）。
+      逻辑见 Lua/Scripts/Server/Systems/Touhou_Ether_Recycler.lua。
+
+      组件契约（Lua 依赖，改动需同步）：
+        - 第 1 个 ItemContainer = 武器入料栏（即 OwnInventory，回收中被 Lua 锁定）
+        - 第 2 个 ItemContainer = 催化槽（元素瓶，回收中被 Lua 锁定）
+        - 第 3 个 ItemContainer = 输出栏（产出生成到这里，不锁定，玩家直接取用）
+        - LightComponent.IsOn    = 回收状态标志（Lua 置位，下方归零逻辑复位）
+        - MemoryComponent.Value  = 本批结算表（如 "touhou_weapon_level03:2"，取消时清空）
+        - PowerContainer.Charge  = 处理倒计时（Lua 写入 0.5×件数 秒，XML 每 0.25 秒扣 0.25）
+        - 第 1 个 CustomInterface = 回收/取消按钮（Labels 由 Lua 切换），必须排在预览界面之前
+
+      注：按钮 text 直接写文本键名（键在补丁 Text/Text.xml），不要加 "Text." 前缀（不解析）。
+      界面坐标均为初值，实机微调。
+    -->
+    <Item name="以太回收机" identifier="Touhou_Ether_Recycler" tags="Touhou_Ether_Recycler,donttakeitems,dontsellitems" subcategory="Touhou"
+          category="Machine" linkable="true" allowedlinks="fabricator,deconstructor,locker,toxcontainer" scale="0.3"
+          description="" damagedbyexplosions="true" GrabWhenSelected="true" explosiondamagemultiplier="0.2" isshootable="true">
+      <Price baseprice="200">
+        <Price storeidentifier="merchantoutpost" multiplier="1.1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantcity" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantresearch" multiplier="1.1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantmilitary" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantmine" multiplier="1.1" sold="true" maxavailable="1" />
+      </Price>
+      <Deconstruct time="5">
+        <Item identifier="steel" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="fabricator" requiredtime="10">
+        <RequiredSkill identifier="mechanical" level="10" />
+        <RequiredItem identifier="steel" />
+        <RequiredItem identifier="fpgacircuit" />
+      </Fabricate>
+      <Body width="160" height="160" density="30" />
+      <Holdable selectkey="Select" pickkey="Use" slots="RightHand+LeftHand" PickingTime="10.0" aimpos="65,-10" handle1="0,0" attachable="true"
+                aimable="false">
+        <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.75" setvalue="true" />
+      </Holdable>
+
+      <UpgradePreviewSprite scale="2.5" texture="Content/UI/WeaponUI.png" sourcerect="256,960,64,64" origin="0.5,0.45" />
+      <Sprite texture="%ModDir:2941124988%/Images/General_Items/Touhou_Ether_Recycler.png" depth="0.8" sourcerect="0,0,400,268" origin="0.5,0.5"/>
+      <InventoryIcon texture="%ModDir:2941124988%/Images/General_Items/Touhou_Ether_Recycler.png" sourcerect="0,0,400,268" origin="0.5,0.5"/>
+      
+      <LightComponent range="80.0" lightcolor="120,180,255,255" powerconsumption="0" IsOn="false" castshadows="false" alphablend="false"
+                      allowingameediting="false" canbeselected="false">
+        <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
+        <StatusEffect type="OnActive" target="This" IsOn="true" stackable="false" forcePlaySounds="true">
+          <sound file="%ModDir:2941124988%/Sounds/Machine/Magic_Altar_Running.ogg" range="1200" volume="1.5" loop="true" />
+        </StatusEffect>
+      </LightComponent>
+
+      <!-- 存储本批结算表（Lua 读写） -->
+      <MemoryComponent canbeselected="false" allowingameediting="false" />
+
+      <!-- 倒计时显示用：Charge=剩余秒数（真正的计时由 Lua 的 Timer.Wait 负责——
+           实机验证过 XML 这套 charge 倒计时在本组合里不生效，会卡在"回收中"） -->
+      <PowerContainer capacity="60" charge="0" maxrechargespeed="0" rechargespeed="0" canbeselected="false" allowingameediting="false"
+                      VulnerableToEMP="false" />
+
+      <!-- 控制面板：两个按钮放同一个 CustomInterface（Lua 切 Labels 只改第一个按钮的文字，
+           所以「开始回收 / 取消」必须是第一个），与第二行窗口同高、同排
+           GuiFrame 为初值，实机微调 -->
+      <CustomInterface canbeselected="true" allowuioverlap="true">
+        <GuiFrame relativesize="0.125,0.174" anchor="TopCenter" relativeoffset="0.1775,0.351" style="ItemUI" draggable="false" hidedragicons="true" />
+        <Button text="touhou.recycler.start">
+          <StatusEffect type="OnUse" target="This">
+            <LuaHook name="Touhou.Recycler.start" />
+          </StatusEffect>
+        </Button>
+        <Button text="touhou.recycler.analyze">
+          <StatusEffect type="OnUse" target="This">
+            <LuaHook name="Touhou.Recycler.analyze" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+
+      <!-- 排版约定（1080p 下标定，分辨率/UI 缩放自适应）：
+             界面 = 两行块，块宽 0.48 屏宽、左边缘 -0.24；
+             第一行：入料（8 格一行）；第二行：输出 + 催化 + 按钮面板，三者宽度与间距正好铺满块宽。
+           容器窗口的格子边长 ≈ 60×UIScale×(窗口宽 / 内容自然宽)，0.48×0.174 对应约 100px 的格子（放大约 2.5 倍）。
+           调尺寸时保持「宽:高 ≈ 内容自然宽:高」的比值，格子才不会一边大一边空。 -->
+
+      <!-- 武器入料栏：第 1 个容器（XML 顺序 = Lua 取容器的顺序，勿调换）；每格 1 件，只收仪式台回收配方认的五个等级 tag -->
+      <ItemContainer capacity="8" maxstacksize="1" canbeselected="true" hideitems="true" slotsperrow="8" uilabel="touhou.recycler.input"
+                     allowuioverlap="true">
+        <GuiFrame relativesize="0.48,0.174" anchor="TopCenter" relativeoffset="0.0,0.165" style="ItemUI" draggable="false" hidedragicons="true" />
+        <Containable items="Touhou_Weapon_Level01,Touhou_Weapon_Level02,Touhou_Weapon_Level03,Touhou_Weapon_Level04,Touhou_Weapon_Level05" />
+      </ItemContainer>
+
+      <!-- 催化槽：第 2 个容器；元素瓶（8 种瓶装元素都带 Alchemical tag），每格 1 个；单格用不上排序按钮 -->
+      <ItemContainer capacity="1" maxstacksize="1" canbeselected="true" hideitems="true" slotsperrow="1" uilabel="touhou.recycler.catalyst"
+                     allowuioverlap="true" showsortbutton="false">
+        <GuiFrame relativesize="0.082,0.174" anchor="TopCenter" relativeoffset="0.064,0.351" style="ItemUI" draggable="false" hidedragicons="true" />
+        <Containable items="Alchemical" />
+      </ItemContainer>
+
+      <!-- 输出栏：第 3 个容器，产出生成到这里；不锁定，玩家直接取用 -->
+      <ItemContainer capacity="4" canbeselected="true" hideitems="true" slotsperrow="4" uilabel="touhou.recycler.output" allowuioverlap="true">
+        <GuiFrame relativesize="0.253,0.174" anchor="TopCenter" relativeoffset="-0.1135,0.351" style="ItemUI" draggable="false" hidedragicons="true" />
+      </ItemContainer>
+    </Item>
+  </Items>
+</Override>

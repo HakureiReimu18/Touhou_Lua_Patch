@@ -481,6 +481,7 @@ namespace Touhou.Damage
                     $"patched.items={patchedItems}",
                     $"patched.objects={patchedObjects}",
                     $"stamp={DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+                    $"items={itemOverrides.Count}",   // 单件单独调整件数（设置页状态行显示，避免"看不出来"）
                 };
                 foreach (var g in DamageConfig.Groups.Values)
                 {

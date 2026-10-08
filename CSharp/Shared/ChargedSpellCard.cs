@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Barotrauma;
 using Barotrauma.Items.Components;
 using Barotrauma.LuaCs;
+using Barotrauma.Networking;
 using FarseerPhysics;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
@@ -79,10 +81,12 @@ namespace Touhou.ChargedTurret
             try
             {
                 harmony.PatchAll(typeof(ChargedSpellCardBogusHitPatch));
+                harmony.PatchAll(typeof(ChargedSpellCardSpawnFlushPatch));   // 客户端补射显形（生成消息一到就重演）
+                harmony.PatchAll(typeof(ChargedSpellCardHitscanHoldPatch));  // hitscan 弹延后移除（给客户端留重演窗口）
             }
             catch (Exception e)
             {
-                ChargedLog.Warn("假命中处置补丁未挂上（反向光束可能复发）: " + e.Message);
+                ChargedLog.Warn("功能补丁未挂上（反向光束/多人补射同步可能复发）: " + e.Message);
             }
             try
             {
@@ -93,6 +97,9 @@ namespace Touhou.ChargedTurret
             {
                 ChargedLog.Warn("探针补丁未挂上（不影响炮塔功能）: " + e.Message);
             }
+
+            // 多人：注册"补射发射"同步消息（不处理的一侧也要占位注册，LuaCs 靠它交换 netId）
+            ChargedSpellCardNetSync.EnsureRegistered();
 
             ChargedLog.Log("蓄能符卡发射器插件已加载");
         }
@@ -376,6 +383,9 @@ namespace Touhou.ChargedTurret
     {
         static bool Prefix(Turret __instance)
         {
+            // 客户端也会跑到这里（引擎的 TryLaunch 在客户端只是立刻返回），借这个每帧都会过一下的点
+            // 兜住"插件加载时 LuaCs 网络服务还没就绪"的情况：同步消息必须在本端注册过才收得到。
+            ChargedSpellCardNetSync.EnsureRegistered();
             if (GameMain.NetworkMember != null && !GameMain.NetworkMember.IsServer) { return true; }
             if (__instance?.Item == null) { return true; }
 
@@ -440,14 +450,17 @@ namespace Touhou.ChargedTurret
         /// 这正是"偶发反向射弹"的来源（实测也只有 hitscan 弹药会中，物理弹从没出现）。
         /// 炮口用引擎那套算法算（GetRelativeFiringPosition + 忽略自家潜艇的遮挡收缩）；
         /// 基准朝向就是引擎给原生那发用的 0f - Turret.Rotation（本炮 spread=0，没有额外随机量）。
+        /// 另外顺手把引擎那一发（hitscan 的）登记进"延后移除"名单——它的移除请求发生在
+        /// 引擎 Launch 内部，只有在前缀里登记才拦得住（后置里再登记就晚了）。
         /// </summary>
-        static void Prefix(Turret __instance)
+        static void Prefix(Turret __instance, Item __0)
         {
             if (GameMain.NetworkMember != null && !GameMain.NetworkMember.IsServer) { return; }
             if (__instance?.Item == null) { return; }
             if (ChargedSpellCardData.TryGet(__instance)?.Params == null) { return; }
             capturedLaunches[__instance] = (GetMuzzleSimPosition(__instance), 0f - __instance.Rotation);
             if (ActiveLauncher == null) { ActiveLauncher = __instance.Item; }   // 不覆盖外层发射（嵌套时各管各的）
+            if (__0?.GetComponent<Projectile>()?.Hitscan == true) { ChargedSpellCardHitscanHoldPatch.Hold(__0); }
         }
 
         /// <summary>无论正常结束还是抛异常都要清掉发射标记，另外顺手清掉可能残留的炮口记录。</summary>
@@ -458,7 +471,7 @@ namespace Touhou.ChargedTurret
             if (__exception != null) { capturedLaunches.Remove(__instance); }
         }
 
-        static void Postfix(Turret __instance, Item __0, Character __1)
+        static void Postfix(Turret __instance, Item __0, Character __1, float __3)
         {
             // 服务端权威：客户端不生成实体（原生发射本身也只在权威端发生，这里再兜一道）
             if (GameMain.NetworkMember != null && !GameMain.NetworkMember.IsServer) { return; }
@@ -574,76 +587,45 @@ namespace Touhou.ChargedTurret
                 ignoredBodies.Add(__0.body.FarseerBody);
             }
 
+            // 这一轮真正打出去的补射（连同各自的角度）：稍后广播给客户端做本地重演
+            List<(Item Bolt, float Rotation)> launchedBolts = new List<(Item Bolt, float Rotation)>(extra + 1);
+
             for (int i = 0; i < extra; i++)
             {
                 float t = (i + 1f) / (extra + 1f) - 0.5f;     // 在 (-0.5, 0.5) 上均匀铺开，对称于基线
                 float rotation = baseRotation + fanRad * t;
                 ItemPrefab prefab = ChargedSpellCardData.PickBoltPrefab(boltCandidates, fallbackPrefab);
-                Entity.Spawner.AddItemToSpawnQueue(prefab, displayPos, turretItem.Submarine, onSpawned: spawned =>
+                // 第三个参数特意传 null 而不是自家潜艇：生成消息会把"潜艇"一起发给客户端，
+                // 而我们的弹随后会被摆成"世界坐标 + Submarine = null"（引擎对飞行中射弹的口径）。
+                // 如果生成消息里带着潜艇，客户端那份就会变成"世界坐标却挂着船"——两端坐标口径不一致，
+                // 位置同步和本地模拟互相打架，表现就是弹体在弹道上来抽搐。传 null 让两端一开始就同口径
+                // （引擎构造函数会自己在生成位置找舱室，真在船内的话它会自动认出来）。
+                Entity.Spawner.AddItemToSpawnQueue(prefab, displayPos, (Submarine)null, onSpawned: spawned =>
                 {
-                    try
-                    {
-                        if (spawned == null || spawned.Removed) { return; }
-                        Projectile projectile = spawned.GetComponent<Projectile>();
-                        if (projectile == null) { return; }
-                        // 发射方式完全复刻引擎的 Turret.Launch：设好位置/朝向/倍率，再调 Projectile.Use。
-                        // 不再用 Projectile.Shoot —— 它走的是"武器→弹"那条路（带 PickBody 遮挡收缩），
-                        // 而且一旦 body.Dir 不是 1，Use 里的 `if (Dir < 0) num -= PI` 会把整发弹反向 180°
-                        // （就是那个"偶发反向射弹"）。这里 Dir 明确写死 1，方向只由下面算出的扇形角决定。
-                        projectile.Launcher = turretItem;
-                        projectile.Attacker = user;                            // 与原生 Turret.Launch 对齐（击杀归属/仇恨）
-                        projectile.IgnoredBodies = ignoredBodies;              // 忽略自家外壳 / 引擎那一发 / 兄弟弹（见上）
-                        if (projectile.Attack != null) { projectile.Attack.DamageMultiplier = damageMultiplier; }
-                        if (spawned.body != null)
-                        {
-                            spawned.body.Dir = 1f;                             // 必须为 1，否则 Use 里会反向
-                            spawned.body.ResetDynamics();
-                            spawned.body.Enabled = true;
-                        }
-                        spawned.SetTransform(simPos, rotation, findNewHull: false);   // 引擎就是这么把弹放到炮口的
-                        // 与引擎对齐的坐标口径：飞行中的射弹一律"世界坐标 + Submarine = null"。
-                        // 引擎 Turret.Launch 把弹 SetTransform 到世界坐标后，FindHull 在炮口找不到舱室，
-                        // 于是 Submarine 被置空；DoHitscan 的射线、命中点、光束 tracer 全按这个口径解释坐标。
-                        // 这里显式写死，避免生成队列/FindHull 的偶然结果让某一发变成"坐标是世界的、Submarine 却挂着船"，
-                        // 那样 WorldPosition 会再多叠一个船位——表现就是那一发不在炮口、方向也不对。
-                        spawned.Submarine = null;
-                        spawned.body.Submarine = null;
-                        spawned.UpdateTransform();                             // 引擎在 SetTransform 之后紧接着就调它
-                        bool subBeforeUse = spawned.Submarine != null;         // 发射前是否被 FindHull 挂上了船（异常信号）
-                        projectile.Use(null, impulseModifier);                 // 引擎开火用的也是这个（内部再叠加弹自身的 spread）
-                        projectile.User = user;                                // Use 内部会清空 User，和引擎一样用完再设回
-                        projectile.Attacker = user;
-                        // 与引擎一致：把潜艇自身的速度叠加到射弹上，否则船在移动时补射会"落在原地"
-                        if (turretItem.Submarine != null && spawned.body != null)
-                        {
-                            Vector2 inheritedVelocity = turretItem.Submarine.PhysicsBody.LinearVelocity + spawned.body.LinearVelocity;
-                            if (inheritedVelocity.LengthSquared() < 3686.4f) { spawned.body.LinearVelocity = inheritedVelocity; }
-                        }
-                        // 让后面几发补射忽略这一发（见上面 ignoredBodies 的说明）
-                        if (spawned.body != null && !ignoredBodies.Contains(spawned.body.FarseerBody))
-                        {
-                            ignoredBodies.Add(spawned.body.FarseerBody);
-                        }
-                        if (ChargedLog.Verbose)
-                        {
-                            // sub 分两段记：发射前=我们把它放到炮口时有没有被 FindHull 挂上船（挂上就是坐标口径错，
-                            // WorldPosition 会多叠一个船位）；发射后=命中判定里引擎自己挂的（那属于正常流程）。
-                            ChargedLog.Log($"补射 {spawned.Prefab.Identifier}: 出膛点 {simPos.X:0.#},{simPos.Y:0.#}，注入朝向 {MathHelper.ToDegrees(rotation):0.#}°"
-                                + $"，Dir={(spawned.body != null ? spawned.body.Dir : 0f):0}，bodyRot={(spawned.body != null ? MathHelper.ToDegrees(spawned.body.Rotation) : 0f):0.#}°，"
-                                + $"sub 发射前={(subBeforeUse ? "有" : "无")}/发射后={(spawned.Submarine != null ? "有" : "无")}，"
-                                + $"世界 {spawned.WorldPosition.X:0.#},{spawned.WorldPosition.Y:0.#}{(spawned.Removed ? "，已移除" : "")}");
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        ChargedLog.Warn("补射发射出错: " + e.Message);
-                    }
+                    if (spawned == null || spawned.Removed) { return; }
+                    // hitscan 的弹要提前登记"延后移除"：引擎 DoHitscan 结尾会立刻请求移除，
+                    // 只有先登记才拦得住（拦下来的这段窗口是给客户端做本地重演/描弹道用的）。
+                    if (spawned.GetComponent<Projectile>()?.Hitscan == true) { ChargedSpellCardHitscanHoldPatch.Hold(spawned); }
+                    ChargedSpellCardLauncher.LaunchBolt(turretItem, __instance, spawned, rotation, user, __3, ignoredBodies);
+                    launchedBolts.Add((spawned, rotation));
                 });
             }
 
             // 生成队列默认要等下一帧的 EntitySpawner.Update 才会真正建出实体，那会让补射比原生那一发
             // 慢一帧（看上去就是"先飞出去一发，后面几发才冒出来"）。这里把队列立刻抽干，让 5 发同帧出膛。
             Entity.Spawner.Update();
+
+            // 引擎那一发如果是 hitscan，也一并登记进同步消息（客户端只有这样才能把它也画出来）。
+            // 它的角度在 DoHitscan 结束时会被复原成发射时的角度，直接读弹体即可。
+            if (firedHitscan && __0 != null && !__0.Removed && __0.body != null)
+            {
+                launchedBolts.Add((__0, __0.body.Rotation));
+            }
+
+            // 多人：把这一轮补射的发射参数发给客户端，让它们用同一套动作把本地的弹重演一遍。
+            // 不发的话客户端那份弹体收不到速度/朝向，只会被服务端的周期位置同步拖着走——
+            // 表现就是"补射在弹道上来回抽搐、方向也是乱的"（实体本身会由生成队列事件正常同步过去）。
+            ChargedSpellCardNetSync.SendBolts(turretItem, user, launchedBolts);
 
             if (ChargedLog.Verbose)
             {
@@ -679,8 +661,9 @@ namespace Touhou.ChargedTurret
         /// "炮塔 → 炮口"的遮挡检查（过滤器忽略自家潜艇），被船壳挡住就退到 LastPickedPosition。
         /// 少了这一步，hitscan 补射会从船壳里起步，射线一出门就打在自己船上——
         /// 弹药的 OnImpact 会在炮口触发（例如红符那两条侧向弹会从炮口冒出来）。
+        /// 客户端重演补射时也用同一个方法取炮口（结果与服务端一致到几像素内）。
         /// </summary>
-        static Vector2 GetMuzzleSimPosition(Turret turret)
+        internal static Vector2 GetMuzzleSimPosition(Turret turret)
         {
             Vector2 muzzle;
             if (getRelativeFiringPosition != null)
@@ -871,6 +854,457 @@ namespace Touhou.ChargedTurret
                     + $"世界位置 {item.WorldPosition.X:0},{item.WorldPosition.Y:0}");
             }
             catch (Exception e) { ChargedLog.Warn("[探针·光束] 记录出错: " + e.Message); }
+        }
+    }
+
+    /// <summary>
+    /// 补射统一的"打出"动作。
+    ///
+    /// 关键：**直接调用引擎自己的 Turret.Launch**，不自己复刻炮口计算/坐标口径/速度继承。
+    /// 之前手写那套（自己 SetTransform + 强制 Submarine=null + Use）虽然大部分时候看着正常，
+    /// 但和引擎那一发仍有细微差异，实测会留下"某发弹在炮口贴脸命中、弹道退化成零长度"这类问题。
+    /// 走引擎原函数后，补射与引擎那一发是同一条代码路径：同一套炮口收缩、同一套找舱室/换帧、
+    /// 同样的速度继承、同样的伤害倍率与音效粒子——两端（服务端/客户端重演）也都用它。
+    ///
+    /// 两个注意点：
+    ///   · 引擎内部的方向是 `0f - launchRotation`，所以要传 −扇形角；
+    ///   · 引擎 Launch 会把弹塞进 turret.activeProjectiles（原生 maxactiveprojectiles 只该统计
+    ///     "炮塔自己那一发"，所以调用后把它摘出来，保持原有语义）。
+    /// </summary>
+    internal static class ChargedSpellCardLauncher
+    {
+        static readonly Action<Turret, Item, Character, float?, float> turretLaunch = CreateTurretLaunchDelegate();
+        static readonly FieldInfo activeProjectilesField =
+            typeof(Turret).GetField("activeProjectiles", BindingFlags.NonPublic | BindingFlags.Instance);
+        static bool launchMissingWarned;
+
+        static Action<Turret, Item, Character, float?, float> CreateTurretLaunchDelegate()
+        {
+            try
+            {
+                MethodInfo method = typeof(Turret).GetMethod("Launch", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (method == null) { return null; }
+                return (Action<Turret, Item, Character, float?, float>)Delegate.CreateDelegate(
+                    typeof(Action<Turret, Item, Character, float?, float>), method);
+            }
+            catch (Exception e)
+            {
+                ChargedLog.Warn("绑定 Turret.Launch 失败（补射将无法发射）: " + e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>把一发补射交给引擎的 Turret.Launch 打出去。rotation 是我们算好的扇形角（弧度）。</summary>
+        internal static void LaunchBolt(Item turretItem, Turret turret, Item bolt, float rotation,
+                                        Character user, float tinkeringStrength, List<FarseerPhysics.Dynamics.Body> ignoredBodies)
+        {
+            if (bolt == null || bolt.Removed || bolt.body == null || turret == null) { return; }
+            if (turretLaunch == null)
+            {
+                if (!launchMissingWarned)
+                {
+                    launchMissingWarned = true;
+                    ChargedLog.Warn("找不到 Turret.Launch，补射只能跳过（引擎改版？）");
+                }
+                return;
+            }
+
+            // 顺手把"本炮正在发射"的窗口标起来：假命中处置、光束探针都靠它认门。
+            // 服务端本来就是发射窗口内（Launch 前缀设过），客户端重演这条路径需要自己设。
+            Item previousLauncher = ChargedSpellCardLaunchPatch.ActiveLauncher;
+            ChargedSpellCardLaunchPatch.ActiveLauncher = turretItem;
+            try
+            {
+                Projectile projectile = bolt.GetComponent<Projectile>();
+                if (projectile == null) { return; }
+                // 引擎的 Launch 会往 IgnoredBodies 里补一个触发器刚体（要求非 null），先给上我们的表：
+                // 自家船体 / 引擎那一发 / 已经打出去的兄弟弹（见调用方）
+                if (ignoredBodies != null) { projectile.IgnoredBodies = ignoredBodies; }
+
+                turretLaunch(turret, bolt, user, 0f - rotation, tinkeringStrength);
+
+                // 摘出 activeProjectiles：原生限流只该数"炮塔自己那一发"，补射不计（与 XML 注释一致）
+                if (activeProjectilesField?.GetValue(turret) is List<Item> active) { active.Remove(bolt); }
+
+                // 让后续的兄弟弹忽略这一发（同一轮里几发都从炮口出发）
+                if (ignoredBodies != null && bolt.body != null && !ignoredBodies.Contains(bolt.body.FarseerBody))
+                {
+                    ignoredBodies.Add(bolt.body.FarseerBody);
+                }
+
+                if (ChargedLog.Verbose)
+                {
+                    ChargedLog.Log($"补射 {bolt.Prefab.Identifier}: 注入朝向 {MathHelper.ToDegrees(rotation):0.#}°"
+                        + $"，Dir={(bolt.body != null ? bolt.body.Dir : 0f):0}，bodyRot={(bolt.body != null ? MathHelper.ToDegrees(bolt.body.Rotation) : 0f):0.#}°，"
+                        + $"sub={(bolt.Submarine != null ? "有" : "无")}，世界 {bolt.WorldPosition.X:0.#},{bolt.WorldPosition.Y:0.#}"
+                        + $"{(bolt.Removed ? "，已移除" : "")}");
+                }
+            }
+            catch (Exception e)
+            {
+                ChargedLog.Warn("补射发射出错: " + e.Message);
+            }
+            finally
+            {
+                ChargedSpellCardLaunchPatch.ActiveLauncher = previousLauncher;
+            }
+        }
+
+        /// <summary>
+        /// 客户端重演用：构建"要忽略的刚体"表。服务端那边表里是自家船体 + 引擎那一发 + 兄弟补射；
+        /// 客户端手上只有自己在重演的这一发，所以按"炮口附近带 Projectile 的东西"来兜——
+        /// 同一轮里引擎那一发和兄弟弹都落在炮口附近，正好一网打尽，也不会误伤远处的正常目标。
+        /// </summary>
+        internal static List<FarseerPhysics.Dynamics.Body> BuildClientIgnoredBodies(Item turretItem, Vector2 muzzleSimPos, Item exclude)
+        {
+            List<FarseerPhysics.Dynamics.Body> list = new List<FarseerPhysics.Dynamics.Body>();
+            try
+            {
+                if (turretItem?.Submarine?.PhysicsBody != null) { list.Add(turretItem.Submarine.PhysicsBody.FarseerBody); }
+                const float radius = 3f;                     // sim 单位（3 米）
+                float radiusSq = radius * radius;
+                foreach (Item other in Item.ItemList)
+                {
+                    if (other == null || other == exclude || other.Removed || other.body == null) { continue; }
+                    if (Vector2.DistanceSquared(other.SimPosition, muzzleSimPos) > radiusSq) { continue; }
+                    if (other.GetComponent<Projectile>() == null) { continue; }
+                    list.Add(other.body.FarseerBody);
+                }
+            }
+            catch (Exception e) { ChargedLog.Warn("构建忽略表出错: " + e.Message); }
+            return list;
+        }
+    }
+
+    /// <summary>
+    /// 多人同步：服务端把每轮补射的发射参数（炮塔 / 弹 / 角度 / 射手）广播给客户端，
+    /// 客户端用 ChargedSpellCardLauncher 跑一遍同样的动作，让本地那份弹体自己飞起来。
+    ///
+    /// 为什么必须自己发：引擎里本来有一条 Turret.ClientEventRead → Launch(...) 的路，
+    /// 但正式版里没有任何地方构造它的 EventData（整个程序集搜不到构造点），那条路是死的——
+    /// 服务端生成的补射到了客户端只有"实体生成 + 周期位置同步"，速度/朝向没人告诉它。
+    ///
+    /// 走 LuaCs 自带的网络服务（参考模组 3792205908 用同一套调用验证可用）：
+    ///   Start(netId) → 写入 → Send(msg, conn, DeliveryMethod.Reliable)（conn = null 即广播给全体客户端）
+    ///   Receive(netId, handler) 注册接收端；不处理的一侧也要占位注册（LuaCs 靠它交换 netId 定义）
+    /// </summary>
+    internal static class ChargedSpellCardNetSync
+    {
+        const string NetIdBoltLaunch = "touhou.scatter.bolts";
+
+        static bool registered;
+        static bool registerFailed;
+
+        static MethodInfo netSendToConn;
+        static MethodInfo netSendAll;
+        static bool sendResolved;
+
+        /// <summary>是否有还没落实的补射重演（客户端用；生成消息一到就处理，见 ChargedSpellCardSpawnFlushPatch）。</summary>
+        internal static bool HasPending => pending.Count > 0;
+
+        struct PendingBolt
+        {
+            public ushort TurretId;
+            public ushort UserId;
+            public ushort BoltId;
+            public float Rotation;
+            public double ExpireTime;
+        }
+
+        static readonly List<PendingBolt> pending = new List<PendingBolt>();
+        static bool pumpScheduled;
+
+        /// <summary>注册同步消息。两侧都要注册（本侧不处理也注册，LuaCs 靠它交换 netId）。</summary>
+        public static void EnsureRegistered()
+        {
+            if (registered || registerFailed) { return; }
+            if (GameMain.NetworkMember == null) { return; }   // 单机没有网络服务，不用注册（也就不会有告警噪音）
+            try
+            {
+                object netObj = LuaCsSetup.Instance?.Networking;
+                if (netObj == null) { return; }
+                if (!RegisterReceive(netObj))
+                {
+                    registerFailed = true;
+                    ChargedLog.Warn("注册补射同步失败（没找到 NetworkingService.Receive(string, Delegate)）");
+                    return;
+                }
+                registered = true;
+                if (ChargedLog.Verbose) { ChargedLog.Log("补射同步消息已注册"); }
+            }
+            catch (Exception e)
+            {
+                registerFailed = true;
+                ChargedLog.Warn("注册补射同步失败（多人下客户端补射会不同步）: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 按形状反射注册 Receive：客户端/专用服务器的程序集里第二个参数是**不同的委托类型**
+        /// （签名不一致，直接 new 委托会 CS0123），所以用表达式树构造一个与运行时委托匹配的匿名委托，
+        /// 把参数包成 object[] 转交给 OnBoltLaunchMessageCompat。
+        /// </summary>
+        static bool RegisterReceive(object netObj)
+        {
+            MethodInfo recv = null;
+            foreach (MethodInfo m in netObj.GetType().GetMethods())
+            {
+                if (m.Name != "Receive") { continue; }
+                ParameterInfo[] ps = m.GetParameters();
+                if (ps.Length == 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.IsSubclassOf(typeof(Delegate)))
+                { recv = m; break; }
+            }
+            if (recv == null) { return false; }
+
+            Type delType = recv.GetParameters()[1].ParameterType;
+            MethodInfo invoke = delType.GetMethod("Invoke");
+            ParameterInfo[] dps = invoke.GetParameters();
+            var parameters = dps.Select(p => System.Linq.Expressions.Expression.Parameter(p.ParameterType, p.Name ?? "p")).ToArray();
+            var array = System.Linq.Expressions.Expression.NewArrayInit(typeof(object),
+                parameters.Select(p => System.Linq.Expressions.Expression.Convert(p, typeof(object))));
+            var call = System.Linq.Expressions.Expression.Call(
+                typeof(ChargedSpellCardNetSync).GetMethod(nameof(RunHandler), BindingFlags.NonPublic | BindingFlags.Static),
+                System.Linq.Expressions.Expression.Constant(new Action<object[]>(OnBoltLaunchMessageCompat)), array);
+            Delegate handler = System.Linq.Expressions.Expression.Lambda(delType, call, parameters).Compile();
+            recv.Invoke(netObj, new object[] { NetIdBoltLaunch, handler });
+            return true;
+        }
+
+        static void RunHandler(Action<object[]> handler, object[] args) => handler(args);
+
+        /// <summary>把运行时委托的参数（可能是 1 个或 2 个参数：消息 / 消息+发送者）里的消息取出来。</summary>
+        static void OnBoltLaunchMessageCompat(object[] args)
+        {
+            if (args == null) { return; }
+            foreach (object a in args)
+            {
+                if (a is IReadMessage msg) { OnBoltLaunchMessage(msg); return; }
+            }
+        }
+
+        /// <summary>服务端：把这一轮补射的发射参数广播出去。</summary>
+        public static void SendBolts(Item turretItem, Character user, List<(Item Bolt, float Rotation)> bolts)
+        {
+            if (turretItem == null || bolts == null || bolts.Count == 0) { return; }
+            if (GameMain.NetworkMember == null || !GameMain.NetworkMember.IsServer) { return; }   // 单机、纯客户端都不发
+            try
+            {
+                EnsureRegistered();
+                // 注意：LuaCs 的网络服务类型是内部类型，而且客户端/专用服务器两个程序集里的签名未必一致
+                //（注册那边就踩过 CS0123），所以这里一律按 object + 反射用，不写死任何 LuaCs 内部类型名。
+                object netObj = LuaCsSetup.Instance?.Networking;
+                if (netObj == null) { return; }
+                IWriteMessage msg = StartMessage(netObj);
+                if (msg == null) { return; }
+                int count = Math.Min(bolts.Count, 255);
+                msg.WriteUInt16(turretItem.ID);
+                msg.WriteUInt16(user?.ID ?? 0);
+                msg.WriteByte((byte)count);
+                for (int i = 0; i < count; i++)
+                {
+                    msg.WriteUInt16(bolts[i].Bolt.ID);
+                    msg.WriteSingle(bolts[i].Rotation);
+                }
+                if (!TrySend(netObj, msg, null))
+                {
+                    ChargedLog.Warn("补射同步发送失败（客户端补射会不同步）");
+                }
+                else if (ChargedLog.Verbose)
+                {
+                    ChargedLog.Log($"补射同步已广播：{count} 发（客户端会按同一套动作重演）");
+                }
+            }
+            catch (Exception e) { ChargedLog.Warn("补射同步发送出错: " + e.Message); }
+        }
+
+        static MethodInfo startMethod;
+
+        /// <summary>反射调用 LuaCs 网络服务的 Start(string) 取一个待写消息（类型/重载都可能因程序集而变，按形状找）。</summary>
+        static IWriteMessage StartMessage(object netObj)
+        {
+            if (startMethod == null)
+            {
+                foreach (MethodInfo m in netObj.GetType().GetMethods())
+                {
+                    ParameterInfo[] ps = m.GetParameters();
+                    if (m.Name == "Start" && ps.Length == 1 && ps[0].ParameterType == typeof(string))
+                    {
+                        startMethod = m;
+                        break;
+                    }
+                }
+                if (startMethod == null) { ChargedLog.Warn("补射同步：LuaCs 网络服务里没有 Start(string)"); }
+            }
+            return startMethod?.Invoke(netObj, new object[] { NetIdBoltLaunch }) as IWriteMessage;
+        }
+
+        static bool TrySend(object netObj, IWriteMessage msg, NetworkConnection conn)
+        {
+            try
+            {
+                if (netObj == null || msg == null) { return false; }
+                if (!sendResolved)
+                {
+                    sendResolved = true;
+                    foreach (MethodInfo method in netObj.GetType().GetMethods())
+                    {
+                        if (method.Name != "Send") { continue; }
+                        ParameterInfo[] parameters = method.GetParameters();
+                        if (parameters.Length == 3 && parameters[0].ParameterType == typeof(IWriteMessage)
+                            && parameters[1].ParameterType == typeof(NetworkConnection)
+                            && parameters[2].ParameterType == typeof(DeliveryMethod))
+                        {
+                            netSendToConn = method;
+                        }
+                        else if (parameters.Length == 2 && parameters[0].ParameterType == typeof(IWriteMessage)
+                                 && parameters[1].ParameterType == typeof(DeliveryMethod))
+                        {
+                            netSendAll = method;
+                        }
+                    }
+                }
+                if (netSendToConn != null)                          // 三参数版：conn = null 即广播（1.0.109 起只有这个）
+                {
+                    netSendToConn.Invoke(netObj, new object[] { msg, conn, DeliveryMethod.Reliable });
+                    return true;
+                }
+                if (netSendAll != null)                             // 两参数版：全体广播
+                {
+                    netSendAll.Invoke(netObj, new object[] { msg, DeliveryMethod.Reliable });
+                    return true;
+                }
+            }
+            catch (Exception e) { ChargedLog.Warn("补射同步发送失败: " + e.Message); }
+            return false;
+        }
+
+        static void OnBoltLaunchMessage(IReadMessage msg)
+        {
+            try
+            {
+                ushort turretId = msg.ReadUInt16();
+                ushort userId = msg.ReadUInt16();
+                int count = msg.ReadByte();
+                double expire = Timing.TotalTime + 3.0;             // 等实体生成消息到达的宽限时间
+                for (int i = 0; i < count; i++)
+                {
+                    ushort boltId = msg.ReadUInt16();
+                    float rotation = msg.ReadSingle();
+                    pending.Add(new PendingBolt
+                    {
+                        TurretId = turretId,
+                        UserId = userId,
+                        BoltId = boltId,
+                        Rotation = rotation,
+                        ExpireTime = expire,
+                    });
+                }
+                PumpPending();
+                if (ChargedLog.Verbose) { ChargedLog.Log($"收到补射同步：{count} 发（炮塔 {turretId}）"); }
+            }
+            catch (Exception e) { ChargedLog.Warn("补射同步消息解析失败: " + e.Message); }
+        }
+
+        /// <summary>
+        /// 客户端重演：消息可能比"实体生成"先到（两条消息走的通道不同），所以拿不到弹体就先挂着，
+        /// 最多等 3 秒；实体一生成（见 ChargedSpellCardSpawnFlushPatch）或每 50ms 都会再试一次，
+        /// 到点还没出现就放弃并记一条日志。
+        /// </summary>
+        internal static void PumpPending()
+        {
+            pumpScheduled = false;
+            if (pending.Count == 0) { return; }
+            try
+            {
+                for (int i = pending.Count - 1; i >= 0; i--)
+                {
+                    PendingBolt entry = pending[i];
+                    Item bolt = Entity.FindEntityByID(entry.BoltId) as Item;
+                    Item turretItem = Entity.FindEntityByID(entry.TurretId) as Item;
+                    if (bolt == null || bolt.Removed || turretItem == null)
+                    {
+                        if (Timing.TotalTime > entry.ExpireTime)
+                        {
+                            pending.RemoveAt(i);
+                            if (ChargedLog.Verbose) { ChargedLog.Log($"补射同步放弃：弹 {entry.BoltId} 没在时限内出现"); }
+                        }
+                        continue;
+                    }
+                    pending.RemoveAt(i);
+                    Turret turret = turretItem.GetComponent<Turret>();
+                    if (turret == null || bolt.body == null) { continue; }
+                    Character user = Entity.FindEntityByID(entry.UserId) as Character;
+                    // 扫描中心只是个近似值（引擎的炮口计算在 Launch 内部自己会做），用来找炮口附近的同位弹
+                    Vector2 muzzle = ChargedSpellCardLaunchPatch.GetMuzzleSimPosition(turret);
+                    var ignored = ChargedSpellCardLauncher.BuildClientIgnoredBodies(turretItem, muzzle, bolt);
+                    ChargedSpellCardLauncher.LaunchBolt(turretItem, turret, bolt, entry.Rotation, user, 0f, ignored);
+                }
+            }
+            catch (Exception e) { ChargedLog.Warn("补射重演出错: " + e.Message); }
+            if (pending.Count > 0 && !pumpScheduled)
+            {
+                pumpScheduled = true;
+                CoroutineManager.Invoke(PumpPending, 0.05f);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 客户端补射显形用的小补丁：客户端的实体生成消息（Item.ReadSpawnData）一落地就立刻处理挂起的补射。
+    /// 我们的同步消息和"实体生成"走的是两条通道，谁先到都可能；只靠 50ms 轮询的话，
+    /// hitscan 弹（服务端紧接着就把它删了）经常会错过——所以生成一到就马上发射。
+    /// </summary>
+    [HarmonyPatch(typeof(Item), "ReadSpawnData")]
+    internal static class ChargedSpellCardSpawnFlushPatch
+    {
+        static void Postfix()
+        {
+            if (ChargedSpellCardNetSync.HasPending) { ChargedSpellCardNetSync.PumpPending(); }
+        }
+    }
+
+    /// <summary>
+    /// hitscan 弹"多活一会儿"的补丁。
+    ///
+    /// 引擎 Projectile.DoHitscan 结尾会立刻把这发弹放进移除队列，而"实体生成"和"移除"两个网络事件
+    /// 是同一次刷新发出去的——客户端那份弹还没来得及用我们的同步消息打出去（描出弹道）就被删了，
+    /// 表现就是客户端只看得见引擎那一发。这里把本门炮这一轮打出去的 hitscan 弹的移除拦下来，
+    /// 推迟一个很短的时间再真正移除：期间把它藏起来、物理体停掉（不会碰撞、不会再触发 OnImpact），
+    /// 客户端就在这段窗口里收到"生成 + 同步消息"，用同一套动作把本地弹打出去、自己描弹道。
+    ///
+    /// 登记必须发生在引擎请求移除之前：
+    ///   · 补射是我们自己生成的 → 在生成回调里登记（发射动作之前）
+    ///   · 引擎那一发在 Launch 内部就被请求移除了 → 只能在我们 Launch 前缀里登记
+    /// </summary>
+    [HarmonyPatch(typeof(EntitySpawner), "AddItemToRemoveQueue")]
+    internal static class ChargedSpellCardHitscanHoldPatch
+    {
+        /// <summary>被拦下来的 hitscan 弹要保留多久（秒）。够"生成 + 同步消息"到达客户端并重演即可。</summary>
+        const float HoldTime = 0.25f;
+
+        static readonly HashSet<Item> hold = new HashSet<Item>();
+
+        internal static void Hold(Item bolt)
+        {
+            if (bolt != null && !bolt.Removed) { hold.Add(bolt); }
+        }
+
+        static bool Prefix(Item item)
+        {
+            if (item == null || !hold.Remove(item)) { return true; }
+            try
+            {
+                if (item.body != null) { item.body.Enabled = false; }   // 停掉物理体：不再碰撞、不再有位置同步
+                item.HiddenInGame = true;
+            }
+            catch (Exception e) { ChargedLog.Warn("藏起 hitscan 弹失败: " + e.Message); }
+            Item held = item;
+            CoroutineManager.Invoke(() =>
+            {
+                if (held != null && !held.Removed && Entity.Spawner != null) { Entity.Spawner.AddItemToRemoveQueue(held); }
+            }, HoldTime);
+            if (ChargedLog.Verbose) { ChargedLog.Log($"hitscan 弹 {item.Prefab.Identifier} 延后 {HoldTime:0.##} 秒移除（留给客户端重演）"); }
+            return false;   // 跳过引擎这次的立即移除
         }
     }
 }

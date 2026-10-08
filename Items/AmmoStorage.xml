@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Override>
+  <Items>
+    <!--⚠ 封存（2026-10）：整套弹药袋系统暂停，本文件已从 filelist.xml 注释掉、不再加载。
+        恢复办法：filelist.xml 反注释 + Lua/Autorun/init.lua 里三个 dofile 反注释 +
+        CSharp/Shared/AmmoStorage.cs 的 SEALED 常量改成 false。
+        下面是封存前的设计说明，重做时可直接参考：-->
+    <!--
+      ============================================================
+      v5.1：弹药袋即弹匣（每种弹一个袋子）+ 空袋自选 + 「装填」按钮
+      ============================================================
+      数据模型（C# 维护，Config/magazine_config.xml 给数值）：
+        · 袋子 condition = 袋内存量（储备，耐久条就是它），上限 = Health（该弹种容量，默认 128，可单独调）
+        · ★本次装填量★ 与存量分开：插袋进武器或点「装填」时 装填量 = min(武器原装填上限, 袋内存量)，
+          每打一发 −1（齐射一轮一起扣：蓝玫瑰 2 / 痛苦 5）；**归 0 就拦开火**，提示改为原版那种屏幕上方
+          滚动消息（GUI.AddMessage，同 msg="ItemMsgAmmoRequired" 的观感）——这就是"打空要换弹"的闸门，
+          存量只是储备，不代表能连打多少发。
+        · 袋内「待发实体弹」数 ∈ [0, min(N, condition)]，N = 该武器最大齐射弹数（默认 1 / 蓝玫瑰 2 / 痛苦 5）
+          —— 引擎同一时刻只看得见这几发，齐射弹数/伤害/射速都还是武器原本的设计
+        · 插入弹药 → 被 C# 吸收成储备（condition +1，去掉实体物品）→ 再自动补足待发实体弹
+        · 开火消耗 / 从袋里拖走一发 → condition −1 → 再补足待发实体弹（自动，只从存量里挪，不凭空生弹）
+        · 打空（condition=0）→ 武器判「无弹药」（原版 ItemMsgAmmoRequired），不会空放
+      ★ 塞弹不会被"格子满"卡住的原理：袋子的槽 maxstacksize 直接开到容量上限（128），
+        引擎永远收得下；真正的上限由 C# 管（吸收 + 存量到顶就拒收并提示）。
+      ★ 新出的袋子/空袋转换出来的袋子都是空的：`<StatusEffect type="OnSpawn">` 挂在 **组件里**
+        （直接写在 <Item> 下会被引擎当组件解析，报 Could not find the component "StatusEffect"）；
+        引擎在 Item 构造末尾 apply OnSpawn，而存档值是构造之后才写入的 → 读档不会被清空。
+      ★ 「装填」按钮：手持袋子点 HUD 上的「装填」→ 把**持有者背包里的同种弹**吸收进袋子（补储备到上限）。
+        按钮的 OnUse 效果里那枚 `<SpawnItem ... Touhou_Ammo_Fill_Marker>` 只是"这是装填请求"的特征签名
+        （引擎的 SpawnItem 因为袋子只收自己的弹药而 spawn 不进去，已核实），C# 直接拦这个效果本身，
+        然后跳过原效果；OnItemContained 里对标记物的识别保留着，作为兜底。
+      ★ 图标：容器 `hideitems="true"` —— 不再把袋内待发弹画到袋子图标上（之前引擎按 itemsperrow
+        把 5 枚实体弹逐个画在图标上，看起来就是"重复画五遍"）。弹药种类靠袋子自己的图标表达。
+      ⚠ 占位图：Sprite 借用 Touhou_Monarch.png 图标区 + 染色；美术资源就位后替换 texture/sourcerect。
+    -->
+
+    <!--空弹药袋：菜单/合成里的入口，拿在手上弹出「选择弹药种类」窗口（仿装束包），选定后变成对应弹种的袋子-->
+    <Item name="空弹药袋" identifier="Touhou_Ammo_Pouch_Blank" maxstacksize="4" maxstacksizecharacterinventory="1" scale="0.35"
+          category="Weapon" subcategory="Touhou" cargocontaineridentifier="metalcrate"
+          tags="smallitem,Touhou_Ammo_Pouch_Blank,disallowremovefabricationingredient" impactsoundtag="impact_soft">
+      <Price baseprice="600" sold="false" />
+      <Deconstruct time="3">
+        <Item identifier="steel" amount="2" />
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="15">
+        <RequiredSkill identifier="weapons" level="30" />
+        <RequiredItem identifier="steel" amount="3" />
+        <RequiredItem identifier="plastic" />
+        <RequiredItem identifier="organicfiber" amount="2" />
+        <RequiredItem identifier="Touhou_Base_Metal" />
+      </Fabricate>
+      <Sprite texture="%ModDir%/Images/Touhou_Monarch.png" depth="0.5" sourcerect="55,102,56,100" origin="0.5,0.5"
+              spritecolor="150,150,150,255" inventoryiconcolor="150,150,150,255" />
+      <Body width="48" height="60" density="10" />
+      <Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgPickUpSelect" />
+    </Item>
+
+    <!--转轮弹药袋：旋风子弹，容量 128（= 该弹种的存量上限，配置里可单独调）-->
+    <Item name="转轮弹药袋" identifier="Touhou_Ammo_Pouch_Revolver" hideinmenus="true" maxstacksize="4" maxstacksizecharacterinventory="1"
+          scale="0.35" category="Weapon" subcategory="Touhou" cargocontaineridentifier="metalcrate"
+          tags="smallitem,Touhou_Ammo_Pouch,revolverammo,disallowremovefabricationingredient" impactsoundtag="impact_soft" Health="128">
+      <Deconstruct time="3">
+        <Item identifier="steel" amount="2" />
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Sprite texture="%ModDir%/Images/Touhou_Monarch.png" depth="0.5" sourcerect="55,102,56,100" origin="0.5,0.5" />
+      <Body width="48" height="60" density="10" />
+      <ItemContainer capacity="1" maxstacksize="128" hideitems="true" drawinventory="true" canbeselected="true"
+                     containedstateindicatorstyle="bullet" ShowConditionInContainedStateIndicator="true">
+        <!--新出的袋子是空的（容量上限见 Health）；存档值在构造之后写入，读档不受影响-->
+        <StatusEffect type="OnSpawn" target="This" condition="-99999" disabledeltatime="true" />
+        <Containable items="Touhou_Maple_Leaf_Revolver_Bullet" />
+      </ItemContainer>
+      <CustomInterface canbeselected="true" drawhudwhenequipped="true">
+        <GuiFrame relativesize="0.08,0.1" anchor="BottomLeft" relativeoffset="0,0.31" style="ItemUI" />
+        <Button text="uilabel.AmmoPouch_Load">
+          <StatusEffect type="OnUse" target="This">
+            <SpawnItem identifiers="Touhou_Ammo_Fill_Marker" spawnposition="ThisInventory" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+      <Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgPickUpSelect" />
+    </Item>
+
+    <!--湛蓝玫瑰弹药袋：Color Up子弹，容量 128-->
+    <Item name="湛蓝玫瑰弹药袋" identifier="Touhou_Ammo_Pouch_BlueRose" hideinmenus="true" maxstacksize="4" maxstacksizecharacterinventory="1"
+          scale="0.35" category="Weapon" subcategory="Touhou" cargocontaineridentifier="metalcrate"
+          tags="smallitem,Touhou_Ammo_Pouch,Color_Up_Bullet,disallowremovefabricationingredient" impactsoundtag="impact_soft" Health="128"
+          spritecolor="150,170,255,255" inventoryiconcolor="150,170,255,255">
+      <Deconstruct time="3">
+        <Item identifier="steel" amount="2" />
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Sprite texture="%ModDir%/Images/Touhou_Monarch.png" depth="0.5" sourcerect="55,102,56,100" origin="0.5,0.5" />
+      <Body width="48" height="60" density="10" />
+      <ItemContainer capacity="1" maxstacksize="128" hideitems="true" drawinventory="true" canbeselected="true"
+                     containedstateindicatorstyle="bullet" ShowConditionInContainedStateIndicator="true">
+        <StatusEffect type="OnSpawn" target="This" condition="-99999" disabledeltatime="true" />
+        <Containable items="Color_Up_Bullet" />
+      </ItemContainer>
+      <CustomInterface canbeselected="true" drawhudwhenequipped="true">
+        <GuiFrame relativesize="0.08,0.1" anchor="BottomLeft" relativeoffset="0,0.31" style="ItemUI" />
+        <Button text="uilabel.AmmoPouch_Load">
+          <StatusEffect type="OnUse" target="This">
+            <SpawnItem identifiers="Touhou_Ammo_Fill_Marker" spawnposition="ThisInventory" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+      <Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgPickUpSelect" />
+    </Item>
+
+    <!--痛苦弹药袋：痛苦弹丸，容量 128（最大齐射 5 发）-->
+    <Item name="痛苦弹药袋" identifier="Touhou_Ammo_Pouch_Anguish" hideinmenus="true" maxstacksize="4" maxstacksizecharacterinventory="1"
+          scale="0.35" category="Weapon" subcategory="Touhou" cargocontaineridentifier="metalcrate"
+          tags="smallitem,Touhou_Ammo_Pouch,Touhou_Anguish_Bullet,disallowremovefabricationingredient" impactsoundtag="impact_soft" Health="128"
+          spritecolor="255,150,150,255" inventoryiconcolor="255,150,150,255">
+      <Deconstruct time="3">
+        <Item identifier="steel" amount="2" />
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Sprite texture="%ModDir%/Images/Touhou_Monarch.png" depth="0.5" sourcerect="55,102,56,100" origin="0.5,0.5" />
+      <Body width="48" height="60" density="10" />
+      <ItemContainer capacity="1" maxstacksize="128" hideitems="true" drawinventory="true" canbeselected="true"
+                     containedstateindicatorstyle="bullet" ShowConditionInContainedStateIndicator="true">
+        <StatusEffect type="OnSpawn" target="This" condition="-99999" disabledeltatime="true" />
+        <Containable items="Touhou_Anguish_Bullet" />
+      </ItemContainer>
+      <CustomInterface canbeselected="true" drawhudwhenequipped="true">
+        <GuiFrame relativesize="0.08,0.1" anchor="BottomLeft" relativeoffset="0,0.31" style="ItemUI" />
+        <Button text="uilabel.AmmoPouch_Load">
+          <StatusEffect type="OnUse" target="This">
+            <SpawnItem identifiers="Touhou_Ammo_Fill_Marker" spawnposition="ThisInventory" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+      <Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgPickUpSelect" />
+    </Item>
+
+    <!--喇叭枪弹药袋：心灵震颤，容量 128-->
+    <Item name="喇叭枪弹药袋" identifier="Touhou_Ammo_Pouch_Blunderbuss" hideinmenus="true" maxstacksize="4" maxstacksizecharacterinventory="1"
+          scale="0.35" category="Weapon" subcategory="Touhou" cargocontaineridentifier="metalcrate"
+          tags="smallitem,Touhou_Ammo_Pouch,Blunderbussround,disallowremovefabricationingredient" impactsoundtag="impact_soft" Health="128"
+          spritecolor="255,230,160,255" inventoryiconcolor="255,230,160,255">
+      <Deconstruct time="3">
+        <Item identifier="steel" amount="2" />
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Sprite texture="%ModDir%/Images/Touhou_Monarch.png" depth="0.5" sourcerect="55,102,56,100" origin="0.5,0.5" />
+      <Body width="48" height="60" density="10" />
+      <ItemContainer capacity="1" maxstacksize="128" hideitems="true" drawinventory="true" canbeselected="true"
+                     containedstateindicatorstyle="bullet" ShowConditionInContainedStateIndicator="true">
+        <StatusEffect type="OnSpawn" target="This" condition="-99999" disabledeltatime="true" />
+        <Containable items="Mind_Bullet" />
+      </ItemContainer>
+      <CustomInterface canbeselected="true" drawhudwhenequipped="true">
+        <GuiFrame relativesize="0.08,0.1" anchor="BottomLeft" relativeoffset="0,0.31" style="ItemUI" />
+        <Button text="uilabel.AmmoPouch_Load">
+          <StatusEffect type="OnUse" target="This">
+            <SpawnItem identifiers="Touhou_Ammo_Fill_Marker" spawnposition="ThisInventory" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+      <Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgPickUpSelect" />
+    </Item>
+
+    <!--退魔圣焰弹药袋：祓魔霰弹，容量 128-->
+    <Item name="退魔圣焰弹药袋" identifier="Touhou_Ammo_Pouch_Winchester" hideinmenus="true" maxstacksize="4" maxstacksizecharacterinventory="1"
+          scale="0.35" category="Weapon" subcategory="Touhou" cargocontaineridentifier="metalcrate"
+          tags="smallitem,Touhou_Ammo_Pouch,Exorcism_Bullet,disallowremovefabricationingredient" impactsoundtag="impact_soft" Health="128"
+          spritecolor="255,200,255,255" inventoryiconcolor="255,200,255,255">
+      <Deconstruct time="3">
+        <Item identifier="steel" amount="2" />
+        <Item identifier="plastic" />
+      </Deconstruct>
+      <Sprite texture="%ModDir%/Images/Touhou_Monarch.png" depth="0.5" sourcerect="55,102,56,100" origin="0.5,0.5" />
+      <Body width="48" height="60" density="10" />
+      <ItemContainer capacity="1" maxstacksize="128" hideitems="true" drawinventory="true" canbeselected="true"
+                     containedstateindicatorstyle="bullet" ShowConditionInContainedStateIndicator="true">
+        <StatusEffect type="OnSpawn" target="This" condition="-99999" disabledeltatime="true" />
+        <Containable items="Exorcism_Bullet" />
+      </ItemContainer>
+      <CustomInterface canbeselected="true" drawhudwhenequipped="true">
+        <GuiFrame relativesize="0.08,0.1" anchor="BottomLeft" relativeoffset="0,0.31" style="ItemUI" />
+        <Button text="uilabel.AmmoPouch_Load">
+          <StatusEffect type="OnUse" target="This">
+            <SpawnItem identifiers="Touhou_Ammo_Fill_Marker" spawnposition="ThisInventory" />
+          </StatusEffect>
+        </Button>
+      </CustomInterface>
+      <Holdable slots="Any,RightHand,LeftHand" msg="ItemMsgPickUpSelect" />
+    </Item>
+
+    <!--「补满」按钮的标记物：C# 看到它就把持有者背包里的同种弹吸收进袋子，然后把它删掉-->
+    <Item name="" identifier="Touhou_Ammo_Fill_Marker" hideinmenus="true" scale="0.05" category="Misc" subcategory="Touhou"
+          cargocontaineridentifier="metalcrate" tags="Touhou_Ammo_Fill_Marker" impactsoundtag="impact_soft" nonplayerteaminteractable="true">
+      <Sprite texture="%ModDir%/Images/Touhou_Monarch.png" depth="0.55" sourcerect="0,102,1,1" origin="0.5,0.5" />
+      <Body width="1" height="1" density="1" />
+    </Item>
+
+  </Items>
+</Override>
