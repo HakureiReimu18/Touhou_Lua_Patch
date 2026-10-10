@@ -140,12 +140,12 @@
       <Affliction identifier="burn" strength="14" probability="0.5" dividebylimbcount="true" />
     </StatusEffect>
   </Affix>
-  <Affix identifier="lightning" tier="Epic" nameprefix="‖color:192,64,255,255‖雷霆‖color:end‖‖color:255,255,255,255‖" applicable="weapon" damagemult="1.04" desc="伤害 +4%；命中 50% 概率附加 0.3 秒眩晕与 30 点电击（4 秒冷却）">
-    <StatusEffect type="OnUse" target="UseTarget" interval="4">
+  <Affix identifier="lightning" tier="Epic" nameprefix="‖color:192,64,255,255‖雷霆‖color:end‖‖color:255,255,255,255‖" applicable="weapon" damagemult="1.06" desc="伤害 +6%；命中 50% 概率附加 0.3 秒眩晕与 30 点电击（2 秒冷却）">
+    <StatusEffect type="OnUse" target="UseTarget" interval="2">
       <Affliction identifier="stun" strength="0.3" probability="0.5" />
       <Affliction identifier="electricshock" strength="30" probability="0.5" />
     </StatusEffect>
-    <StatusEffect type="OnImpact" target="UseTarget" interval="4">
+    <StatusEffect type="OnImpact" target="UseTarget" interval="2">
       <Affliction identifier="stun" strength="0.3" probability="0.5" />
       <Affliction identifier="electricshock" strength="30" probability="0.5" />
     </StatusEffect>
@@ -175,7 +175,7 @@
   </Affix>
   <Affix identifier="masterwork" tier="Epic" nameprefix="‖color:192,64,255,255‖大师‖color:end‖‖color:255,255,255,255‖" applicable="weapon" damagemult="1.09" fireratemult="1.05" desc="伤害 +9%，射速 +5%" />
   <!-- 优先：1 号快捷栏（最左，数字键 1）条件加成；伤害在命中时动态判定，射速由槽位监视器应用/恢复 -->
-  <Affix identifier="priority" tier="Epic" nameprefix="‖color:192,64,255,255‖优先‖color:end‖‖color:255,255,255,255‖" applicable="weapon" slot1damagemult="1.06" slot1fireratemult="1.06" desc="放在 1 号快捷栏（最左侧）或从该栏拿到手上时：伤害 +6%，射速/挥速 +6%" />
+  <Affix identifier="priority" tier="Epic" nameprefix="‖color:192,64,255,255‖优先‖color:end‖‖color:255,255,255,255‖" applicable="weapon" slot1damagemult="1.09" slot1fireratemult="1.08" desc="放在 1 号快捷栏（最左侧）或从该栏拿到手上时：伤害 +9%，射速/挥速 +8%" />
   <!-- 冷静：降噪作用于 AI 听觉（AITarget.SoundRange 写入处乘 0.2），手持武器形态或穿戴护甲形态都生效 -->
   <Affix identifier="calm" tier="Epic" nameprefix="‖color:192,64,255,255‖冷静‖color:end‖‖color:255,255,255,255‖" applicable="weapon,armor" damagemult="1.05" damagetakenmult="0.95" noisemult="0.2" desc="噪音 -80%，伤害 +5%" descarmor="噪音 -80%，受到的伤害 -5%" />
   <!-- 愤怒：使用时自伤（流血+器官损伤），1 秒冷却归一化射速差异，与诅咒同款自伤路径 -->
@@ -234,7 +234,7 @@
   <!-- 专注：单手远程武器改双手握持换取高增伤；只对当前单手握持的远程武器可附魔。
        双持两把单手武器（射速惩罚 -20~40%、散布 +20~50%）总输出通常仍高于单持，
        双手化补偿必须给足，1.3 并不过量 -->
-  <Affix identifier="focus" tier="Legendary" nameprefix="‖color:255,140,0,255‖专注‖color:end‖‖color:255,255,255,255‖" applicable="rangedweapon" forcetwohandedranged="true" damagemult="1.3" desc="单手远程武器变为双手握持，伤害 +30%" />
+  <Affix identifier="focus" tier="Legendary" nameprefix="‖color:255,140,0,255‖专注‖color:end‖‖color:255,255,255,255‖" applicable="rangedweapon" forcetwohandedranged="true" damagemult="1.4" desc="单手远程武器变为双手握持，伤害 +40%" />
   <!-- 等候：蓄力更慢但更痛——持续 DPS 持平、单发 +20%（充能时间实时 +20%） -->
   <Affix identifier="waiting" tier="Legendary" nameprefix="‖color:255,140,0,255‖等候‖color:end‖‖color:255,255,255,255‖" applicable="rangedweapon" chargetimemult="1.2" damagemult="1.2" desc="蓄力武器的充能时间 +20%，伤害 +20%（仅对真正需要蓄力的武器生效）" />
   <!-- 单打独斗：快捷栏（Any 槽）+ 手部只有这一把附魔武器时增伤，0.25 秒节流检测，不扫背包 -->
@@ -280,7 +280,7 @@
   <!-- 打空弹匣的那一发增伤（耐久弹药与散装弹药都支持） -->
   <Affix identifier="crown" tier="Special" nameprefix="‖color:255,64,64,255‖王冠‖color:end‖‖color:255,255,255,255‖" applicable="rangedweapon" lastshotdamagemult="1.3" desc="武器的最后一发弹药伤害 +30%" />
   <!-- 单手近战武器改为双手握持换取高增伤；只对当前单手握持的近战武器可附魔 -->
-  <Affix identifier="devoted" tier="Special" nameprefix="‖color:255,64,64,255‖专一‖color:end‖‖color:255,255,255,255‖" applicable="meleeweapon" forcetwohanded="true" damagemult="1.6" desc="单手近战武器变为双手握持，伤害 +60%" />
+  <Affix identifier="devoted" tier="Special" nameprefix="‖color:255,64,64,255‖专一‖color:end‖‖color:255,255,255,255‖" applicable="meleeweapon" forcetwohanded="true" damagemult="1.7" desc="单手近战武器变为双手握持，伤害 +70%" />
   <!-- 奇迹：本身无数值效果，解锁两个额外词缀槽（一个史诗及以下 + 一个任意稀有度）。
        stonerollonly = 随机附魔只能roll到附魔石上，再经石头转移到物品；已有词缀会被奇迹覆盖 -->
   <Affix identifier="miracle" tier="Special" nameprefix="‖color:255,64,64,255‖奇迹‖color:end‖‖color:255,255,255,255‖" applicable="all" stonerollonly="true" desc="允许物品额外再拥有一个史诗及以下词缀和一个任意稀有度词缀（需用附魔石转移附上）；不放置材料进行附魔可去除额外词缀" />

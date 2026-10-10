@@ -36,6 +36,139 @@ namespace Touhou.Affixes
 
         public static Dictionary<ushort, PendingAffix> PendingAffixes = new();
 
+        /// <summary>
+        /// 会话级"最后一次已知词缀"：让存档属性 affixid 的写入彻底摆脱对 tags 的依赖。
+        /// 背景：tickbox 类组件的 setvalue tags 会整串擦除 __affix_ 标签，而巡回结束清空内存表后，
+        /// Item.Save 若只能读 tags 兜底就会写不出 affixid（词缀跨会话丢失的根因）。
+        /// 本表在整个进程生命周期内保留（读取按 prefab 双因子校验防 ID 复用），
+        /// 读取优先级：内存表 → 本表 → tags（tags 降级为最末位备份）。
+        /// 清除时机：词缀被移除/替换（SetAffixes 覆写）、物品真正删除（ItemRemovePurgePatch）、进程结束。
+        /// 注意：巡回结束时绝不清空本表——那正是它存在的意义（清空内存表与存档写入之间的窗口）。
+        /// </summary>
+        public static Dictionary<ushort, PendingAffix> LastKnownAffixes = new();
+
+        /// <summary>词缀应用/替换时刷新会话表（AffixId 为逗号连接的全列表）</summary>
+        static void RememberAffix(Item item, AffixData data)
+        {
+            LastKnownAffixes[item.ID] = new PendingAffix
+            {
+                AffixId = JoinAffixIds(data),
+                PrefabId = data.PrefabId ?? item.Prefab.Identifier.Value,
+                Uid = data.Uid
+            };
+        }
+
+        /// <summary>会话表读取（prefab 双因子校验，防物品 ID 复用导致的错位）</summary>
+        public static bool TryGetRememberedAffix(Item item, out PendingAffix remembered)
+        {
+            remembered = null;
+            if (item == null || !LastKnownAffixes.TryGetValue(item.ID, out var rem)) return false;
+            if (rem.PrefabId != null && item.Prefab.Identifier.Value != rem.PrefabId) return false; // 同 ID 的另一个物品
+            remembered = rem;
+            return true;
+        }
+
+        /// <summary>
+        /// UID → 待恢复条目的索引：物品 ID 每过一轮巡回都会漂移（实测：武器 6280→6148、潜水服 6139→5686，
+        /// 引擎按加载顺序重发 ID），只按 ID 匹配会把桥接文件里的词缀条目误判成"物品不存在"而过期丢弃
+        /// （日志实证："Expiring 2 unrestored affixes ... miracle@ID6280"）。
+        /// UID 随物品的 affixuid 存档属性/标签走、不随 ID 变，是跨巡回恢复的主索引。
+        /// </summary>
+        public static Dictionary<string, PendingAffix> PendingByUid = new();
+
+        /// <summary>登记待恢复条目：ID 表与 UID 索引同步写入（uid 为空只写 ID 表）</summary>
+        public static void AddPendingAffix(ushort id, PendingAffix p)
+        {
+            PendingAffixes[id] = p;
+            if (!string.IsNullOrEmpty(p?.Uid)) PendingByUid[p.Uid] = p;
+        }
+
+        /// <summary>按 ID 消费待恢复条目：UID 索引里指向同一条目的键一并清掉</summary>
+        static void RemovePending(ushort id)
+        {
+            if (PendingAffixes.TryGetValue(id, out var p) && !string.IsNullOrEmpty(p?.Uid)
+                && PendingByUid.TryGetValue(p.Uid, out var byUid) && ReferenceEquals(byUid, p))
+            {
+                PendingByUid.Remove(p.Uid);
+            }
+            PendingAffixes.Remove(id);
+        }
+
+        /// <summary>按 UID 消费待恢复条目（跨巡回 ID 漂移的主力路径）：两个索引同步清</summary>
+        static void RemovePendingByUid(string uid)
+        {
+            if (string.IsNullOrEmpty(uid) || !PendingByUid.TryGetValue(uid, out var p)) return;
+            PendingByUid.Remove(uid);
+            foreach (var kv in PendingAffixes)
+            {
+                if (ReferenceEquals(kv.Value, p)) { PendingAffixes.Remove(kv.Key); break; }
+            }
+        }
+
+        /// <summary>清空全部待恢复条目（两个索引必须同步清）</summary>
+        static void ClearPendingAffixes()
+        {
+            PendingAffixes.Clear();
+            PendingByUid.Clear();
+        }
+
+        /// <summary>
+        /// 物品当前词缀 ID 列表（奇迹优先归位到 [0]）的三级兜底读取：
+        /// 内存表 → 会话表（prefab 校验）→ 标签。
+        /// 附魔台的"加额外词缀 vs 整组替换"判定必须走这里——内存恢复前的窗口里只读内存表会误判，
+        /// 把"给奇迹物品加额外词缀"执行成"整组替换"（实测：转移词缀时连奇迹带额外一起被顶掉）。
+        /// </summary>
+        public static bool TryGetCurrentAffixIds(Item item, out List<string> ids)
+        {
+            ids = null;
+            if (item == null) return false;
+            if (TryGetAffixData(item, out var data))
+            {
+                ids = GetAllAffixIds(data);
+            }
+            else if (TryGetRememberedAffix(item, out var rem) && rem.AffixId != null)
+            {
+                ids = new List<string>(rem.AffixId.Split(','));
+            }
+            else
+            {
+                // GetTags() 直接返回内部集合、零分配；不要用 item.Tags 的 getter（每次都在拼字符串）
+                foreach (var t in item.GetTags())
+                {
+                    if (t.Value.StartsWith(AFFIX_TAG_PREFIX, StringComparison.OrdinalIgnoreCase))
+                        (ids ??= new List<string>(2)).Add(t.Value.Substring(AFFIX_TAG_PREFIX.Length));
+                }
+            }
+            if (ids == null || ids.Count == 0) return false;
+            // 奇迹必须是主词缀（第一个）：SetAffixes 之后的判定都以 [0] 为准
+            int mi = ids.IndexOf(MIRACLE_AFFIX_ID);
+            if (mi > 0) { ids.RemoveAt(mi); ids.Insert(0, MIRACLE_AFFIX_ID); }
+            return true;
+        }
+
+        /// <summary>
+        /// 物品是否带有指定词缀（内存表 → 会话表[prefab 校验] → tags 逐标签精确匹配三级兜底）。
+        /// 专一/专注的放行门槛等运行时判定走这里，不再单独依赖 tags。
+        /// </summary>
+        public static bool HasAffixId(Item item, string affixId)
+        {
+            if (item == null) return false;
+            if (TryGetAffixData(item, out var data) && GetAllAffixIds(data).Contains(affixId)) return true;
+            if (TryGetRememberedAffix(item, out var rem) && rem.AffixId != null)
+            {
+                foreach (var id in rem.AffixId.Split(','))
+                {
+                    if (id.Trim() == affixId) return true;
+                }
+            }
+            // GetTags() 零分配（item.Tags 的 getter 每次都在拼字符串，热路径禁用）
+            foreach (var t in item.GetTags())
+            {
+                if (t.Value.Equals(AFFIX_TAG_PREFIX + affixId, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
+
         // 三个拓展事件：附魔应用后 / 被移除前 / 适用性覆盖（返回 true/false 直接拍板，null 走默认）。
         // 订阅方必须轻量，异常会被隔离
         public static event Action<Item, AffixDef> AffixApplied;
@@ -55,7 +188,7 @@ namespace Touhou.Affixes
         // 材料档位权重：数字越小越贵（1=核心 500 / 2=棱镜 100 / 3=合金 25），权重也越好。键是 tag 不是 identifier
         public static Dictionary<string, TierWeights> MaterialTiers = new()
         {
-            ["affixes_material_1"] = new TierWeights { Normal = 5, Rare = 36, Epic = 36, Legendary = 20, Special = 8 },
+            ["affixes_material_1"] = new TierWeights { Normal = 5, Rare = 20, Epic = 55, Legendary = 20, Special = 8 },
             ["affixes_material_2"] = new TierWeights { Broken = 10, Normal = 30, Rare = 35, Epic = 15, Legendary = 10, Special = 1 },
             ["affixes_material_3"] = new TierWeights { Broken = 35, Normal = 40, Rare = 20, Epic = 5, Legendary = 1, Special = 0 },
         };
@@ -77,6 +210,7 @@ namespace Touhou.Affixes
             TickSlotOneBonuses(); // 优先词条槽位监视（自带 0.25s 节流与全局开关）
             TickLoneWolfBonuses(); // 单打独斗词条快捷栏监视（自带 0.25s 节流与全局开关）
             TickAffixTagSelfHeal(); // 词缀标签自愈（自带 5s 节流）
+            TickLateJoinerResync(); // 中途加入玩家的词缀重播监视（服务端，自带 2s 节流）
             if (mainThreadTasks.Count == 0) return;
             for (int i = mainThreadTasks.Count - 1; i >= 0; i--)
             {
@@ -230,11 +364,13 @@ namespace Touhou.Affixes
             LuaCsSetup.Instance.Game.RemoveCommand("listaffixes");
             LuaCsSetup.Instance.Game.RemoveCommand("listaffixdefs");
             LuaCsSetup.Instance.Game.RemoveCommand("affixdmgdebug");
+            LuaCsSetup.Instance.Game.RemoveCommand("affixdiag");
             harmony?.UnpatchSelf();
             oneTimeInitDone = false;   // Dispose 后补丁已卸载，允许下次完整重注册
             ItemAffixes.Clear();
             AffixDefs.Clear();
-            PendingAffixes.Clear();
+            ClearPendingAffixes();
+            LastKnownAffixes.Clear();
             mainThreadTasks.Clear();
             loggedOnceMessages.Clear(); // 日志去重键按物品 ID 生成，卸载后重新加载时该重新提示就重新提示
             AffixApplied = null;
@@ -446,6 +582,7 @@ namespace Touhou.Affixes
                 }
 
                 ApplyAffix(heldItem, chosen);
+                MirrorAffixToServer(heldItem); // 客户端上下文执行时把结果同步给服务器（附魔台/存档权威侧）
                 SaveAffixData();
                 savedDataLoaded = false;
             }, affixIdArgs, false);
@@ -495,6 +632,7 @@ namespace Touhou.Affixes
 
                 ApplyAffix(heldItem, def);
                 BroadcastAffixApplied(heldItem, def);
+                MirrorAffixToServer(heldItem); // 客户端上下文执行时把结果同步给服务器（附魔台/存档权威侧）
                 SaveAffixData();
                 savedDataLoaded = false;
             }, affixIdArgs, false);
@@ -512,7 +650,9 @@ namespace Touhou.Affixes
                     UnregisterEffects(heldItem, data.Effects);
                     RestoreStatChanges(data, heldItem);
                     ItemAffixes.Remove(heldItem.ID);
+                    LastKnownAffixes.Remove(heldItem.ID); // 会话表同步清：移除后存档不应再写出该词缀
                     RemoveAffixTag(heldItem);
+                    MirrorAffixToServer(heldItem); // 客户端上下文执行时把"移除"同步给服务器（空列表）
                     SaveAffixData();
                     savedDataLoaded = false;
                     RaiseAffixEvent(AffixRemoved, heldItem, oldDef);
@@ -545,12 +685,14 @@ namespace Touhou.Affixes
                         RestoreStatChanges(data, item);
                         ItemAffixes.Remove(item.ID);
                     }
+                    LastKnownAffixes.Remove(item.ID); // 会话表同步清（含仅有标签的残留条目）
                     RemoveAffixTag(item);
                     RaiseAffixEvent(AffixRemoved, item, oldDef);
                     cleared++;
                 }
 
-                PendingAffixes.Clear();
+                ClearPendingAffixes();
+                LastKnownAffixes.Clear(); // 全量清除：会话表必须跟着内存表一起空，否则会把词缀写回存档
                 try { File.Delete(SaveFilePath); } catch { }
                 savedDataLoaded = false;
 
@@ -591,6 +733,25 @@ namespace Touhou.Affixes
             {
                 DamageDebugLog = !DamageDebugLog;
                 Log($"affix damage debug logging: {(DamageDebugLog ? "ON" : "OFF")}", Color.Yellow);
+            }, null, false);
+
+            // 诊断：手持物品的词缀三通道状态 + 标签防擦补丁计数（排查"标签被谁擦了/补丁有没有跑"）
+            LuaCsSetup.Instance.Game.AddCommand("affixdiag", "Diagnose affix state of the held item", (args) =>
+            {
+                var held = Character.Controlled?.HeldItems?.FirstOrDefault();
+                if (held == null)
+                {
+                    Log("affixdiag: no item held", Color.Yellow);
+                    return;
+                }
+                Log($"affixdiag: {held.Name} (ID={held.ID}, prefab={held.Prefab.Identifier.Value})");
+                Log($"  memory   : {(TryGetAffixData(held, out var d) ? JoinAffixIds(d) + " uid=" + d.Uid : "(none)")}");
+                Log($"  lastknown: {(TryGetRememberedAffix(held, out var r) ? r.AffixId + " uid=" + r.Uid : "(none)")}");
+                Log($"  pending  : id={PendingAffixes.Count} uid={PendingByUid.Count}");
+                Log($"  tags     : {held.Tags}");
+                Log($"  tagpatch : fired={AffixTagPreservePatch.FiredCount} preserved={AffixTagPreservePatch.PreservedCount}");
+                Log($"  savepatch: wrote={ItemSavePatch.SavedAffixCount}");
+                Log($"  lastkept : {AffixTagPreservePatch.LastDetail}");
             }, null, false);
         }
 
@@ -665,10 +826,11 @@ namespace Touhou.Affixes
             }
         }
 
-        // 只读 UID 标签；没标签返回 null——可能从没附魔，也可能标记被整串擦过
-        static string ReadUidTag(Item item)
+        // 只读 UID 标签；没标签返回 null——可能从没附魔，也可能标记被整串擦过。
+        // 公开给标签防擦补丁用（擦除发生前读当前标签，拿 uid 去待恢复索引里找词缀清单）
+        public static string ReadUidTag(Item item)
         {
-            if (string.IsNullOrEmpty(item.Tags) || !item.Tags.Contains(AFFIX_UID_TAG_PREFIX)) return null;
+            // GetTags() 零分配；不用 item.Tags 的 getter（每次访问都在拼字符串，这是恢复扫描的热路径）
             foreach (var tag in item.GetTags())
             {
                 if (tag.Value.StartsWith(AFFIX_UID_TAG_PREFIX, StringComparison.OrdinalIgnoreCase))
@@ -681,8 +843,7 @@ namespace Touhou.Affixes
         static bool TryReadAffixTags(Item item, out string affixId, out string uid)
         {
             affixId = null; uid = null;
-            // 快速拒绝：两个前缀都以 "__affix" 开头，不含此子串的物品直接返回
-            if (string.IsNullOrEmpty(item.Tags) || !item.Tags.Contains("__affix")) return false;
+            // GetTags() 零分配直扫（item.Tags 的 getter 会整串拼字符串，全物品扫描里禁用）
             List<string> ids = null;
             foreach (var tag in item.GetTags())
             {
@@ -723,7 +884,8 @@ namespace Touhou.Affixes
                     saved++;
                 }
                 doc.Save(SaveFilePath);
-                Log($"Saved {saved} affixes to file");
+                // 成功不刷日志：台子/命令操作有自己的结果行，巡回结束有一条汇总；
+                // 失败仍有下方 Warning——需要核对写入次数时可查 affixdiag 的 savepatch 计数
             }
             catch (Exception ex)
             {
@@ -735,11 +897,8 @@ namespace Touhou.Affixes
         {
             try
             {
-                if (!File.Exists(SaveFilePath))
-                {
-                    Log("No affix save file found");
-                    return;
-                }
+                // "文件不存在"是常态（另一上下文先消费/每轮重写），静默返回不刷日志
+                if (!File.Exists(SaveFilePath)) return;
                 var doc = XDocument.Load(SaveFilePath);
                 if (doc.Root == null) return;
                 // 会话令牌校验：跨进程的文件内容不可信（物品 ID 会漂移）
@@ -762,16 +921,16 @@ namespace Touhou.Affixes
                     if (ushort.TryParse(el.Attribute("id")?.Value, out var id) &&
                         !string.IsNullOrEmpty(el.Attribute("affixid")?.Value))
                     {
-                        PendingAffixes[id] = new PendingAffix
+                        AddPendingAffix(id, new PendingAffix
                         {
                             AffixId = el.Attribute("affixid").Value,
                             PrefabId = el.Attribute("prefab")?.Value,
                             Uid = el.Attribute("uid")?.Value
-                        };
+                        });
                         loaded++;
                     }
                 }
-                Log($"Loaded {loaded} affixes from file");
+                if (loaded > 0) Log($"Loaded {loaded} affixes from file");
             }
             catch (Exception ex)
             {
@@ -798,8 +957,11 @@ namespace Touhou.Affixes
                 if (TryGetAffixData(item, out _))
                 {
                     // 内存已有 = 词缀已就位，pending 一并消费掉——不然它会挂到最终轮报"物品不存在"的假警告，
-                    // 甚至在 removeaffix 后把刚剥掉的词缀贴回来
-                    PendingAffixes.Remove(item.ID);
+                    // 甚至在 removeaffix 后把刚剥掉的词缀贴回来。
+                    // ID 漂移后桥接条目的键还是旧 ID，RemovePending 打不中，再按 uid 消费一次
+                    RemovePending(item.ID);
+                    string ownUid = ReadUidTag(item);
+                    if (!string.IsNullOrEmpty(ownUid)) RemovePendingByUid(ownUid);
                     continue;
                 }
 
@@ -817,7 +979,7 @@ namespace Touhou.Affixes
                         {
                             Warning($"Dropped stale pending affix '{pending.AffixId}' for ID={item.ID}: "
                                 + $"prefab mismatch ({item.Prefab.Identifier.Value} != {pending.PrefabId})");
-                            PendingAffixes.Remove(item.ID);
+                            RemovePending(item.ID);
                         }
                         continue;
                     }
@@ -829,7 +991,7 @@ namespace Touhou.Affixes
                     {
                         Warning($"Dropped pending affix '{pending.AffixId}' for ID={item.ID}: "
                             + $"uid mismatch ({itemUid} != {pending.Uid}), item is provably a different one");
-                        PendingAffixes.Remove(item.ID);
+                        RemovePending(item.ID);
                         continue;
                     }
                     if (pending.PrefabId == null)
@@ -837,12 +999,28 @@ namespace Touhou.Affixes
                     affixId = pending.AffixId;
                     uidToApply = pending.Uid;
                     // 命中即消费掉条目：防止本巡回后段新物品复用同一 ID 时误恢复
-                    PendingAffixes.Remove(item.ID);
+                    RemovePending(item.ID);
                 }
                 else
                 {
                     // 旧存档物品没有 uid 标签，恢复时 ApplyAffix 会补戳（每件旧物品只发生一次）
                     TryReadAffixTags(item, out affixId, out uidToApply);
+                }
+
+                // ID 与标签都没命中 → 按 UID 匹配桥接条目：物品 ID 每轮巡回都会漂移（6280→6148 实测），
+                // uid 不随 ID 变，是跨巡回恢复的主路径（否则条目会被"物品不存在"误过期）
+                if (string.IsNullOrEmpty(affixId))
+                {
+                    string itemUid = uidToApply ?? ReadUidTag(item);
+                    if (!string.IsNullOrEmpty(itemUid)
+                        && PendingByUid.TryGetValue(itemUid, out var byUid)
+                        && (byUid.PrefabId == null || byUid.PrefabId == item.Prefab.Identifier.Value))
+                    {
+                        affixId = byUid.AffixId;
+                        uidToApply = byUid.Uid;
+                        RemovePendingByUid(itemUid);
+                        DebugLog($"Restored by UID: affix '{affixId}' on {item.Name} (ID drifted to {item.ID})");
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(affixId))
@@ -876,13 +1054,14 @@ namespace Touhou.Affixes
             {
                 Warning($"Expiring {PendingAffixes.Count} unrestored affixes (items absent this round, e.g. offline players' inventories): "
                     + string.Join(", ", PendingAffixes.Select(kv => $"{kv.Value.AffixId}@ID{kv.Key}")));
-                PendingAffixes.Clear();
+                ClearPendingAffixes();
             }
 
+            // 日志精简：无事发生的中间轮次静默，只在真有恢复/剔除时或在最后一轮打一条汇总
             if (count > 0 || pruned > 0)
-                Log($"Restored {count} affixes, pruned {pruned} incompatible (pending={PendingAffixes.Count}, items={items.Count(i => !i.Removed)})");
-            else
-                DebugLog($"No affixes restored: pending={PendingAffixes.Count}, items={items.Count(i => !i.Removed)}");
+                Log($"Restored {count} affixes, pruned {pruned} incompatible (pending={PendingAffixes.Count})");
+            else if (isFinal)
+                DebugLog($"Restore finished: nothing to restore (items={items.Count(i => !i.Removed)})");
         }
 
         // 恢复时的多词缀校验：逗号列表逐项剔除——定义不存在/不再适用/奇迹结构非法/槽位违规。
@@ -906,11 +1085,25 @@ namespace Touhou.Affixes
                 }
                 kept.Add(id);
             }
-            // 奇迹结构：额外词缀只能依附奇迹存在；主词缀不是奇迹时额外词缀全部剔除
-            if (kept.Count > 1 && kept[0] != MIRACLE_AFFIX_ID)
+            // 奇迹结构：额外词缀只能依附奇迹存在。
+            // 关键：标签走 HashSet 枚举、顺序不保证（实测读出过 steadfast,miracle,abyssal 这类乱序），
+            // 因此必须"按是否含奇迹"判断、再强制归位到 [0]，绝不能假设奇迹已经在 [0] 位——
+            // 旧逻辑用 kept[0] 判断，乱序时把整组额外词缀误判成"无主词的非法词缀"剔除，
+            // 多词缀组被拆散并写回共享标签，连带污染另一上下文与存档（单词缀无此问题）
+            if (kept.Count > 1)
             {
-                Warning($"Restore: {item.Name} (ID={item.ID}) has extra affixes without '{MIRACLE_AFFIX_ID}' as primary, extras dropped");
-                kept.RemoveRange(1, kept.Count - 1);
+                int mi = kept.IndexOf(MIRACLE_AFFIX_ID);
+                if (mi < 0)
+                {
+                    Warning($"Restore: {item.Name} (ID={item.ID}) has extra affixes without '{MIRACLE_AFFIX_ID}', extras dropped");
+                    kept.RemoveRange(1, kept.Count - 1);
+                }
+                else if (mi > 0)
+                {
+                    var miracleId = kept[mi];
+                    kept.RemoveAt(mi);
+                    kept.Insert(0, miracleId);
+                }
             }
             // 槽位规则复核（规则收窄时剔除违规额外词缀）
             if (kept.Count > 1)
@@ -966,6 +1159,7 @@ namespace Touhou.Affixes
                     RaiseAffixEvent(AffixRemoved, item, oldDef);
                 }
                 ItemAffixes.Remove(id);
+                LastKnownAffixes.Remove(id); // 排毒剥离：会话表一并清，防存档写出已被剥离的词缀
                 CooldownDamageState.Purge(id);
                 stripped++;
             }
@@ -1005,14 +1199,17 @@ namespace Touhou.Affixes
             if (GameMain.NetworkMember == null || !GameMain.NetworkMember.IsClient)
             {
                 SaveAffixData();
+                // 整个巡回唯一的持久化汇总行（SaveAffixData 成功时自己不打日志）
                 DebugLog($"roundEnd: saved {ItemAffixes.Count} affixes to bridge file");
             }
             // 清内存表前强制重写全部标签：tickbox 类组件会整串擦 Tags，内存表清空后
             // tags 是 Item.Save 写 affixid 属性的唯一兜底来源
             StampAllAffixTags();
             savedDataLoaded = false;
-            PendingAffixes.Clear();
+            ClearPendingAffixes();
             ItemAffixes.Clear();
+            // 注意：LastKnownAffixes 绝不清空——清空内存表与存档写入之间的窗口正是它存在的意义，
+            // 巡回内部的 Item.Save 靠它写出 affixid；物品被真正删除时由 ItemRemovePurgePatch 逐条清理
             AffixEffectInjectionPatch.ClearProcTimers();
             throttledLogs.Clear(); // 节流日志键按物品 ID 生成，巡回结束清理防长期累积
             loggedOnceMessages.Clear(); // 同上是按物品 ID 生成的键，不清的话每附魔一件就多一条
@@ -1023,14 +1220,74 @@ namespace Touhou.Affixes
         {
             // 先恢复 PendingAffixes 再删文件：恢复重试期间删了，晚于首次恢复加载的物品就彻底丢词缀
             LoadAffixData();
-            try { File.Delete(SaveFilePath); } catch { }
-            DebugLog($"roundStart: pending={PendingAffixes.Count}, affixed={ItemAffixes.Count}. Scheduling restores at 3s/10s/25s");
+            // 注意：不删除桥接文件——listen server 两个上下文都要读它（客户端靠 uid 索引在标签被擦时兜底），
+            // 谁先跑谁删会让另一个上下文读不到；每轮 roundEnd 都会重写覆盖，会话令牌也保证跨进程不会误用旧文件
+            DebugLog($"roundStart: pending={PendingAffixes.Count}, affixed={ItemAffixes.Count}. Scheduling restores at 1.5s/6s/18s");
             // 主线程延迟调度，原来 Task.Delay 的线程池回调直接改游戏状态，有安全隐患。
-            // 多次重试：多人客户端物品经网络陆续到位，单次 3 秒恢复会漏晚到的。RestoreAffixes 幂等，重试≈多扫一遍
-            ScheduleOnMainThread(3.0, () => RestoreAffixes(false));
-            ScheduleOnMainThread(10.0, () => RestoreAffixes(false));
-            ScheduleOnMainThread(25.0, () => RestoreAffixes(true));
+            // 多次重试：多人客户端物品经网络陆续到位，首扫可能漏掉晚到的物品，后续轮次兜底（RestoreAffixes 幂等）
+            ScheduleOnMainThread(1.5, () => RestoreAffixes(false));
+            ScheduleOnMainThread(6.0, () => RestoreAffixes(false));
+            ScheduleOnMainThread(18.0, () => RestoreAffixes(true));
+            // 服务器在恢复完成后把全部词缀重新广播一遍：客户端不读存档 XML（物品经网络生成），
+            // TickBox 类组件可能先擦掉随生成包过来的标签——权威侧主动推送彻底消除这个竞态（已同组则幂等跳过）
+            ScheduleOnMainThread(2.5, BroadcastAllAffixes);
+            ScheduleOnMainThread(12.0, BroadcastAllAffixes);
             return null;
+        }
+
+        // ---- 中途加入玩家的词缀同步 ----
+        static double nextClientWatch;
+        static int lastClientCount = -1;
+
+        /// <summary>
+        /// 中途加入的玩家服务端重播：新客户端连入后，它的开局恢复扫描/重播都早已错过，
+        /// 词缀只有标签兜底在工作（内存表为空 → 优先/单打独斗状态机不启动）。
+        /// 服务器每 2 秒检查一次连接数，发现新增客户端就延迟 5 秒（等它把世界建出来）重播全部词缀。
+        /// 主机单人的场景连接数恒定，无额外开销。
+        /// </summary>
+        static void TickLateJoinerResync()
+        {
+            if (GameMain.NetworkMember == null || !GameMain.NetworkMember.IsServer) return;
+            if (Timing.TotalTime < nextClientWatch) return;
+            nextClientWatch = Timing.TotalTime + 2.0;
+
+            int count = 0;
+            try
+            {
+                var clients = (netConnectedClientsProp ??= GameMain.NetworkMember.GetType()
+                    .GetProperty("ConnectedClients"))?.GetValue(GameMain.NetworkMember) as System.Collections.IEnumerable;
+                if (clients == null) return;
+                foreach (var c in clients) count++;
+            }
+            catch { return; }
+
+            if (lastClientCount < 0) { lastClientCount = count; return; } // 首次仅记录基线
+            if (count > lastClientCount)
+            {
+                DebugLog($"Late joiner detected (clients {lastClientCount}→{count}), scheduling affix resync in 5s");
+                ScheduleOnMainThread(5.0, BroadcastAllAffixes);
+            }
+            lastClientCount = count;
+        }
+
+        /// <summary>把服务器内存里的全部词缀广播给客户端（仅服务器上下文执行；客户端/单机自动跳过）。
+        /// 整轮共用一份物品快照（免每件词缀各复制全表），逐条广播日志压制、只打一条汇总</summary>
+        static void BroadcastAllAffixes()
+        {
+            if (GameMain.NetworkMember == null || !GameMain.NetworkMember.IsServer) return;
+            if (ItemAffixes.Count == 0) return;
+            var items = SnapshotItems();
+            if (items == null) return;
+            int sent = 0;
+            foreach (var kv in ItemAffixes.ToList())
+            {
+                var def = GetEffectiveDef(kv.Value);
+                var item = FindItemById(kv.Key, items);
+                if (def == null || item == null || item.Removed) continue;
+                BroadcastAffixApplied(item, def, items);
+                sent++;
+            }
+            DebugLog($"roundStart: re-broadcast {sent} affixes to clients");
         }
 
         public static bool IsAffixApplicable(AffixDef affix, Item item)
@@ -1039,14 +1296,15 @@ namespace Touhou.Affixes
             // 顺带保证恢复路径不会清掉石头上的词缀
             if (item.HasTag(STONE_TAG)) return true;
             if (!IsAffixApplicableCore(affix, item)) return false;
-            // 专一：只给当前单手握持的近战；已带标签的放行——恢复路径上它已被改成双手，不能再被这道门槛清掉
+            // 专一：只给当前单手握持的近战；已带该词缀的放行——恢复路径上它已被改成双手，不能再被这道门槛清掉。
+            // 放行判定走三级兜底（内存表→会话表→tags），不再单独依赖会被 tickbox 擦除的标签
             if (affix.ForceTwoHanded
-                && (item.Tags == null || !item.Tags.Contains(AFFIX_TAG_PREFIX + affix.Identifier))
+                && !HasAffixId(item, affix.Identifier)
                 && !IsOneHandedMelee(item))
                 return false;
-            // 专注：只给当前单手握持的远程武器（已带词缀标签的放行，理由同专一）
+            // 专注：只给当前单手握持的远程武器（已带词缀的放行，理由同专一）
             if (affix.ForceTwoHandedRanged
-                && (item.Tags == null || !item.Tags.Contains(AFFIX_TAG_PREFIX + affix.Identifier))
+                && !HasAffixId(item, affix.Identifier)
                 && !IsOneHandedRanged(item))
                 return false;
             return true;
@@ -1338,10 +1596,25 @@ namespace Touhou.Affixes
             }
             if (defs.Count == 0)
             {
-                // 新组全无效：内存条目必须一并清，不然显示/效果补丁还在读旧词缀
+                // 新组全无效：内存条目必须一并清，不然显示/效果补丁还在读旧词缀；
+                // 会话表同理，否则存档会写出已被拆除的幽灵 affixid
                 ItemAffixes.Remove(item.ID);
+                LastKnownAffixes.Remove(item.ID);
                 Warning($"SetAffixes: no valid affix in [{string.Join(",", affixIds)}], skipped {item.Name}");
                 return;
+            }
+
+            // 奇迹必须归位到主词缀 [0]：标签是 HashSet、枚举顺序不保证，恢复路径可能传入乱序列表
+            // （如 steadfast,miracle,abyssal）。不归位的话主词缀记录、额外槽校验、存档顺序全乱套
+            if (defs.Count > 1)
+            {
+                int mi = defs.FindIndex(d => d.Identifier == MIRACLE_AFFIX_ID);
+                if (mi > 0)
+                {
+                    var m = defs[mi];
+                    defs.RemoveAt(mi);
+                    defs.Insert(0, m);
+                }
             }
 
             AffixDef effective = defs.Count == 1 ? defs[0] : ComposeAffixDef(defs, item);
@@ -1365,8 +1638,12 @@ namespace Touhou.Affixes
             BuildPrefixDisplay(data, defs);
 
             ItemAffixes[item.ID] = data;
+            RememberAffix(item, data); // 会话表同步刷新：清内存表后存档仍能写出 affixid
             // 每个词缀各写一个标签 + 一个 UID 标签（RemoveAffixTag 刚清过，直接拼接即可，不必查重）
             string pairTags = BuildAffixTagsString(JoinAffixIds(data), data.Uid);
+            // 缓存给 Tags setter 拦截补丁的热路径（steady state 零分配；拆好的数组免每次 Split）
+            data.AffixTagsJoined = pairTags;
+            data.AffixTagParts = pairTags.Split(',');
             item.Tags = string.IsNullOrEmpty(item.Tags) ? pairTags : item.Tags + "," + pairTags;
 
             RegisterEffectsForDisplay(item, effective);
@@ -1426,11 +1703,12 @@ namespace Touhou.Affixes
 
         public static bool IsAboveEpic(string tier) => tier == "Legendary" || tier == "Special";
 
-        // 奇迹额外槽校验：最多 2 个、不重复、不能再加奇迹、传说/特殊档最多 1 个
-        public static bool CanAddExtraAffix(AffixData data, AffixDef def, out string reason)
+        // 奇迹额外槽校验（基于三级兜底读到的词缀列表，[0] 必须是奇迹）：
+        // 最多 2 个、不重复、不能再加奇迹、传说/特殊档最多 1 个
+        public static bool CanAddExtraAffix(List<string> currentIds, AffixDef def, out string reason)
         {
             reason = null;
-            if (data == null || data.AffixId != MIRACLE_AFFIX_ID)
+            if (currentIds == null || currentIds.Count == 0 || currentIds[0] != MIRACLE_AFFIX_ID)
             {
                 reason = "物品没有奇迹词缀";
                 return false;
@@ -1440,22 +1718,21 @@ namespace Touhou.Affixes
                 reason = "奇迹不能再作为额外词缀";
                 return false;
             }
-            int count = data.ExtraAffixIds?.Count ?? 0;
-            if (count >= 2)
+            if (currentIds.Count - 1 >= 2)
             {
                 reason = "两个额外词缀槽已满";
                 return false;
             }
-            if (data.AffixId == def.Identifier || (data.ExtraAffixIds?.Contains(def.Identifier) ?? false))
+            if (currentIds.Contains(def.Identifier))
             {
                 reason = "物品已有相同词缀";
                 return false;
             }
-            if (IsAboveEpic(def.Tier) && data.ExtraAffixIds != null)
+            if (IsAboveEpic(def.Tier))
             {
-                foreach (var id in data.ExtraAffixIds)
+                for (int i = 1; i < currentIds.Count; i++)
                 {
-                    if (AffixDefs.TryGetValue(id, out var ex) && IsAboveEpic(ex.Tier))
+                    if (AffixDefs.TryGetValue(currentIds[i], out var ex) && IsAboveEpic(ex.Tier))
                     {
                         reason = "传说/特殊档词缀最多一个";
                         return false;
@@ -1560,10 +1837,71 @@ namespace Touhou.Affixes
         static MethodInfo netSendToConn;
         static PropertyInfo netConnectedClientsProp;
 
+        /// <summary>
+        /// 客户端上下文本地变更词缀后镜像给服务器：listen server/多人下两侧词缀表互相隔离
+        /// （各自 AssemblyLoadContext 的静态数据），控制台命令只在调用侧生效——
+        /// 服务器侧（附魔台逻辑所在、存档权威）读不到，会把带词缀的附魔石当普通物品直接分解
+        /// （实测："no weapon+material combo ... normal deconstruct"，石头被拆成铁）。
+        /// 本地内存有词缀 → 发送整组词缀；已被移除 → 发送空列表（服务器按移除处理）。
+        /// 镜像后服务器 SetAffixes 落地并广播，两侧与存档恢复一致。
+        /// 注意：整体包在 #if CLIENT 里——"GameMain.Client" 成员只存在于客户端程序集，
+        /// 无保护引用会让 SERVER 构建直接编译失败（实测 CS0117，服务器侧模组全灭）；
+        /// 单机/服务器上下文本侧就是权威，直接不执行即可。
+        /// </summary>
+        public static void MirrorAffixToServer(Item item)
+        {
+#if CLIENT
+            try
+            {
+                if (GameMain.Client == null) return; // 单机/本地服务器宿主环境：本侧就是权威
+                if (item == null) return;
+
+                bool hasLocal = ItemAffixes.TryGetValue(item.ID, out var data);
+                string joined = hasLocal ? JoinAffixIds(data) : "";
+                var net = LuaCsSetup.Instance.Networking;
+                var msg = net.Start(NET_APPLY_AFFIX);
+                msg.WriteUInt16(item.ID);
+                msg.WriteString(joined);
+                // 带上 prefab 与 uid：服务器凭两者做身份校验、保持同一实例身份
+                msg.WriteString(item.Prefab.Identifier.Value);
+                msg.WriteString(hasLocal ? (data.Uid ?? "") : "");
+
+                // 客户端→服务器只有广播式 Send（2 参 DeliveryMethod 或单参重载），与服务端单播签名不同
+                var send = net.GetType().GetMethods().FirstOrDefault(m =>
+                    m.Name == "Send" && m.GetParameters() is { Length: 2 } p &&
+                    p[1].ParameterType.IsEnum && p[1].ParameterType.Name == "DeliveryMethod");
+                if (send != null)
+                {
+                    object reliable = Enum.Parse(send.GetParameters()[1].ParameterType, "Reliable");
+                    send.Invoke(net, new[] { msg, reliable });
+                    DebugLog($"Net: mirrored local affix [{joined}] for {item.Name} to server");
+                    return;
+                }
+                var send1 = net.GetType().GetMethods().FirstOrDefault(m => m.Name == "Send" && m.GetParameters().Length == 1);
+                if (send1 != null)
+                {
+                    send1.Invoke(net, new object[] { msg });
+                    DebugLog($"Net: mirrored local affix [{joined}] for {item.Name} to server");
+                }
+                else Warning("MirrorAffixToServer: no usable Networking.Send overload");
+            }
+            catch (Exception ex)
+            {
+                Warning($"MirrorAffixToServer failed: {ex.Message}");
+            }
+#endif
+// SERVER 构建：本侧就是权威，无需镜像（空实现）
+        }
+
         // 附魔后的同步：①本地开服时服务器/客户端是两个隔离脚本上下文但共享同一实体列表，
         // 把标签打到所有同 ID 实例上，另一边的显示/效果补丁就能读到；
         // ②广播给远端客户端（走兼容层 Send，编译期调用，不用反射猜重载）
-        public static void BroadcastAffixApplied(Item item, AffixDef affix)
+        /// <summary>
+        /// 把一件物品的词缀广播给客户端（服务端调用）。
+        /// sharedSnapshot：调用方已持有的物品列表快照——批量广播（开局重播）时传同一份，
+        /// 避免每件词缀都复制一次全物品列表（SnapshotItems 是 O(全物品数) 的复制）。
+        /// </summary>
+        public static void BroadcastAffixApplied(Item item, AffixDef affix, List<Item> sharedSnapshot = null)
         {
             try
             {
@@ -1580,7 +1918,7 @@ namespace Touhou.Affixes
                 }
                 string pairTags = BuildAffixTagsString(joinedIds, uid);
                 int mirrored = 0;
-                var mirrorSnapshot = SnapshotItems();
+                var mirrorSnapshot = sharedSnapshot ?? SnapshotItems();
                 if (mirrorSnapshot == null) return; // 加载线程正在改动物品列表，放弃本次镜像（客户端由网络消息覆盖）
                 foreach (var it in mirrorSnapshot)
                 {
@@ -1622,7 +1960,7 @@ namespace Touhou.Affixes
                         sendToConn.Invoke(net, new object[] { m2, conn, reliable });
                         sent++;
                     }
-                    DebugLog($"Net: broadcast [{joinedIds}] for {item.Name} (ID={item.ID}) unicast to {sent} client(s)");
+                    // 日志精简：逐条广播日志删除（开局重播有汇总行，台子/命令操作有自己的结果行）
                     return;
                 }
 
@@ -1639,7 +1977,6 @@ namespace Touhou.Affixes
                 {
                     object reliable = Enum.Parse(send.GetParameters()[1].ParameterType, "Reliable");
                     send.Invoke(net, new[] { msg, reliable });
-                    DebugLog($"Net: broadcast [{joinedIds}] for {item.Name} (ID={item.ID}) via Send+DeliveryMethod");
                 }
                 else
                 {
@@ -1648,7 +1985,6 @@ namespace Touhou.Affixes
                     if (send1 != null)
                     {
                         send1.Invoke(net, new object[] { msg });
-                        DebugLog($"Net: broadcast [{joinedIds}] for {item.Name} (ID={item.ID}) via Send");
                     }
                     else Warning("BroadcastAffixApplied: no usable Networking.Send overload");
                 }
@@ -1718,7 +2054,7 @@ namespace Touhou.Affixes
                 string prefabId = msg.ReadString();
                 string uid = msg.ReadString();
                 var item = FindItemById(itemId);
-                DebugLog($"Net: received affix [{affixId}] for itemId={itemId}, itemFound={item != null && !item.Removed}");
+                // 日志精简：物品未就位/未找到的瞬时状态静默（5s/20s 重播会自动补），只记真正的应用
                 if (item == null || item.Removed) return;
                 // ID 错位防护：客户端复用了该 ID 时找到的是另一个物品，不能把词缀安上去
                 if (!string.IsNullOrEmpty(prefabId) && item.Prefab.Identifier.Value != prefabId)
@@ -1727,13 +2063,15 @@ namespace Touhou.Affixes
                         $"({item.Prefab.Identifier.Value} != {prefabId}), item is not the enchanted one");
                     return;
                 }
-                // 只有"已是同一组词缀"才跳过；换新词缀必须走 SetAffixes 完整替换流程，
-                // 不然客户端永远停在第一次附魔的状态
-                if (TryGetAffixData(item, out var existing) && JoinAffixIds(existing) == affixId)
+                // 空列表 = 客户端 console 移除指令的镜像：按移除处理（清效果/恢复属性/清标签与内存）
+                if (string.IsNullOrEmpty(affixId))
                 {
-                    DebugLog($"Net: item {item.Name} (ID={item.ID}) already has affix [{affixId}], skipping");
+                    SetAffixes(item, new List<string>());
                     return;
                 }
+                // 只有"已是同一组词缀"才跳过；换新词缀必须走 SetAffixes 完整替换流程，
+                // 不然客户端永远停在第一次附魔的状态。这是开局重播的常态去重路径，静默处理
+                if (TryGetAffixData(item, out var existing) && JoinAffixIds(existing) == affixId) return;
                 // affixId 可能是逗号连接的多词缀列表（奇迹）；逐个校验存在性
                 var ids = new List<string>();
                 foreach (var raw in affixId.Split(','))
@@ -1747,7 +2085,13 @@ namespace Touhou.Affixes
                 {
                     // 服务端权威下发实例 UID，客户端镜像与存档写入都用它；空串（旧版本消息）走生成
                     SetAffixes(item, ids, string.IsNullOrEmpty(uid) ? null : uid);
-                    DebugLog($"Net: applied [{affixId}] to {item.Name} (ID={item.ID})");
+                    // 服务器经镜像消息落地后广播给其余客户端：发起方已有本地副本，
+                    // 重复消息会被"已同组"去重跳过（HandleApplyAffixMessage 不镜像，无回环）
+                    if (GameMain.NetworkMember != null && GameMain.NetworkMember.IsServer
+                        && AffixDefs.TryGetValue(ids[0], out var firstDef))
+                    {
+                        BroadcastAffixApplied(item, firstDef);
+                    }
                 }
             }
             catch (Exception ex)
@@ -2066,9 +2410,14 @@ namespace Touhou.Affixes
 
             foreach (var kv in ItemAffixes.ToList()) // 快照：TryGetAffixData 可能清除过期条目
             {
-                // 期望的完整标签串（多词缀时每词缀一个标签 + 一个 UID 标签），逐个检查缺失
-                string pairTags = BuildAffixTagsString(JoinAffixIds(kv.Value), kv.Value.Uid);
-                string[] expected = pairTags.Split(',');
+                // 期望的完整标签串（多词缀时每词缀一个标签 + 一个 UID 标签），复用 AffixData 缓存
+                if (kv.Value.AffixTagsJoined == null)
+                {
+                    kv.Value.AffixTagsJoined = BuildAffixTagsString(JoinAffixIds(kv.Value), kv.Value.Uid);
+                    kv.Value.AffixTagParts = kv.Value.AffixTagsJoined.Split(',');
+                }
+                string pairTags = kv.Value.AffixTagsJoined;
+                string[] expected = kv.Value.AffixTagParts;
                 // 同 BroadcastAffixApplied：双上下文共享实体列表，所有同 ID 实例都要补，不然另一边读不到
                 if (!byId.TryGetValue(kv.Key, out var matches)) continue;
                 foreach (var item in matches)
@@ -2087,7 +2436,9 @@ namespace Touhou.Affixes
                     if (allPresent) continue;
                     RemoveAffixTag(item); // 先清残留的旧词缀标签，再补当前词缀组 + UID（成对）
                     item.Tags = string.IsNullOrEmpty(item.Tags) ? pairTags : item.Tags + "," + pairTags;
-                    Log($"Self-healed affix tag '{pairTags}' on {item.Name} (ID={item.ID}): tag was wiped (e.g. by a component's tags effect)");
+                    // tickbox 类组件会每隔几秒擦一次标签，自愈也会跟着反复触发——日志按物品节流（60 秒）
+                    LogThrottled($"tag_heal_{item.ID}", 60.0,
+                        $"Self-healed affix tag '{pairTags}' on {item.Name} (ID={item.ID}): tag was wiped (e.g. by a component's tags effect)");
                 }
             }
         }
@@ -2293,6 +2644,11 @@ namespace Touhou.Affixes
                         firstStone = item;
                         TryGetAffixData(item, out var sd);
                         stoneAffix = sd?.AffixId;
+                        // 内存未命中时读标签兜底：listen server 双上下文的词缀表互相隔离，
+                        // 控制台命令可能只写进了另一侧，但标签是共享实例、两端都读得到。
+                        // 少了这一层，服务器会把带词缀的石头当普通物品直接分解（实测发生）
+                        if (stoneAffix == null && Helpers.TryReadAffixFromTags(item, out var tagDef))
+                            stoneAffix = tagDef.Identifier;
                     }
                     else if (secondStone == null) secondStone = item;
                     continue;
@@ -2357,10 +2713,11 @@ namespace Touhou.Affixes
                 // 石头转移：词缀由石头指定，必须适用目标；不适用返回 null 让调用方取消（石头不消耗）
                 if (!AffixDefs.TryGetValue(weights.FixedAffix, out var fixedDef) || !IsAffixApplicable(fixedDef, item))
                     return null;
-                // 目标是奇迹物品（石头除外，转石头永远整组替换）且转的不是奇迹本身 → 过额外槽校验，违规就取消
+                // 目标是奇迹物品（石头除外，转石头永远整组替换）且转的不是奇迹本身 → 过额外槽校验，违规就取消。
+                // 词缀列表走三级兜底读取：内存恢复前的窗口里若只读内存表会把"加额外词缀"误判成"替换"
                 if (fixedDef.Identifier != MIRACLE_AFFIX_ID && !item.HasTag(STONE_TAG)
-                    && TryGetAffixData(item, out var targetData) && targetData.AffixId == MIRACLE_AFFIX_ID
-                    && !CanAddExtraAffix(targetData, fixedDef, out var slotReason))
+                    && TryGetCurrentAffixIds(item, out var curIds) && curIds[0] == MIRACLE_AFFIX_ID
+                    && !CanAddExtraAffix(curIds, fixedDef, out var slotReason))
                 {
                     LogThrottled("miracle_slot_" + item.ID, 5.0,
                         $"EnchantingStation: cannot add [{fixedDef.Identifier}] to {item.Name}: {slotReason}, transfer cancelled (stone not consumed)");
@@ -2462,6 +2819,10 @@ namespace Touhou.Affixes
         public string RichPrefixDisplay;
         // 预拼好的纯文本前缀，名称防重用
         public string PlainPrefixDisplay;
+        // 预拼好的完整词缀标签串（__affix_id1,__affix_id2,__affixuid_xxx）：Tags setter 拦截补丁的热路径用
+        public string AffixTagsJoined;
+        // AffixTagsJoined 按逗号拆好的数组：拦截补丁逐标签 Contains 检查，免 Split 分配
+        public string[] AffixTagParts;
         public bool HasExtras => ExtraAffixIds != null && ExtraAffixIds.Count > 0;
     }
 

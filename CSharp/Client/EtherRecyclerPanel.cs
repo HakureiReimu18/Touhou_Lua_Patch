@@ -34,32 +34,15 @@ public sealed class EtherRecyclerPanelPlugin : IAssemblyPlugin
         {
             if (!patched)
             {
-                bool drawHudPatched = false;
-                bool hudUpdatePatched = false;
-
-                // 主触发（可选）：设备 HUD 展示期间每帧都会走 Item.DrawHUD（CharacterHUD.Draw → SelectedItem.DrawHUD）
-                var drawHud = AccessTools.Method(typeof(Item), "DrawHUD", new[] { typeof(SpriteBatch), typeof(Barotrauma.Camera), typeof(Character) });
-                if (drawHud != null)
-                {
-                    harmony.Patch(drawHud, postfix: new HarmonyMethod(AccessTools.Method(typeof(EtherRecyclerPanelPlugin), nameof(AfterItemDrawHUD))));
-                    drawHudPatched = true;
-                }
-
-                // 辅触发（可选）：本地玩家 HUD 每帧更新一次，用来收起面板
-                var hudUpdate = AccessTools.Method(typeof(CharacterHUD), "Update", new[] { typeof(float), typeof(Character), typeof(Barotrauma.Camera) });
-                if (hudUpdate != null)
-                {
-                    harmony.Patch(hudUpdate, postfix: new HarmonyMethod(AccessTools.Method(typeof(EtherRecyclerPanelPlugin), nameof(AfterCharacterHUDUpdate))));
-                    hudUpdatePatched = true;
-                }
-
+                // 只用 Lua 驱动（客户端每帧 Hook.Call）+ think 兜底；不再打 Harmony 补丁，
+                // 避免多套显示判定互相打架（联机拿在手里时表现为窗口闪烁）
                 // 兜底：LuaCs 每帧 think 钩子（Harmony 两个补丁都没挂上时，靠它整条链路也能跑）
                 LuaCsSetup.Instance.Hook.Add("think", "Touhou.EtherRecyclerPanel.Think", OnThink);
                 // 主驱动：客户端 Lua 每帧把「选中物品」交过来（Lua 链路已验证可用，最可靠）
                 LuaCsSetup.Instance.Hook.Add("Touhou.EtherRecyclerPanel.Sync", "Touhou.EtherRecyclerPanel", OnLuaSync);
 
                 patched = true;
-                EtherRecyclerPanel.Log($"面板插件已加载（DrawHUD 补丁 {(drawHudPatched ? "OK" : "未命中")}，CharacterHUD 补丁 {(hudUpdatePatched ? "OK" : "未命中")}，Lua 驱动 + think 兜底已注册）");
+                EtherRecyclerPanel.Log("面板插件已加载（Lua 驱动 + think 兜底）");
             }
         }
         catch (Exception ex)
@@ -100,15 +83,7 @@ public sealed class EtherRecyclerPanelPlugin : IAssemblyPlugin
         return null;
     }
 
-    private static void AfterItemDrawHUD(Item __instance)
-    {
-        try { EtherRecyclerPanel.ShowFor(__instance); } catch (Exception ex) { EtherRecyclerPanel.Disable(ex); }
-    }
 
-    private static void AfterCharacterHUDUpdate(Character character)
-    {
-        try { EtherRecyclerPanel.HideIfNotApplicable(character); } catch (Exception ex) { EtherRecyclerPanel.Disable(ex); }
-    }
 }
 
 internal sealed class EtherRecyclerPanelState
@@ -210,8 +185,20 @@ internal static class EtherRecyclerPanel
         }
 
         var machine = GetRecycler(item);
-        if (machine == null) { HideAll(); return; }
-        ShowFor(machine);
+        if (machine != null)
+        {
+            ShowFor(machine);
+            return;
+        }
+
+        // 不是我们的回收机 → 收起；但「看起来是回收机却解析失败」（拿在手里/换手时的瞬时异常）
+        // 保持现状，否则这些瞬时失败会让窗口一闪一闪
+        bool looksLikeOurs = false;
+        try { looksLikeOurs = item != null && !item.Removed && item.HasTag(MachineTag.ToIdentifier()); } catch { /* 取不到就当作不是 */ }
+        if (!looksLikeOurs)
+        {
+            HideAll();
+        }
     }
 
     // 主路径：设备 HUD 正在显示时被调用（Item.DrawHUD 补丁）
@@ -475,6 +462,12 @@ internal static class EtherRecyclerPanel
         state.StartButton.Text = TextManager.Get(running ? "fabricatorcancel" : "touhou.recycler.start");
         state.Prediction.Text = BuildPrediction(containers.Value.Input);
 
+        // 专属服务器下服务端的 Inventory.Locked 不会同步到客户端（单人同一进程才会），
+        // 所以这里按"运行中"在客户端自己锁住入料/催化：表现与单人一致（变灰、拖不出来）。
+        // 服务端那份锁仍然生效，客户端锁只是让本地 UI 与拒绝拖放保持一致。
+        if (containers.Value.Input.Locked != running) { containers.Value.Input.Locked = running; }
+        if (containers.Value.Catalyst.Locked != running) { containers.Value.Catalyst.Locked = running; }
+
         // 暂停菜单等模态 UI 打开时把面板收起来（避免盖在暂停菜单上面）
         bool modalOpen = false;
         try { modalOpen = GUI.PauseMenu is GUIComponent pause && pause.Visible; } catch { /* 取不到就算了 */ }
@@ -542,22 +535,41 @@ internal static class EtherRecyclerPanel
         {
             if (container?.GuiFrame is GUIComponent frame)
             {
-                HideFrame(frame);
+                HideFrame(state, frame);
             }
         }
         if (state.Buttons?.GuiFrame != null)
         {
             // 每帧按组件重新取窗格：原版在分辨率变更时会重建它，存的引用会失效
-            HideFrame(state.Buttons.GuiFrame);
+            HideFrame(state, state.Buttons.GuiFrame);
         }
     }
 
-    private static void HideFrame(GUIComponent frame)
+    private static void HideFrame(EtherRecyclerPanelState state, GUIComponent frame)
     {
         frame.Visible = false;
         frame.CanBeFocused = false;
-        frame.RectTransform.AbsoluteOffset = OffScreenOffset;
         try { GUI.RemoveFromUpdateList(frame, true); } catch { /* 不在列表里也无所谓 */ }
+        AlignToPanel(state, frame);
+    }
+
+    // 让被隐藏的原生窗格「贴住面板矩形」而不是挪到屏幕外：
+    //  1) 它们不可见、不可聚焦、已从更新列表摘掉，不会吃点击；
+    //  2) 原版「正被某某使用」提示的位置取的是这些窗格矩形的并集（Item.UpdateHUD），
+    //     贴住面板后提示会落在面板下方，和其它机器一致。
+    private static void AlignToPanel(EtherRecyclerPanelState state, GUIComponent frame)
+    {
+        if (state.Panel == null) { return; }
+
+        var panelRect = state.Panel.RectTransform;
+        Vector2 size = panelRect.RelativeSize;
+        float left = 0.5f + panelRect.RelativeOffset.X - size.X * 0.5f;
+        float top = 0.5f + panelRect.RelativeOffset.Y - size.Y * 0.5f;
+
+        var rect = frame.RectTransform;
+        rect.Anchor = Anchor.TopLeft;
+        rect.RelativeSize = size;
+        rect.RelativeOffset = new Vector2(left, top);
     }
 
     private static void RestoreNativeFrames(EtherRecyclerPanelState state)
@@ -581,6 +593,7 @@ internal static class EtherRecyclerPanel
         frame.Visible = true;
         frame.CanBeFocused = true;
         frame.RectTransform.AbsoluteOffset = Point.Zero;
+        frame.RectTransform.RelativeOffset = Point.Zero.ToVector2();
     }
 
     private static void SetArea(GUIComponent component, Vector2 offset, Vector2 size, Vector2 panelSize)

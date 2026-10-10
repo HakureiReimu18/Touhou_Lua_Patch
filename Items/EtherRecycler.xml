@@ -21,7 +21,7 @@
     -->
     <Item name="以太回收机" identifier="Touhou_Ether_Recycler" tags="Touhou_Ether_Recycler,donttakeitems,dontsellitems" subcategory="Touhou"
           category="Machine" linkable="true" allowedlinks="fabricator,deconstructor,locker,toxcontainer" scale="0.3"
-          description="" damagedbyexplosions="true" GrabWhenSelected="true" explosiondamagemultiplier="0.2" isshootable="true">
+          description="" indestructible="true" damagedbyexplosions="false" GrabWhenSelected="true" explosiondamagemultiplier="0.2" isshootable="true">
       <Price baseprice="200">
         <Price storeidentifier="merchantoutpost" multiplier="1.1" sold="true" maxavailable="1" />
         <Price storeidentifier="merchantcity" multiplier="1" sold="true" maxavailable="1" />
@@ -51,7 +51,7 @@
                       allowingameediting="false" canbeselected="false">
         <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
         <StatusEffect type="OnActive" target="This" IsOn="true" stackable="false" forcePlaySounds="true">
-          <sound file="%ModDir:2941124988%/Sounds/Machine/Magic_Altar_Running.ogg" range="1200" volume="1.5" loop="true" />
+          <sound file="%ModDir:2941124988%/Sounds/Machine/Magic_Altar_Running.ogg" range="1200" volume="3.0" loop="true" />
         </StatusEffect>
       </LightComponent>
 

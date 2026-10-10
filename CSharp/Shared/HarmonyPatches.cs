@@ -20,7 +20,7 @@ namespace Touhou.Affixes
         public static bool TryReadAffixFromTags(Item item, out AffixDef def)
         {
             def = null;
-            if (string.IsNullOrEmpty(item.Tags) || !item.Tags.Contains(Mod.AFFIX_TAG_PREFIX)) return false;
+            // GetTags() 零分配直扫（item.Tags 的 getter 每次都在拼字符串，显示热路径上禁用）
             List<AffixDef> defs = null;
             foreach (var tag in item.GetTags())
             {
@@ -389,13 +389,34 @@ namespace Touhou.Affixes
     [HarmonyPatch]
     public static class ItemSavePatch
     {
+        /// <summary>诊断计数：Save 时实际写出 affixid 的次数（affixdiag 展示）</summary>
+        public static int SavedAffixCount;
+
         static MethodBase TargetMethod()
         {
-            var m = typeof(Item).GetMethod("Save", BindingFlags.Public | BindingFlags.Instance);
-            if (m != null) Mod.DebugLog($"Found Save method: {m}");
-            else Mod.Warning("Save method NOT FOUND on Item");
-            return m;
+            // 不用 GetMethod("Save")：某些版本存在同名重载会抛 AmbiguousMatchException，
+            // 被 per-type try/catch 吞掉后补丁静默失效——存档写不出 affixid 的直接原因。
+            // 改为枚举所有同名方法、精确匹配单参 XElement 的那个
+            MethodBase m = null;
+            foreach (var candidate in typeof(Item).GetMethods(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            {
+                if (candidate.Name != "Save") continue;
+                var p = candidate.GetParameters();
+                if (p.Length == 1 && p[0].ParameterType == typeof(XElement)) { m = candidate; break; }
+            }
+            if (m != null)
+            {
+                Mod.LogOnce($"ItemSavePatch: patched {m}");
+                return m;
+            }
+            // 找不到也绝不能返回 null（Harmony 会抛异常中断该类注册）：补哑方法，功能退化但其余补丁不受影响
+            Mod.Warning("ItemSavePatch: Item.Save(XElement) NOT FOUND, using dummy target");
+            return typeof(ItemSavePatch).GetMethod(nameof(DummyTarget),
+                BindingFlags.NonPublic | BindingFlags.Static);
         }
+
+        static void DummyTarget() { }
 
         static void Postfix(Item __instance, XElement __result)
         {
@@ -406,6 +427,17 @@ namespace Touhou.Affixes
                 __result.SetAttributeValue("affixid", Mod.JoinAffixIds(data));
                 // affixuid 跟存档走，跨会话凭它区分同 prefab 的另一件
                 if (data.Uid != null) __result.SetAttributeValue("affixuid", data.Uid);
+                SavedAffixCount++; // 计数供 affixdiag 查询；不再逐件刷日志（存档时每件一条太吵）
+                return;
+            }
+
+            // 会话表兜底（prefab 双因子校验）：巡回边界内存表已清空、tags 又被 tickbox 擦除时，
+            // affixid 仍写得出来——这是"摆脱 tag 依赖"的关键一层
+            if (Mod.TryGetRememberedAffix(__instance, out var remembered))
+            {
+                __result.SetAttributeValue("affixid", remembered.AffixId);
+                if (remembered.Uid != null) __result.SetAttributeValue("affixuid", remembered.Uid);
+                SavedAffixCount++;
                 return;
             }
 
@@ -423,6 +455,7 @@ namespace Touhou.Affixes
                 {
                     __result.SetAttributeValue("affixid", string.Join(",", ids));
                     if (uid != null) __result.SetAttributeValue("affixuid", uid);
+                    SavedAffixCount++;
                 }
             }
             // 别图省事用桥接文件按裸 ID 兜底：物品 ID 跨会话会漂，之前把词缀写到肉桂皮存档上过
@@ -454,13 +487,13 @@ namespace Touhou.Affixes
             ushort id = __result.ID;
             string affixId = affixAttr.Value;
             string uid = element.GetAttribute("affixuid")?.Value;
-            Mod.PendingAffixes[id] = new Mod.PendingAffix
+            Mod.AddPendingAffix(id, new Mod.PendingAffix
             {
                 AffixId = affixId,
                 // 刚加载 prefab 就是它自己的，记下来给恢复路径做双因子校验
                 PrefabId = __result.Prefab.Identifier.Value,
                 Uid = uid
-            };
+            });
 
             if (Mod.TryGetAffixData(__result, out _)) return;
             // 逗号连的是奇迹多词缀，逐个验过再整组上；uid 为空的老存档 SetAffixes 会补，每物一次
@@ -474,6 +507,90 @@ namespace Touhou.Affixes
         }
     }
 
+    /// <summary>
+    /// 词缀标签防擦除（根治）：内容模组常用 setvalue tags 整串重写物品标签（开关/状态机，
+    /// 且可能 ContinuousSignal 每帧触发），会把 __affix_/__affixuid_ 一起抹掉——
+    /// 自愈只能事后补救，存档写入窗口仍可能丢词缀。直接在 Item.Tags 的 setter 上拦截：
+    /// 新标签串缺本物品的词缀标签时自动补回，"标签被擦"这一整类问题从源头消失。
+    /// 性能：无词缀快速退出；已附魔物品走 AffixData 上的缓存标签串/数组，
+    /// steady state 只有几次短字符串 Contains，零分配（LastKnown/Pending 兜底路径才现拼）。
+    /// 注意：移除词缀走 Item.RemoveTag（直接操作内部集合、不经过 setter），不会被本补丁挡住；
+    /// 物品加载时应用存档标签同样经过 setter，但那时内存/会话表还没有记录，原样放行。
+    /// </summary>
+    [HarmonyPatch(typeof(Item), "set_Tags")]
+    public static class AffixTagPreservePatch
+    {
+        /// <summary>诊断计数：Prefix 实际执行次数 / 真实补写标签次数（affixdiag 命令展示）</summary>
+        public static int FiredCount;
+        public static int PreservedCount;
+        public static string LastDetail;
+
+        static void Prefix(Item __instance, ref string value)
+        {
+            // 无词缀快速退出（含待恢复索引：恢复完成前的窗口也要保）
+            if (Mod.ItemAffixes.Count == 0 && Mod.LastKnownAffixes.Count == 0 && Mod.PendingByUid.Count == 0) return;
+            FiredCount++;
+
+            string joined;
+            string[] parts;
+            if (Mod.TryGetAffixData(__instance, out var data))
+            {
+                joined = data.AffixTagsJoined;
+                parts = data.AffixTagParts;
+                if (parts == null) // 旧数据/初次写入的兜底：补建缓存后再走快路径
+                {
+                    joined ??= Mod.BuildAffixTagsString(Mod.JoinAffixIds(data), data.Uid);
+                    parts = joined.Split(',');
+                    data.AffixTagsJoined = joined;
+                    data.AffixTagParts = parts;
+                }
+            }
+            else if (Mod.TryGetRememberedAffix(__instance, out var remembered))
+            {
+                joined = Mod.BuildAffixTagsString(remembered.AffixId, remembered.Uid);
+                parts = joined.Split(',');
+            }
+            else if (Mod.PendingAffixes.TryGetValue(__instance.ID, out var pending)
+                && pending.AffixId != null
+                && (pending.PrefabId == null || pending.PrefabId == __instance.Prefab.Identifier.Value))
+            {
+                // 恢复完成前的短暂窗口（Item.Load 已登记待恢复条目）也保住标签
+                joined = Mod.BuildAffixTagsString(pending.AffixId, pending.Uid);
+                parts = joined.Split(',');
+            }
+            else if (Mod.ReadUidTag(__instance) is { } tagUid
+                && Mod.PendingByUid.TryGetValue(tagUid, out var byUid)
+                && (byUid.PrefabId == null || byUid.PrefabId == __instance.Prefab.Identifier.Value))
+            {
+                // 客户端竞态兜底（跨巡回 ID 漂移）：内存/会话表都没有，但物品身上还带着 uid 标签，
+                // 用它去待恢复索引里取词缀清单——否则 TickBox 类组件会在恢复扫描前把标签擦光
+                joined = Mod.BuildAffixTagsString(byUid.AffixId, byUid.Uid);
+                parts = joined.Split(',');
+            }
+            else if (Mod.TryGetCurrentAffixIds(__instance, out var curIds) && curIds.Count > 0)
+            {
+                // 最后兜底：按物品当前的 __affix_ 标签"就地保全"（自身就是即将被覆盖的值）
+                joined = Mod.BuildAffixTagsString(string.Join(",", curIds), Mod.ReadUidTag(__instance));
+                parts = joined.Split(',');
+            }
+            else return;
+
+            // 逐标签短串 Contains（标签名够独特，不会误匹配）；缺任何一个才重写
+            bool allPresent = !string.IsNullOrEmpty(value);
+            if (allPresent)
+            {
+                foreach (var t in parts)
+                {
+                    if (!value.Contains(t)) { allPresent = false; break; }
+                }
+            }
+            if (allPresent) return;
+            value = string.IsNullOrEmpty(value) ? joined : value.TrimEnd(',') + "," + joined;
+            PreservedCount++;
+            LastDetail = $"{__instance.Name} (ID={__instance.ID}): kept [{joined}]";
+        }
+    }
+
     /// 防 ID 回收串味：带词缀的物件删了（消耗/分解/掉图/巡回卸载）就立刻清内存表和冷却表，
     /// ID 会被引擎回收发给新物件，残留的话新东西会整套"继承"词缀
     [HarmonyPatch(typeof(Item), nameof(Item.Remove))]
@@ -481,9 +598,11 @@ namespace Touhou.Affixes
     {
         static void Postfix(Item __instance)
         {
-            if (Mod.ItemAffixes.Count == 0) return; // 全局快速退出
+            if (Mod.ItemAffixes.Count == 0 && Mod.LastKnownAffixes.Count == 0) return; // 全局快速退出
             if (Mod.ItemAffixes.Remove(__instance.ID))
                 CooldownDamageState.Purge(__instance.ID);
+            // 会话表随物品真正删除一起清理（ID 复用防护；逐条移除，其余物品的条目继续保留）
+            Mod.LastKnownAffixes.Remove(__instance.ID);
         }
     }
 
@@ -1283,14 +1402,14 @@ namespace Touhou.Affixes
             var result = Mod.TryGetEnchantingTarget(items, out var weapon, out var material);
             if (result == null)
             {
-                // 奇迹物品没材料时单独办：剥掉奇迹以外的词缀退回输出栏，绝不进分解
-                bool isMiracle = Mod.TryGetAffixData(targetItem, out var tdata)
-                    && tdata.AffixId == Mod.MIRACLE_AFFIX_ID;
-                if (!isMiracle) isMiracle = TagsIndicateMiracle(targetItem); // 内存表没中就翻标签
-                if (isMiracle) return StripMiracleExtras(__instance, inputInventory, targetItem);
+                // 奇迹物品没材料时单独办：剥掉奇迹以外的词缀退回输出栏，绝不进分解。
+                // 判定走三级兜底（内存表→会话表→tags），不依赖会被 tickbox 擦除的标签
+                if (Mod.HasAffixId(targetItem, Mod.MIRACLE_AFFIX_ID))
+                    return StripMiracleExtras(__instance, inputInventory, targetItem);
 
-                // 这行日志区分"补丁没跑"和"判定没过"
-                Mod.DebugLog($"EnchantingStation: no weapon+material combo in {station.Name} (items: {string.Join(", ", items.Select(i => i?.Name ?? "null"))}), normal deconstruct");
+                // 无组合是常态（哨站里随便拆点东西都算），5 秒节流；"补丁没跑"仍可从完全无输出判断
+                Mod.LogThrottled("ench_no_combo", 5.0,
+                    $"EnchantingStation: no weapon+material combo in {station.Name} (items: {string.Join(", ", items.Select(i => i?.Name ?? "null"))}), normal deconstruct");
                 return true;
             }
 
@@ -1308,21 +1427,23 @@ namespace Touhou.Affixes
                 return true;
             }
 
-            // 石头转移按目标分三种走法，其余照旧整组替换
-            if (result.Value.tierKey == Mod.STONE_TAG && !weapon.HasTag(Mod.STONE_TAG)
-                && Mod.TryGetAffixData(weapon, out var wdata))
+            // 石头转移按目标分三种走法，其余照旧整组替换。
+            // 当前词缀组走三级兜底读取：内存恢复前的窗口里若只读内存表，会把"给奇迹物品加额外词缀"
+            // 误执行成"整组替换"（实测：转移优先石头时把奇迹连额外一起顶掉）
+            if (result.Value.tierKey == Mod.STONE_TAG && !weapon.HasTag(Mod.STONE_TAG))
             {
+                bool hasMiracle = Mod.TryGetCurrentAffixIds(weapon, out var currentIds)
+                    && currentIds.Count > 0 && currentIds[0] == Mod.MIRACLE_AFFIX_ID;
                 if (affix.Identifier == Mod.MIRACLE_AFFIX_ID)
                 {
                     // 奇迹石头：覆盖物品原有词缀，物品回到"仅奇迹"状态
                     Mod.SetAffixes(weapon, new List<string> { Mod.MIRACLE_AFFIX_ID });
                 }
-                else if (wdata.AffixId == Mod.MIRACLE_AFFIX_ID)
+                else if (hasMiracle)
                 {
                     // 奇迹的额外词缀槽，槽位不合的在 PickAffixByWeight 就返回 null 取消了
-                    var ids = Mod.GetAllAffixIds(wdata);
-                    ids.Add(affix.Identifier);
-                    Mod.SetAffixes(weapon, ids);
+                    currentIds.Add(affix.Identifier);
+                    Mod.SetAffixes(weapon, currentIds);
                 }
                 else
                 {
@@ -1358,20 +1479,8 @@ namespace Touhou.Affixes
             return false;
         }
 
-        /// <summary>翻标签判"主词缀是奇迹"（写入顺序主词缀在前），内存表还没恢复好的边界时序用</summary>
-        static bool TagsIndicateMiracle(Item item)
-        {
-            if (string.IsNullOrEmpty(item.Tags) || !item.Tags.Contains(Mod.AFFIX_TAG_PREFIX)) return false;
-            foreach (var tag in item.GetTags())
-            {
-                if (tag.Value.StartsWith(Mod.AFFIX_TAG_PREFIX, StringComparison.OrdinalIgnoreCase))
-                    return tag.Value.Equals(Mod.AFFIX_TAG_PREFIX + Mod.MIRACLE_AFFIX_ID, StringComparison.OrdinalIgnoreCase);
-            }
-            return false;
-        }
-
-        /// 奇迹剥离：奇迹以外的词缀全去掉（直接消失），退回输出栏。
-        /// 不管有没有可剥的、输出满不满都返回 false——奇迹物品绝不进分解
+        /// <summary>奇迹剥离：奇迹以外的词缀全去掉（直接消失），退回输出栏。
+        /// 不管有没有可剥的、输出满不满都返回 false——奇迹物品绝不进分解</summary>
         static bool StripMiracleExtras(object __instance, Inventory inputInventory, Item targetItem)
         {
             bool stripped;
@@ -1414,6 +1523,43 @@ namespace Touhou.Affixes
             return false;
         }
     }
+
+#if CLIENT
+    /// <summary>
+    /// 附魔台信息区的上下文提示。客户端 Deconstructor 的信息区每帧从 InfoText 属性刷新
+    /// （infoArea.Text = TextManager.Get(InfoText).Fallback(InfoText)，解析不到的键原样显示），
+    /// 在 getter 上打后补丁即可按输入栏内容动态给文案——不改任何状态、无每帧写入：
+    ///   ① 输入栏有非外套槽的穿戴物（头饰/耳机等）：提示防具类附魔不适用、直接启动会被分解；
+    ///   ② 其余情况（含空输入）：默认显示三种附魔材料说明。
+    /// 注：存档时序列化会读到动态值（仅文案、无害），脚本不做额外处理。
+    /// </summary>
+    [HarmonyPatch(typeof(Barotrauma.Items.Components.Deconstructor), "get_InfoText")]
+    public static class EnchantingStationHintPatch
+    {
+        static void Postfix(Barotrauma.Items.Components.Deconstructor __instance, ref string __result)
+        {
+            var stationItem = ReflectionCache.GetItem(__instance);
+            if (stationItem == null || !stationItem.HasTag("enchantingstation")) return;
+
+            var input = __instance.InputContainer?.Inventory;
+            if (input != null)
+            {
+                foreach (var it in input.AllItems)
+                {
+                    if (it == null || it.Removed || it.HasTag(Mod.STONE_TAG)) continue;
+                    // 穿戴物但不在外套槽（头饰/耳机/背包等）：防具类附魔不适用；
+                    // 与材料同放启动还会被分解，必须明确警告
+                    if ((Mod.IsArmor(it) || Mod.IsPlainWearable(it)) && !Mod.IsOuterClothes(it))
+                    {
+                        __result = "enchantingstation.hint.nonarmorslot";
+                        return;
+                    }
+                }
+            }
+            __result = "enchantingstation.hint.materials";
+        }
+    }
+#endif
 
     /// <summary>穿戴词条公共判定：扫装备槽（手/背包不算），找第一个满足的</summary>
     public static class WornAffixHelper

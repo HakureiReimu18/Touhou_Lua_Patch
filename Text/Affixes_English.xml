@@ -12,6 +12,9 @@
 	<enchantingstation.output>Output</enchantingstation.output>
 	<enchantingstation.invalidinput>Enchant</enchantingstation.invalidinput>
 	<enchantingstation.empty.infotext>Insert enchanting material</enchantingstation.empty.infotext>
+	<!-- 附魔台信息区的上下文提示（客户端 get_InfoText 补丁动态切换） -->
+	<enchantingstation.hint.materials>Enchanting materials: Enchant Alloy, Enchant Prism, Enchant Core (Core is purchase-only). Insert equipment and material to enchant; an affixed enchantment stone can also transfer its affix onto the target</enchantingstation.hint.materials>
+	<enchantingstation.hint.nonarmorslot>This item cannot be enchanted: armor affixes only apply to diving-suit-slot gear. Note: starting with an enchanting material will deconstruct it — take it out first</enchantingstation.hint.nonarmorslot>
 	<affixtier.broken>Broken</affixtier.broken>
 	<affixtier.normal>Normal</affixtier.normal>
 	<affixtier.rare>Rare</affixtier.rare>
@@ -59,7 +62,7 @@
 	<affix.prefix.inferno>‖color:192,64,255,255‖Inferno‖color:end‖‖color:255,255,255,255‖</affix.prefix.inferno>
 	<affix.desc.inferno>Damage +6%; 50% chance on hit: 14 burn (2s cooldown)</affix.desc.inferno>
 	<affix.prefix.lightning>‖color:192,64,255,255‖Thundering‖color:end‖‖color:255,255,255,255‖</affix.prefix.lightning>
-	<affix.desc.lightning>Damage +4%; 50% chance on hit: 0.3s stun and 30 shock damage (4s cooldown)</affix.desc.lightning>
+	<affix.desc.lightning>Damage +6%; 50% chance on hit: 0.3s stun and 30 shock damage (2s cooldown)</affix.desc.lightning>
 	<affix.prefix.vampiric>‖color:192,64,255,255‖Vampiric‖color:end‖‖color:255,255,255,255‖</affix.prefix.vampiric>
 	<affix.desc.vampiric>Damage +4%; on hit: 6 bleeding and heal self 0.5 physical damage (1s cooldown)</affix.desc.vampiric>
 	<affix.prefix.guardian>‖color:192,64,255,255‖Guardian‖color:end‖‖color:255,255,255,255‖</affix.prefix.guardian>
@@ -86,7 +89,7 @@
 	<affix.prefix.crown>‖color:255,64,64,255‖Crown‖color:end‖‖color:255,255,255,255‖</affix.prefix.crown>
 	<affix.desc.crown>The last round in the magazine deals +30% damage</affix.desc.crown>
 	<affix.prefix.devoted>‖color:255,64,64,255‖Devoted‖color:end‖‖color:255,255,255,255‖</affix.prefix.devoted>
-	<affix.desc.devoted>One-handed melee weapons become two-handed; damage +60%</affix.desc.devoted>
+	<affix.desc.devoted>One-handed melee weapons become two-handed; damage +70%</affix.desc.devoted>
 	<affix.prefix.ragnarok>‖color:255,140,0,255‖Ragnarok‖color:end‖‖color:255,255,255,255‖</affix.prefix.ragnarok>
 	<affix.desc.ragnarok>Damage +14%; every 3s: 50% chance of 12 burn + 12 bleeding, 30% chance of 0.5s stun</affix.desc.ragnarok>
 	<affix.prefix.immortal>‖color:255,140,0,255‖Immortal‖color:end‖‖color:255,255,255,255‖</affix.prefix.immortal>
@@ -98,7 +101,7 @@
 	<affix.prefix.weightless>‖color:255,64,64,255‖Weightless‖color:end‖‖color:255,255,255,255‖</affix.prefix.weightless>
 	<affix.desc.weightless>While worn: +30% speed, -8% damage taken, stun builds up 0.1/s slower; when hit, retaliates with a guaranteed 0.2s stun on the attacker (1s cooldown, does not affect teammates)</affix.desc.weightless>
 	<affix.prefix.priority>‖color:192,64,255,255‖Priority‖color:end‖‖color:255,255,255,255‖</affix.prefix.priority>
-	<affix.desc.priority> Placed in the leftmost (Slot 1) quick slot: Damage +6%, Fire/Swing Speed +6%</affix.desc.priority>
+	<affix.desc.priority> Placed in the leftmost (Slot 1) quick slot: Damage +9%, Fire/Swing Speed +8%</affix.desc.priority>
 	<affix.prefix.calm>‖color:192,64,255,255‖Calm‖color:end‖‖color:255,255,255,255‖</affix.prefix.calm>
 	<affix.desc.calm>Noise -80%, damage +5%</affix.desc.calm>
 	<affix.descarmor.calm>Noise -80%, damage taken -5%</affix.descarmor.calm>
@@ -118,7 +121,7 @@
 	<affix.prefix.leading>‖color:192,64,255,255‖Leading‖color:end‖‖color:255,255,255,255‖</affix.prefix.leading>
 	<affix.desc.leading>First shot fired from a fully-loaded magazine deals +22% damage</affix.desc.leading>
 	<affix.prefix.focus>‖color:255,140,0,255‖Focus‖color:end‖‖color:255,255,255,255‖</affix.prefix.focus>
-	<affix.desc.focus>One-handed ranged weapons become two-handed, damage +30%</affix.desc.focus>
+	<affix.desc.focus>One-handed ranged weapons become two-handed, damage +40%</affix.desc.focus>
 	<affix.prefix.waiting>‖color:255,140,0,255‖Waiting‖color:end‖‖color:255,255,255,255‖</affix.prefix.waiting>
 	<affix.desc.waiting>Charge weapons charge 20% slower, damage +20% (only works on weapons that actually charge)</affix.desc.waiting>
 	<affix.prefix.lonewolf>‖color:255,140,0,255‖Lone Wolf‖color:end‖‖color:255,255,255,255‖</affix.prefix.lonewolf>

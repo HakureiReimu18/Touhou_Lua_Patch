@@ -18,6 +18,9 @@
 	<enchantingstation.output>输出</enchantingstation.output>
 	<enchantingstation.invalidinput>附魔</enchantingstation.invalidinput>
 	<enchantingstation.empty.infotext>放入附魔材料（在仪式台制作）</enchantingstation.empty.infotext>
+	<!-- 附魔台信息区的上下文提示（客户端 get_InfoText 补丁动态切换） -->
+	<enchantingstation.hint.materials>附魔材料：附魔合金、附魔棱镜、附魔核心（附魔核心只能购买）。将装备与材料放入后启动附魔；也可放入带词缀的附魔石，将词缀转移给目标装备</enchantingstation.hint.materials>
+	<enchantingstation.hint.nonarmorslot>该装备无法附魔：防具类附魔只能给潜水服槽位的装备使用。注意：直接加入附魔材料并启动会将它分解，请先取出</enchantingstation.hint.nonarmorslot>
   
 	 <!-- Tier names -->
 	<affixtier.broken>损坏</affixtier.broken>
@@ -68,7 +71,7 @@
 	<affix.prefix.inferno>‖color:192,64,255,255‖炼狱‖color:end‖‖color:255,255,255,255‖</affix.prefix.inferno>
 	<affix.desc.inferno>伤害 +6%；命中有 50% 概率附加 14 点烧伤（2 秒冷却）</affix.desc.inferno>
 	<affix.prefix.lightning>‖color:192,64,255,255‖雷霆‖color:end‖‖color:255,255,255,255‖</affix.prefix.lightning>
-	<affix.desc.lightning>伤害 +4%；命中有 50% 概率附加 0.3 秒眩晕与 30 点电击（4 秒冷却）</affix.desc.lightning>
+	<affix.desc.lightning>伤害 +6%；命中有 50% 概率附加 0.3 秒眩晕与 30 点电击（2 秒冷却）</affix.desc.lightning>
 	<affix.prefix.vampiric>‖color:192,64,255,255‖吸血‖color:end‖‖color:255,255,255,255‖</affix.prefix.vampiric>
 	<affix.desc.vampiric>伤害 +4%；命中附加 6 点流血并回复自身 0.5 点物理伤害（1 秒冷却）</affix.desc.vampiric>
 	<affix.prefix.guardian>‖color:192,64,255,255‖守护‖color:end‖‖color:255,255,255,255‖</affix.prefix.guardian>
@@ -95,7 +98,7 @@
 	<affix.prefix.crown>‖color:255,64,64,255‖王冠‖color:end‖‖color:255,255,255,255‖</affix.prefix.crown>
 	<affix.desc.crown>弹匣最后一发弹药伤害 +30%</affix.desc.crown>
 	<affix.prefix.devoted>‖color:255,64,64,255‖专一‖color:end‖‖color:255,255,255,255‖</affix.prefix.devoted>
-	<affix.desc.devoted>单手近战武器变为双手握持，伤害 +60%</affix.desc.devoted>
+	<affix.desc.devoted>单手近战武器变为双手握持，伤害 +70%</affix.desc.devoted>
 	<affix.prefix.ragnarok>‖color:255,140,0,255‖诸神黄昏‖color:end‖‖color:255,255,255,255‖</affix.prefix.ragnarok>
 	<affix.desc.ragnarok>伤害 +14%；每 3 秒一次：50% 概率 12 烧伤+12 流血，30% 概率 0.5 秒眩晕</affix.desc.ragnarok>
 	<affix.prefix.immortal>‖color:255,140,0,255‖不朽‖color:end‖‖color:255,255,255,255‖</affix.prefix.immortal>
@@ -107,7 +110,7 @@
 	<affix.prefix.weightless>‖color:255,64,64,255‖失重‖color:end‖‖color:255,255,255,255‖</affix.prefix.weightless>
 	<affix.desc.weightless>穿戴时移速 +30%，受伤 -8%，眩晕积累 -0.1/s；受到攻击时反击：必定使攻击者眩晕 0.2 秒（1 秒冷却，不影响队友）</affix.desc.weightless>
 	<affix.prefix.priority>‖color:192,64,255,255‖优先‖color:end‖‖color:255,255,255,255‖</affix.prefix.priority>
-	<affix.desc.priority>放在最左侧（1号）快捷栏：伤害 +6%，射速/挥速 +6%</affix.desc.priority>
+	<affix.desc.priority>放在最左侧（1号）快捷栏：伤害 +9%，射速/挥速 +8%</affix.desc.priority>
 	<affix.prefix.calm>‖color:192,64,255,255‖冷静‖color:end‖‖color:255,255,255,255‖</affix.prefix.calm>
 	<affix.desc.calm>噪音 -80%，伤害 +5%</affix.desc.calm>
 	<affix.descarmor.calm>噪音 -80%，受到的伤害 -5%</affix.descarmor.calm>
@@ -127,7 +130,7 @@
 	<affix.prefix.leading>‖color:192,64,255,255‖领先‖color:end‖‖color:255,255,255,255‖</affix.prefix.leading>
 	<affix.desc.leading>弹匣耐久全满时打出的第一发弹药伤害 +22%</affix.desc.leading>
 	<affix.prefix.focus>‖color:255,140,0,255‖专注‖color:end‖‖color:255,255,255,255‖</affix.prefix.focus>
-	<affix.desc.focus>单手远程武器变为双手握持，伤害 +30%</affix.desc.focus>
+	<affix.desc.focus>单手远程武器变为双手握持，伤害 +40%</affix.desc.focus>
 	<affix.prefix.waiting>‖color:255,140,0,255‖等候‖color:end‖‖color:255,255,255,255‖</affix.prefix.waiting>
 	<affix.desc.waiting>蓄力武器的充能时间 +20%，伤害 +20%（仅对真正需要蓄力的武器生效）</affix.desc.waiting>
 	<affix.prefix.lonewolf>‖color:255,140,0,255‖单打独斗‖color:end‖‖color:255,255,255,255‖</affix.prefix.lonewolf>
