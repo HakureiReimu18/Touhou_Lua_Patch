@@ -1,13 +1,9 @@
 --[[东方-空弹药袋（客户端半区）
-    把空弹药袋拿在手里（任一手）→ 自动弹出「选择弹药种类」窗口；点一种袋子 → 确认子窗口
-    （大图 + 名字 + 存量上限 + 装什么弹）→ 确认后空袋被换成对应弹种的弹药袋。
-    只认「空弹药袋」：已经选定弹种的弹药袋（Touhou_Ammo_Pouch_*）拿在手上、插在武器上、
-    放在背包里都不会弹窗——判定用 tag/identifier 精确匹配，不做前缀匹配，不会把弹种袋误判成空袋。
-    手持期间 Esc/关闭键关窗后不再自动弹，收起再拿出会重新弹（跟装束包一个规矩）。
-    可选清单来自 AmmoPouch_Pack_Items.lua 的收录表（TLE_AMMOPOUCH_PACK_ITEMS），新增弹种改表即可，
-    本文件不用动。窗口里所有字符串都走 TextManager.Get（键名 touhou.ammopouch.*），不硬编码中文。
-    单机直接调 TLE.AmmoPouchPack.Claim 结算；联机发 TLE_AP_CLAIM 由服务端权威结算后同步背包。
-    触发不走 XML LuaHook（那条链路在本补丁没验证过），用 think 轮询手持物，跟装束包同款思路。]]
+    手持空弹药袋 → 弹窗选弹种 → 确认子窗口 → 空袋换成对应弹种袋。只认空袋：按 tag/identifier
+    精确匹配（不做前缀），弹种袋手持/装枪/入包都不弹。Esc 关窗后不再自动弹，收起再拿出会重弹。
+    清单来自 AmmoPouch_Pack_Items.lua 的收录表 TLE_AMMOPOUCH_PACK_ITEMS（新增弹种改表即可）；
+    所有字符串走 TextManager（键名 touhou.ammopouch.*）。结算：单机 TLE.AmmoPouchPack.Claim，
+    联机发 TLE_AP_CLAIM 由服务端权威同步。触发用 think 轮询而非 XML LuaHook（该链路本补丁未验证）。]]
 
 -- 纯服务端没有客户端 UI
 if not CLIENT then
@@ -32,8 +28,7 @@ local function T(key)
     return key
 end
 
--- 物品显示名：entityname.<小写 identifier> → ItemPrefab.Name → identifier
--- （收录表里的 name_key 由 build_list 先试，这条是兜底）
+-- 物品显示名兜底：entityname.<小写 identifier> → ItemPrefab.Name → identifier（name_key 由 build_list 先试）
 local function prefab_display_name(identifier)
     local ok, name = pcall(function() return TextManager.Get("entityname." .. string.lower(identifier)).Value end)
     if ok and type(name) == "string" and name ~= "" then return name end
@@ -45,8 +40,7 @@ local function prefab_display_name(identifier)
     return tostring(identifier)
 end
 
--- 取物品图标：客户端 ItemPrefab 有专门的 InventoryIcon 属性（对应 <InventoryIcon> 元素，
--- 游戏背包栏显示的就是它），没配置时为 nil，回退世界贴图 Sprite。全程 pcall，取不到返回 nil
+-- 取图标：InventoryIcon（对应 <InventoryIcon>，背包栏用的）→ 回退世界贴图 Sprite；全程 pcall
 local function get_item_icon(identifier)
     local okP, prefab = pcall(function() return ItemPrefab.Prefabs[identifier] end)
     if not okP or prefab == nil then return nil end
@@ -83,9 +77,7 @@ local function build_list()
     return list
 end
 
-----------------------------------------------------------------------
--- 窗口状态
-----------------------------------------------------------------------
+-- ===== 窗口状态 =====
 
 local menu_frame = nil
 local confirm_frame = nil     -- 确认子窗口（选中一种后弹出，显示大图 + 名字 + 存量上限，确认后才结算）
@@ -144,9 +136,7 @@ local function send_claim(pouch_identifier)
     end)
 end
 
-----------------------------------------------------------------------
--- 窗口构件
-----------------------------------------------------------------------
+-- ===== 窗口构件 =====
 
 local function add_text(parent_rt, rel_size, text, alignment)
     local block = GUI.TextBlock(GUI.RectTransform(rel_size, parent_rt), RichString.Plain(RawLString(text)))
@@ -257,14 +247,10 @@ local function open_window(blank_id)
     build_window()
 end
 
-----------------------------------------------------------------------
--- 手持检测：拿在手里就弹窗（GetItemInLimbSlot + tag/identifier 精确判定，跟装束包同款思路）
--- （状态变量在前面已提前声明，这里只给 held_blank 赋值）
-----------------------------------------------------------------------
+-- ===== 手持检测（拿在手里就弹窗；状态变量已提前声明，这里只给 held_blank 赋值） =====
 
--- 手里拿的是不是「空袋」：先看 tag（物品 XML 里的 tags="…,Touhou_Ammo_Pouch_Blank,…"），
--- tag 没打上时再按 identifier 精确比对。两处都是全等比较，弹种袋（Touhou_Ammo_Pouch_Revolver 等）
--- 既没有这个 tag 也不等于这个 identifier，不会被误判成空袋
+-- 是否空袋：先看 tag（物品 XML 的 tags="…,Touhou_Ammo_Pouch_Blank,…"），没有则按 identifier 全等比对；
+-- 两处都是全等，弹种袋不会被误判
 local function is_blank(item)
     if item == nil or item.Removed then return false end
     local okTag, has = pcall(function() return item.HasTag(BLANK_TAG) end)
@@ -285,8 +271,7 @@ local function held_blank_impl(character)
 end
 held_blank = held_blank_impl
 
--- 一次性探测 Esc 键盘状态读取是否可用（同装束包的探测器写法）：探测通过后直连，
--- 不再每帧套 pcall 闭包；探测失败就一直走 pcall 兜底（每帧还会再探，API 迟到了也能接上）
+-- 一次性探测 Esc 键盘状态能否直连读取；失败则每帧走 pcall 兜底（API 迟到也能接上）
 local esc_api_ok = nil   -- true = 直连可用，nil = 还没探测成功
 
 local function esc_down()

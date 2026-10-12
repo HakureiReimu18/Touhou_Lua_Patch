@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Override>
   <Afflictions>
     <Affliction identifier="Touhou_Zero_Moment_Pendant_Hook_tier1" isbuff="true" type="Touhou_Zero_Moment_Pendant_Aff" limbspecific="false" indicatorlimb="Head" maxstrength="1" affectmachines="true" duration="15.1">
@@ -38,5 +38,26 @@
       <Description textidentifier="afflictiondescription.Touhou_Zero_Moment_Pendant_Hook_tier5" minstrength="0" maxstrength="1" />
       <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
     </Affliction>
+
+    <!-- ⚠ 封存（2026-10）：异常物品初版下线（init.lua / filelist.xml 同步注释），恢复时整段放开。
+         失笑用 Stun 类换皮（引擎原生眩晕行为：倒地、脱手）；
+         排斥不适/信号听众用 Slow 类（maxspeedmultiplier 一负一正）。
+         若自定义 Stun/Slow 类在实机上不认，退路是 Lua 改挂 vanilla stun。
+    <Stun name="失笑" identifier="Touhou_Anomaly_Forced_Laugh" description="你止不住地笑，笑得弯下腰，笑得丢掉了手里的东西。" type="stun"
+          limbspecific="false" indicatorlimb="Head" activationthreshold="0" showiconthreshold="0" maxstrength="12">
+      <Effect minstrength="0" maxstrength="100" strengthchange="-1.0" />
+      <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
+    </Stun>
+    <Slow name="排斥不适" identifier="Touhou_Anomaly_Repulse" description="恶心、眩晕、无法抑制的战栗——有什么东西不希望任何人靠近。" type="slow"
+          limbspecific="false" indicatorlimb="Torso" activationthreshold="1" showiconthreshold="1" maxstrength="100">
+      <Effect minstrength="0" maxstrength="100" strengthchange="-4" minspeedmultiplier="1" maxspeedmultiplier="0.45" />
+      <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
+    </Slow>
+    <Slow name="信号听众" identifier="Touhou_Anomaly_Signal_Listener" description="信号的内容是对未来的描述。听完的人干活更快，也更频繁地回头看。" type="slow" isbuff="true"
+          limbspecific="false" indicatorlimb="Head" activationthreshold="1" showiconthreshold="1" maxstrength="10">
+      <Effect minstrength="0" maxstrength="10" strengthchange="-1" minspeedmultiplier="1" maxspeedmultiplier="1.08" />
+      <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
+    </Slow>
+    -->
   </Afflictions>
 </Override>

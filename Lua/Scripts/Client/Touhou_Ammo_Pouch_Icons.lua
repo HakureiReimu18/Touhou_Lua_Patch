@@ -1,23 +1,15 @@
 --[[东方-弹药袋图标（客户端半区）
-    在弹药袋的物品栏图标上，把袋内的「待发实体弹」画出来（照 Workshop「Storage Icons」2920200449 的做法）：
-      · 1 枚 → 居中铺满（= 袋子图标上显示的就是它装的是什么弹）
-      · 2~5 枚 → 紧凑网格（最多 3 列，见 GRID_MAX_COLS 的说明）
-    做法：Hook.Patch("Barotrauma.Inventory", "DrawSlot", ..., After) —— 某个槽位画的是弹药袋时，
-    在它上面盖一层袋内子弹图标。图标与颜色只在"袋子内容变了"时算一次并缓存：
-      · 内容变化由 inventoryPutItem / Inventory.RemoveItem 两个钩子即时标脏
-      · 另有低频兜底扫描（THINK_SWEEP_INTERVAL 帧一次），任何绕过上面两个钩子的改动（含 C# 侧
-        直接搬运/补弹）最迟两个心跳也会被发现
-      · roundStart / roundEnd 清空缓存
-    白名单是 6 个袋子 identifier（5 个弹种袋 + 空袋；空袋没有容器，自然不会画）。
-    「补满」按钮产生的 Touhou_Ammo_Fill_Marker 是瞬时标记物，不算子弹，收集内容时直接跳过。
-    只做表现，不改任何游戏状态。]]
+    在弹药袋的槽位图标上叠画袋内子弹（照 Workshop「Storage Icons」2920200449）：1 枚居中铺满，多枚排紧凑网格。
+    实现为 Hook.Patch DrawSlot(After) 覆盖；图标与颜色按「内容变了」缓存，标脏来自
+    inventoryPutItem / Inventory.RemoveItem，另有低频兜底扫描兜住绕过钩子的改动（含 C# 侧搬运/补弹），
+    roundStart / roundEnd 清缓存。白名单 6 个袋子（5 弹种 + 空袋；空袋无容器自然不画）；
+    「补满」的 Touhou_Ammo_Fill_Marker 是瞬时标记物，收集时跳过。只做表现，不改游戏状态。]]
 
 if not CLIENT then
     return
 end
 
--- 内容图标要读 VisualSlot 的 Rect / DrawOffset，该类型不是 LuaCs 默认注册的类型，得手动注册
--- （参考模组也是这么干的）。已经注册过时 RegisterType 会报错，忽略即可
+-- 要读 VisualSlot 的 Rect / DrawOffset，该类型 LuaCs 未默认注册，需手动注册（重复注册会报错，忽略）
 pcall(function() LuaUserData.RegisterType("Barotrauma.VisualSlot") end)
 
 -- 白名单：只有这 6 个袋子（空袋没有 ItemContainer，取不到内容自然不画）
@@ -36,9 +28,8 @@ local FILL_MARKER_TAG = "Touhou_Ammo_Fill_Marker"  -- 「补满」按钮的标�
 local ITEM_SCALE           = 1.0    -- 单枚图标倍率：1.0 = 按格子铺满（照参考实现），调小则袋子露出更多
 local MAX_ICON_SCALE       = 2.0    -- 单个图标的缩放上限（和游戏自己画物品图标的上限一致）
 local ICON_MARGIN          = 10     -- 每个格子里留的边距（游戏画物品图标也用 10）
--- 多枚时最多铺这么多个列：物品 XML 的 itemsperrow="5" 说的是"容器 UI 里一排放 5 格"，
--- 而袋子只有一格、5 发是叠在同一格里的——直接按 5 列铺会把图标压到看不见，所以这里限定 3 列
--- （5 发 = 3+2 两排）。单枚时列数=1，就是"居中铺满"。
+-- XML itemsperrow="5" 指容器 UI 一排放 5 格；袋子只有一格、5 发叠在同格，按 5 列铺会看不见，
+-- 故限 3 列（5 发 = 3+2 两排）。单枚时列数=1，即居中铺满。
 local GRID_MAX_COLS        = 3
 local THINK_SWEEP_INTERVAL = 120    -- think 兜底扫描间隔（帧，约 2 秒）
 
@@ -47,12 +38,9 @@ local cache = {}
 local LOG_PREFIX = "[东方弹药袋图标] "
 local disabled = false   -- 绘制出错就整体停用（只打一条日志），绝不刷屏/拖垮帧率
 
-----------------------------------------------------------------------
--- 缓存
-----------------------------------------------------------------------
+-- ===== 缓存 =====
 
--- 袋里的待发实体弹：全都在袋子的 ItemContainer 里（v5 就一格，最多叠 N 发）
--- 返回按 ID 排序的列表（顺序稳定，画出来的位置才不会跳）
+-- 袋内待发实体弹（都在 pouch 的 ItemContainer 里），按 ID 排序返回，保证画出来的位置稳定
 local function content_items(pouch)
     local items = {}
     local inv = pouch.OwnInventory
@@ -87,8 +75,7 @@ local function same_ids(a, b)
     return true
 end
 
--- 取物品图标与颜色：优先 OverrideInventorySprite（游戏画物品图标时也是这个优先），
--- 其次 InventoryIcon（背包栏用的那个），再其次世界贴图 Sprite
+-- 图标优先级与游戏一致：OverrideInventorySprite → InventoryIcon（背包栏）→ 世界贴图 Sprite
 local function item_icon(item)
     local sprite = nil
     pcall(function() sprite = item.OverrideInventorySprite end)
@@ -133,8 +120,7 @@ local function build_entry(pouch)
     return entry
 end
 
--- 标脏：只对白名单里的袋子动作（钩子是全游戏范围的，参数可能是角色、别的容器、任何物品）
--- 全部读操作都套在 pcall 里：Owner 是角色（没有 Prefab）时静默跳过，不影响游戏
+-- 标脏：钩子是全游戏范围的，参数可能是角色等无 Prefab 的对象，故按白名单过滤 + pcall 静默跳过
 local function mark_dirty(item)
     if item == nil then return end
     local ok, identifier = pcall(function()
@@ -146,9 +132,7 @@ local function mark_dirty(item)
     if entry ~= nil then entry.dirty = true end
 end
 
-----------------------------------------------------------------------
--- 绘制
-----------------------------------------------------------------------
+-- ===== 绘制 =====
 
 -- 格子内铺满缩放：照游戏 DrawSlot 的算法（留边距 + 上限 MAX_ICON_SCALE），再乘倍率
 local function fit_scale(cell_w, cell_h, sprite, multiplier)
@@ -205,9 +189,8 @@ local function draw_pouch_slot(ptable)
     draw_bullets(ptable["spriteBatch"], slot.Rect, slot.DrawOffset, entry)
 end
 
--- public static void DrawSlot(SpriteBatch, Inventory, VisualSlot, Item, int, bool, InvSlotType)
--- 热路径：每帧每个槽位都会进来一次，前置筛选只用普通字段读取（不会抛），
--- 只有确认是弹药袋才进 pcall（里面要读 VisualSlot 的字段，那是唯一可能因类型未注册而失败的地方）
+-- 热路径：每帧每个槽位都会进来，前置筛选只用不会抛的字段读取，确认是弹药袋才进 pcall
+-- （里面要读 VisualSlot 字段，那是唯一可能因类型未注册而失败的地方）
 Hook.Patch("Barotrauma.Inventory", "DrawSlot", function(_, ptable)
     if disabled then return end
     local item = ptable["item"]
@@ -223,9 +206,7 @@ Hook.Patch("Barotrauma.Inventory", "DrawSlot", function(_, ptable)
     end
 end, Hook.HookMethodType.After)
 
-----------------------------------------------------------------------
--- 标脏：内容变化的两个来源
-----------------------------------------------------------------------
+-- ===== 标脏：内容变化的两个来源 =====
 
 -- 有东西被放进某个容器（inventory.Owner = 容器物品）
 Hook.Add("inventoryPutItem", "TLE_AmmoPouchIcons_put", function(inventory, item)
@@ -234,8 +215,7 @@ Hook.Add("inventoryPutItem", "TLE_AmmoPouchIcons_put", function(inventory, item)
     mark_dirty(item)              -- 放进去的是另一个袋子时也刷它
 end)
 
--- 有东西离开某个容器：子弹被拖走/打掉/被 C# 吸收或补弹时都会走这里
--- （参考实现同样补这个钩子：有些搬运路径不会触发 inventoryPutItem）
+-- 离开容器（拖走/打掉/C# 吸收或补弹）：有些搬运路径不触发 inventoryPutItem，故补此钩子
 Hook.Patch("Barotrauma.Inventory", "RemoveItem", function(_, ptable)
     if disabled then return end
     local ok = pcall(function()
@@ -248,9 +228,7 @@ Hook.Patch("Barotrauma.Inventory", "RemoveItem", function(_, ptable)
     if not ok then return end
 end, Hook.HookMethodType.Before)
 
-----------------------------------------------------------------------
--- 兜底扫描 + 缓存清理
-----------------------------------------------------------------------
+-- ===== 兜底扫描 + 缓存清理 =====
 
 local tick = 0
 Hook.Add("think", "TLE_AmmoPouchIcons_sweep", function()

@@ -1,19 +1,9 @@
--- 幽幽子天赋「华胥的亡灵」——「一分钟一次，专属武器立即处决失去意识的敌对生物」的服务端实现。
--- 替代 Talents/TalentsYuyuko.xml 里那条 OnAttack + CharacterAbilityModifyAttackData implode 的能力组
--- （旧 XML 只注释、未删除，保留备查）。旧实现的问题：
---   1) 冷却 affliction 的属性写成了 applytpself（正确写法 applytoself），属性名对不上，
---      冷却被施加到了被打的目标身上，攻击者自身根本没有冷却，「一分钟一次」不生效；
---   2) Character 的 isunconscious 对尸体同样为真，打尸体也会触发能力组、白转一次冷却；
---   3) 处决时间点挂在引擎的 implode 标记上，命中与效果时序不好控制。
--- 本脚本的判定（服务端权威，单机同样生效）：
---   命中结算前目标已昏迷且未死 → 目标敌对 → 攻击者有幽幽子装束效果 + 手持专属武器 → 冷却就绪
---   → 处决（复刻引擎 Implode：压伤拉满 → Kill(Pressure) → 肢解/内爆特效），
---   并把冷却施加到攻击者自己身上（沿用原 affliction，图标与持续时间仍在 XML 里）。
--- 触发点：AbilityAttackData 构造钩子（命中结算前判定，引擎触发 OnAttack 天赋的位置）
---   + think 钩子（本帧结束后处决）：判定 → 本次伤害结算 → 目标没被这一击打死才处决并上冷却。
---   这样既保留旧版「先结算伤害、再处决」的时序（这一击直接打死目标时不算处决、不消耗冷却），
---   又只需要一个补丁，不用在全游戏最热的 Character.ApplyAttack 上挂 Before/After 两个钩子。
---   处决发生在下一帧的 think（延迟一帧，视觉上无感知）；无敌/上帝模式挡下击杀时同样不消耗冷却。
+--[[幽幽子天赋「华胥的亡灵」——「一分钟一次，专属武器立即处决失去意识的敌对生物」（服务端权威，单机同样生效）。
+替代 Talents/TalentsYuyuko.xml 里那条 OnAttack + CharacterAbilityModifyAttackData implode 的能力组（旧 XML 仅注释保留备查，
+别照它改：冷却 affliction 属性写成 applytpself 会加到被打的目标身上，isunconscious 对尸体同样为真）。
+判定：命中结算前目标已昏迷未死 → 敌对 → 攻击者有幽幽子装束效果 + 手持专属武器 → 冷却就绪 → 处决（复刻引擎 Implode：压伤拉满
+→ Kill(Pressure) → 肢解），冷却施加到攻击者自己身上，affliction 仍定义在 XML。
+触发点＝AbilityAttackData 构造钩子判定 + think 钩子在本帧伤害结算后处决，保留旧版「先结算伤害、这一击直接打死就不算处决、不消耗冷却」的时序（延迟一帧视觉上无感知；无敌/上帝模式挡下击杀也不吃冷却）。]]
 
 -- 服务端权威：联机客户端不执行；单机和开房主机（SERVER 为真）照常执行
 if not SERVER and not Game.IsSingleplayer then return end
@@ -147,9 +137,8 @@ local function apply_cooldown(character)
     end
 end
 
--- 命中结算前（AbilityAttackData 构造时）判定并记下待处决目标，处决本身放到下一帧 think：
--- 这样「先结算伤害、目标没被这一击打死才处决」的时序不变，而补丁只挂在构造函数上。
--- 键是受击者（同一次命中会按肢体多次构造，重复只覆盖同一个键）；弱键表，角色移除后自动回收。
+-- 命中结算前（AbilityAttackData 构造时）判定并记下待处决目标，处决本身放到下一帧 think，以保留
+-- 「先结算伤害、目标没被这一击打死才处决」的时序；键是受击者（同一次命中会按肢体多次构造，重复只覆盖同一个键），弱键表。
 local pending_execute = setmetatable({}, { __mode = "k" })
 
 Hook.Patch("Barotrauma.AbilityAttackData", ".ctor", function(instance, ptable)
@@ -187,8 +176,8 @@ Hook.Patch("Barotrauma.AbilityAttackData", ".ctor", function(instance, ptable)
     pending_execute[victim] = attacker
 end, Hook.HookMethodType.Before)
 
--- 本帧结束后统一结算待处决：此时伤害已经打完，能判断「目标是不是被这一击自己打死的」。
--- 没有待处理目标时每帧只花一次 next()（绝大多数帧都是这样）。
+-- 本帧结束后统一结算待处决：此时伤害已经打完，能判断「目标是不是被这一击自己打死的」；
+-- 没有待处理目标时每帧只花一次 next()。
 Hook.Add("think", "Yuyuko.Talent.ExecutePending", function()
     -- 逐个取第一个并立刻摘掉（不用 pairs 边遍历边删，避免依赖遍历期改表的行为）
     while true do

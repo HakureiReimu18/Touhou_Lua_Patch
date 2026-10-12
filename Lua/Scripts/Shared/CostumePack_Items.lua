@@ -1,12 +1,8 @@
 --[[东方-装束包：可选物品清单（客户端/服务端共用）
-    装束包系统的"收录表"：哪个 identifier 属于哪种包，全部在这里配置。
-    客户端按表生成选择窗口，服务端按表做权威校验，两边永远一致。
-    新增装束时：
-      1. 把 identifier 加进对应分类（basic=装束包 / plus=装束包+ / headwear=头饰包）
-      2. 不用改任何其他文件
-    已排除（故意不收）：Pollution_*（被玷污的法袍系列，敌人装束）、
-    Touhou_Prometheus_Clothes（普罗米修斯）、Touhou_Blood_Crown（独一王冠，敌人掉落）、
-    Renko_Veil（槽位特殊）。要回收就把它们加回表。]]
+    装束包系统的"收录表"：哪个 identifier 属于哪种包全在这里配，客户端据此生成选择窗口，服务端据此权威校验。
+    新增装束：把 identifier 加进对应分类（basic=装束包 / plus=装束包+ / headwear=头饰包），不用改其他文件。
+    故意不收：Pollution_*（被玷污的法袍系列）、Touhou_Prometheus_Clothes、Touhou_Blood_Crown（敌人掉落）、
+    Renko_Veil（槽位特殊）；要回收就加回表。]]
 
 TLE_COSTUME_PACK_ITEMS = {
     basic = {
@@ -169,7 +165,7 @@ TLE_COSTUME_PACK_ITEMS = {
     },
 }
 
--- identifier -> 分类名（"basic"/"plus"/"headwear"/nil），服务端校验和客户端建表都用这个反查
+-- identifier → 分类名（nil 表示未收录），两端建表与校验共用
 local CATEGORY_OF = {}
 for category, ids in pairs(TLE_COSTUME_PACK_ITEMS) do
     for _, id in ipairs(ids) do
@@ -180,15 +176,10 @@ TLE_COSTUME_PACK_ITEMS.category_of = function(identifier)
     return CATEGORY_OF[identifier]
 end
 
-----------------------------------------------------------------------
--- 扩展收录：Config/CostumePack_Extra.xml
--- <Item category="..." identifier="..." />，category：basic=装束包 / plus=装束包+ / headwear=头饰包
--- 重复的 id 自动去重；分类名写错会被跳过并打日志。
--- 收录范围：**所有已启用内容包各自的 Config/CostumePack_Extra.xml**（含本模组），按加载顺序合并。
--- 别的模组把自己那份放在自己模组的 Config 里即可，不用塞进本模组；本模组那份排最前，优先级最高。
+-- 扩展收录：Config/CostumePack_Extra.xml（<Item category="..." identifier="..." />，分类同 basic/plus/headwear）
+-- 收录所有已启用内容包各自的这份文件（含本模组），按加载顺序合并；本模组排最前、优先级最高，别的模组放自己 Config 即可。
+-- 重复 id 去重，分类名写错跳过并打日志。用文本扫描而非 XElement 解析：结构简单，跨 LuaCs 版本最稳。
 -- 与 CSharp/Shared/HomingProjectiles.cs 扫 Config/homing_config.xml 是同一套做法。
--- 用文本扫描而不是 XElement 解析：配置结构很简单，这样跨 LuaCs 版本最稳。
-----------------------------------------------------------------------
 local function register_static(type_name)
     local ok, result = pcall(function()
         local t = LuaUserData.CreateStatic(type_name)
@@ -230,8 +221,7 @@ local function read_config_text(path)
     return nil
 end
 
--- 收集所有已启用内容包的目录：多个来源逐级兜底（哪个能用用哪个）。读不到的路径无所谓，
--- 下面只处理真实存在的文件。
+-- 收集已启用内容包目录：多个来源逐级兜底；读不到/用不上的路径在下面被忽略。
 local function collect_package_dirs()
     local getters = {
         function() return ContentPackageManager.EnabledPackages.All end,
@@ -273,7 +263,7 @@ local function merge_extra_items()
         return
     end
 
-    -- 本模组目录排最前（即使内容包枚举失败，原来那份 Config 也照旧生效），随后是其他所有已启用内容包
+    -- 本模组目录排最前（即使枚举失败，原先那份 Config 也照旧生效），其后是其他已启用内容包。
     local dirs, seen_dir = {}, {}
     local function add_dir(dir)
         if type(dir) ~= "string" or dir == "" then return end

@@ -1,16 +1,14 @@
--- 红美铃天赋「气与姿态」服务端逻辑（Lua 补丁侧）
--- 职责（姿态切换本身由装束按钮 XML 完成，见 Hong_Meirin_gear.xml 的 CustomInterface）：
---   1) 穿着 Hong_Meirin_Plus 的角色没有姿态时自动补默认姿态「蓄势」（覆盖巡回开始/重生/中途穿上）
---   2) 气的被动增减：蓄势每秒 +1，全力每秒 -1（触底停 0，不自动切姿态）
---   3) 蓄势姿态下战斗获气：对敌人造成伤害 / 受到敌人攻击，按伤害量折算并设单次上下限
---   4) 全力姿态专属武器：命中时 20% 概率额外 50% 伤害，同一次攻击结算内消耗 2% 气
---   5) 脱下装束/死亡后清除姿态与气
--- 气与姿态的数值效果（近战伤害/攻速/眩晕抗性、护身减伤等）全部在
--- 本体模组 Touhou_Character_Afflictions.xml 的 affliction 定义里，本脚本只驱动强度。
+-- 红美铃天赋「气与姿态」服务端逻辑（Lua 补丁侧）。
+-- 职责：有装束效果的角色无姿态时补默认「蓄势」；蓄势每秒 +1 气、全力每秒 -1 气；
+-- 蓄势下造成/受到敌人伤害按伤害量折算获气（单次有上下限）；全力专属武器命中时 20% 概率
+-- 额外 50% 伤害并消耗 2 气；装束效果没了或死亡后清除姿态与气。
+-- 判定只认装束给的效果 aff，不认装束本体 —— 别的变体、别的模组授予同一个 aff 也能生效。
+-- 姿态切换本身由装束按钮 XML 完成（见 Hong_Meirin_gear.xml 的 CustomInterface）；
+-- 气与姿态的数值效果都在本体模组 Touhou_Character_Afflictions.xml 的 affliction 定义里，本脚本只驱动强度。
 
 if CLIENT and not Game.IsSingleplayer then return end
 
-local OUTFIT_IDENTIFIER = "Hong_Meirin_Plus"
+local AFF_OUTFIT_EFFECT = "Touhou_Hong_Meirin_Character_Effect"
 local EXCLUSIVE_WEAPON_TAG = "Hong_Meirin_Exclusive"
 
 local AFF_QI = "Hong_Meirin_Qi"
@@ -20,8 +18,7 @@ local AFF_STANCE_ALLOUT = "Hong_Meirin_Stance_Allout"
 local AFF_STANCE_CD = "Hong_Meirin_Stance_CD"
 local STANCE_AFFS = { AFF_STANCE_CHARGE, AFF_STANCE_GUARD, AFF_STANCE_ALLOUT }
 
--- 槽位常量：两处判定都在 ApplyAttack 每次命中的路径上，表提到模块级复用（不再逐次建表）
-local OUTFIT_SLOTS = { InvSlotType.InnerClothes, InvSlotType.OuterClothes }
+-- 手上槽位表：全力判定在 ApplyAttack 每次命中的路径上，提到模块级复用（不再逐次建表）
 local HAND_SLOTS = { InvSlotType.RightHand, InvSlotType.LeftHand }
 
 local QI_MAX = 100
@@ -52,15 +49,10 @@ local function clamp(value, min_value, max_value)
     return value
 end
 
-local function is_wearing_outfit(character)
-    if character == nil or character.Inventory == nil then return false end
-    for _, slot in ipairs(OUTFIT_SLOTS) do
-        local item = character.Inventory.GetItemInLimbSlot(slot)
-        if item ~= nil and item.Prefab ~= nil and tostring(item.Prefab.Identifier) == OUTFIT_IDENTIFIER then
-            return true
-        end
-    end
-    return false
+local function has_outfit_effect(character)
+    if character == nil or character.CharacterHealth == nil then return false end
+    local affliction = character.CharacterHealth.GetAffliction(AFF_OUTFIT_EFFECT)
+    return affliction ~= nil and (affliction.Strength or 0) > 0
 end
 
 local function get_main_limb(character)
@@ -156,10 +148,10 @@ local function is_exclusive_weapon_attack(attacker, attack)
     return false
 end
 
--- ==================== 全力触发 ====================
+-- ===== 全力触发 =====
 -- 按攻击实例去重：一次挥击会对多个肢体各调一次 ApplyAttack，20% 判定与耗气只做一次。
--- 注意：本补丁直接乘 DamageMultiplier 不还原，依赖 Touhou_Magic_Weapon_Bonus.lua 先加载
--- （其 Before 先备份原始倍率、After 还原；init.lua 中本脚本须排在它之后 dofile）。
+-- 本补丁直接乘 DamageMultiplier 不还原，依赖 Touhou_Magic_Weapon_Bonus.lua 先加载
+-- （它 Before 备份、After 还原原始倍率；init.lua 中本脚本须排在它之后 dofile）。
 local allout_proc_state = setmetatable({}, { __mode = "k" }) -- attack -> { proc = bool }
 
 Hook.Patch("Barotrauma.Character", "ApplyAttack", function(instance, ptable)
@@ -186,7 +178,7 @@ Hook.Patch("Barotrauma.Character", "ApplyAttack", function(instance, ptable)
     end
 end, Hook.HookMethodType.Before)
 
--- ==================== 战斗获气 ====================
+-- ===== 战斗获气 =====
 -- ApplyAttack 的 instance 是受击者，ptable["attacker"] 是攻击者；无攻击者的环境伤害不计。
 Hook.Patch("Barotrauma.Character", "ApplyAttack", function(instance, ptable)
     local victim = instance
@@ -195,23 +187,23 @@ Hook.Patch("Barotrauma.Character", "ApplyAttack", function(instance, ptable)
     if victim == nil or attacker == nil then return end
 
     -- 美铃对敌人造成伤害
-    if is_enemy_of(victim, attacker) and attacker.IsHuman and is_wearing_outfit(attacker) then
+    if is_enemy_of(victim, attacker) and attacker.IsHuman and has_outfit_effect(attacker) then
         grant_combat_qi(attacker, attack, DEAL_K, DEAL_MIN, DEAL_MAX)
     end
 
     -- 美铃受到敌人攻击伤害
-    if is_enemy_of(attacker, victim) and victim.IsHuman and is_wearing_outfit(victim) then
+    if is_enemy_of(attacker, victim) and victim.IsHuman and has_outfit_effect(victim) then
         grant_combat_qi(victim, attack, TAKE_K, TAKE_MIN, TAKE_MAX)
     end
 end, Hook.HookMethodType.After)
 
--- ==================== 周期维护 ====================
+-- ===== 周期维护 =====
 local function maintain_character(character)
     if character == nil or character.Removed or character.IsDead or not character.IsHuman then
         return
     end
 
-    if not is_wearing_outfit(character) then
+    if not has_outfit_effect(character) then
         -- 脱下装束：清除姿态与气（强度归零，姿态 affliction minstrength=1 归零即失效）
         if get_strength(character, AFF_QI) > 0 or get_active_stance(character) ~= nil then
             set_strength(character, AFF_QI, 0, QI_MAX)
@@ -233,7 +225,7 @@ local function tick_qi(character)
     if character == nil or character.Removed or character.IsDead or not character.IsHuman then
         return
     end
-    if not is_wearing_outfit(character) then return end
+    if not has_outfit_effect(character) then return end
 
     local stance = get_active_stance(character)
     if stance == AFF_STANCE_CHARGE then
@@ -246,12 +238,12 @@ end
 
 print("Meiling.QiTalent: 脚本已加载 (DEBUG_LOG=" .. tostring(DEBUG_LOG) .. ")")
 
--- 巡回开始：穿着装束的角色强制回到默认姿态「蓄势」（姿态 affliction 无 duration 会跨巡回残留；
--- 气不归零，跨巡回保留）。think 里的无姿态兜底覆盖重生/中途穿上等其余情况
+-- 巡回开始：把穿着装束的角色强制回默认姿态「蓄势」（姿态 affliction 无 duration 会跨巡回残留；
+-- 气不归零、跨巡回保留）。其余情况由 think 的无姿态兜底覆盖。
 Hook.Add("roundStart", "Meiling.QiTalent.RoundStart", function()
     for character in Character.CharacterList do
         local ok, err = pcall(function()
-            if character.IsHuman and not character.IsDead and not character.Removed and is_wearing_outfit(character) then
+            if character.IsHuman and not character.IsDead and not character.Removed and has_outfit_effect(character) then
                 for _, identifier in ipairs(STANCE_AFFS) do
                     set_strength(character, identifier, 0, 100)
                 end
@@ -262,8 +254,7 @@ Hook.Add("roundStart", "Meiling.QiTalent.RoundStart", function()
     end
 end)
 
--- 暂停检测：think 钩子在暂停时仍会触发，气的增减必须跳过
--- （模块级命名函数 + pcall(命名函数)，避免每帧新建闭包）
+-- 暂停检测：think 钩子在暂停时仍会触发，气的增减必须跳过（pcall 包模块级命名函数，避免每帧建闭包）
 local function read_game_paused()
     if GameMain ~= nil and GameMain.Instance ~= nil then
         return GameMain.Instance.Paused

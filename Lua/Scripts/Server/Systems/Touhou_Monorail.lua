@@ -1,9 +1,9 @@
---[[
-单轨蓄力，服务端说了算：按住左键蓄、松开打，伤害和穿甲随蓄力时间涨。
-蓄过 3 秒开始累积自爆风险（走 XML 的 OnBroken，Condition 清零会触发爆炸并自动同步，联机能看到画面和伤害），6 秒硬顶强制发射，抢在原版 8 秒自动开火之前。
-服务器开火只调组件级 weapon.Use——服务器没音频，组件级 Use 也不发网络事件——再广播 FIRE_MESSAGE 让客户端补音效和枪口闪光、重置本地蓄力，免得预测出幽灵射击。单机走完整 item.Use，原生全包。
-改装走物品 tag，跨模组跨端都认：monorail_overclock 把临界压到 2 秒，monorail_stabilizer 自爆概率乘 0.25。
-]]
+--[[单轨蓄力，服务端说了算：按住左键蓄、松开打，伤害和穿甲随蓄力时间涨。
+蓄过 3 秒开始累积自爆风险（走 XML 的 OnBroken，Condition 清零即爆炸且自动同步，联机能看到画面和伤害）。
+6 秒硬顶强制发射，必须早于 XML 的 maxchargetime（原版 8 秒自动开火）。
+服务器开火只调组件级 weapon.Use——服务器没音频、组件级 Use 也不发网络事件——再广播 FIRE_MESSAGE 让客户端补音效和枪口闪光、
+重置本地蓄力，免得预测出幽灵射击；单机走完整 item.Use，原生全包。
+改装认物品 tag，跨模组跨端都认：monorail_overclock 把临界压到 2 秒，monorail_stabilizer 自爆概率乘 0.25。]]
 
 --[[真拿你们没办法，坐好喽
 「苍」和「赫」互相碰撞就是能产生假想质量爆发的「虚式·茈」
@@ -141,7 +141,6 @@ local function fire(item, weapon, user, chargeRatio, deltaTime)
     else
         -- 服务器没音频，组件级 Use 也不发网络事件，只出伤害
         pcall(use_weapon, weapon, deltaTime, user)
-        -- 广播出去，客户端本地自己补表现
         local msg = Networking.Start(FIRE_MESSAGE)
         msg.WriteUInt16(item.ID)
         Networking.Send(msg)

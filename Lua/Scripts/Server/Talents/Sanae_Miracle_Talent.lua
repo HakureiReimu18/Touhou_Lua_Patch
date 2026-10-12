@@ -1,21 +1,9 @@
--- 东风谷早苗天赋「奇迹的现人神」(SanaeTalent) Lua 实现
--- 替代原 XML AbilityGroup + 事件实现的两部分：
--- 1) 巡回开始约10秒后，给除自己外随机一名清醒船员降下随机一种奇迹；主祭司等级>=10时，约15秒后再降下一次
--- 2) 佩戴带有 Illness_Recovery_Charm 标签的护符时，给自己降下随机一种奇迹（每巡回一次）
--- 其余效果（拥有奇迹时减伤/加最大生命、低生命值增伤）仍由 XML TalentsSanae.xml 实现。
--- 奇迹本体（SanaeTalent_Effect01~07、SanaeTalent_Effect_Flag）仍由 affliction XML 定义。
---
--- 生效判定：角色带有 Touhou_Sanae_Character_Effect affliction（强度>0）即视为生效，
--- 不直接检查装备槽位，任何能以任意方式给予该 affliction 的模组/装束都可兼容。
---
--- 多人同时生效时：全船范围的降奇迹(1)只由"主祭司"（ID最小的存活生效者）结算一次；
--- 作用于自身的效果(2)为每个生效者独立结算。
---
--- 性能：单次扫描合并完成所有判定，并按阶段自适应降频：
---   巡回开始 FAST_PHASE_DURATION 秒内每 SCAN_FAST_INTERVAL 秒一次（保证10/15/4.9秒时点精度），
---   之后每 SCAN_SLOW_INTERVAL 秒一次（捕获中途新增生效者/新佩戴护符/中途升到10级），
---   全部效果结算完毕后降至 SCAN_IDLE_INTERVAL 秒兜底。
--- 降奇迹本身（随机抽选目标的第二次遍历）只在到点时执行。
+--[[东风谷早苗天赋「奇迹的现人神」(SanaeTalent)：替代 TalentsSanae.xml 里的 AbilityGroup + 事件实现。
+巡回开始约 10 秒给除自己外随机一名清醒船员降一种奇迹，主祭司等级 >= 10 时约 15 秒后再降一次；
+佩戴带 Illness_Recovery_Charm 标签的护符时给自己降一次（每巡回一次）。
+生效判定：带 Touhou_Sanae_Character_Effect affliction（强度>0）即算生效，不查装备槽，任何能给出该 affliction 的模组/装束都兼容。
+多人同时生效时：全船范围的降奇迹只由「主祭司」（ID 最小的存活生效者）结算一次，作用于自身的为每个生效者独立结算。
+其余减伤/加最大生命/低血增伤仍在 TalentsSanae.xml，奇迹本体由 affliction XML 定义；扫描按阶段自适应降频。]]
 
 local OUTFIT_FLAG_AFFLICTION = "Touhou_Sanae_Character_Effect"
 local CHARM_TAG = "Illness_Recovery_Charm"
@@ -262,9 +250,8 @@ local function scan(now)
         end
     end
 
-    -- 降频判据（不参与上面的发放判定，只决定扫描间隔）：
-    --   第二次降临只由主祭司结算，已过点时点且主祭司等级不足（或没有主祭司）时视为不会再发生；
-    --   无生效者时全船部分也无从结算。判为完成后仍按兜底间隔继续扫描并尝试发放，不会漏发。
+    -- 降频判据（不参与上面的发放判定，只决定扫描间隔）：第二次降临只由主祭司结算，已过点时点且主祭司等级不足
+    -- （或没有主祭司）时视为不会再发生，无生效者时全船部分也无从结算；判为完成后仍按兜底间隔继续扫描，不会漏发。
     local settled
     if crew_grants_done >= 2 or #wearers == 0 then
         settled = true

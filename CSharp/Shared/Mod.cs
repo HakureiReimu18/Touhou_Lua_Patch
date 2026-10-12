@@ -312,7 +312,8 @@ namespace Touhou.Affixes
                 if (type.Namespace != "Touhou.Affixes"
                     && type.Namespace != "Touhou.DescToggle"
                     && type.Namespace != "Touhou.WearableOrder"
-                    && type.Namespace != "Touhou.RagdollScale") continue;
+                    && type.Namespace != "Touhou.RagdollScale"
+                    && type.Namespace != "Touhou.DivingGearAI") continue;
                 try
                 {
                     var result = new PatchClassProcessor(harmony, type).Patch();

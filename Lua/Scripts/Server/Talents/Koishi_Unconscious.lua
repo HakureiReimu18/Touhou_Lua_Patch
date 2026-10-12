@@ -1,11 +1,8 @@
--- 恋天赋「地底蔷薇」——每隔随机时间（15~30 秒）给自己一次随机时长（5~15 秒）、
--- 随机等级（1~3 级）的「无意识」效果。
--- 替代 Talents/TalentsKoishi.xml 里那条 interval 15 秒 / 75% 概率的能力组
--- 与 Events/Touhou_Talents_Event.xml 的 KoishiTalent_Unconscious 事件（旧 XML 只注释、未删除，保留备查）。
--- 旧 XML 的行为：固定 15 秒一次、75% 概率；时长只有 15/12/8/6 四档，等级 1~3 各约 1/3。
--- 本脚本按描述改成连续随机：间隔 15~30 秒、时长 5~15 秒、等级 1~3
--- （无意识 affliction 自带 strengthchange="-1"，强度即剩余秒数）。
--- 判定与施加都在服务端；60 秒量级的计时用 0.5 秒节拍轮询，避免每帧扫全场。
+-- 恋天赋「地底蔷薇」：每隔随机 15~30 秒给自己一次随机时长 5~15 秒、随机 1~3 级的「无意识」效果。
+-- 替代 Talents/TalentsKoishi.xml 的 interval 能力组与 Events/Touhou_Talents_Event.xml 的
+-- KoishiTalent_Unconscious 事件（旧 XML 只注释未删，保留备查；旧版为固定 15 秒 / 75% 概率）。
+-- 无意识 affliction 自带 strengthchange="-1"，强度即剩余秒数。
+-- 判定与施加都在服务端；用 0.5 秒节拍轮询，避免每帧扫全场。
 
 -- 服务端权威：联机客户端不执行；单机和开房主机照常执行
 if not SERVER and not Game.IsSingleplayer then return end

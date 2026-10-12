@@ -1,14 +1,9 @@
--- 紫天赋「境界的妖怪」——一巡回一次（**全服共享一次**）：把全队清醒的人立刻传送到主潜艇的刷新点。
--- 替代 Events/Touhou_Talents_Event.xml 的 YukariTalent_Effect_Self 事件
--- 与 Items/Clothes/Yukari_gear.xml 里按钮的 TriggerEvent（旧 XML 只注释、未删除，保留备查）。
--- 触发链：装束+ 的按钮（XML）→ 给自己挂上 YukariTalent_Teleport_Request 标记（0.5 秒后自然过期）
---   → 本脚本每 0.2 秒轮询一次，看到标记就执行传送。
--- 「一巡回一次」是全服共享的：任何一个人用掉之后，本巡回其他人（以及重生/新加入的持有者）
--- 都不能再用——用掉时给所有穿装束+的人挂上 YukariTalent_Effect_Self_Effect（resetbetweenrounds），
--- 按钮上的条件认这个标记，所以按钮会一起失效；Lua 侧另有 used_this_round 兜底，
--- 迟到的人即使按钮没来得及补标记也放不出第二发。
--- 传送目标：主潜艇（Submarine.MainSub）的 SpawnType.Human 刷新点；取不到刷新点就整体失败、
--- 标记清掉但不算用过，按钮可以再按（与旧 XML 事件的行为一致：没刷新点就什么都不做）。
+-- 紫天赋「境界的妖怪」：一巡回一次（全服共享），把全队清醒的人传送到主潜艇刷新点。
+-- 替代 Events/Touhou_Talents_Event.xml 的 YukariTalent_Effect_Self 与
+-- Items/Clothes/Yukari_gear.xml 按钮的 TriggerEvent（旧 XML 只注释未删，保留备查）。
+-- 触发链：XML 按钮 → 挂 YukariTalent_Teleport_Request（0.5 秒自然过期）→ 本脚本 0.2 秒轮询执行。
+-- 全服共享：用掉后给所有装束+ 持有者挂 YukariTalent_Effect_Self_Effect（resetbetweenrounds），按钮条件认它而一起失效；Lua 侧 used_this_round 兜底重生/新加入者。
+-- 目标取主潜艇 SpawnType.Human 刷新点；取不到就整体失败、标记清掉但不算用过，按钮可再按（同旧 XML）。
 
 -- 服务端权威：联机客户端不执行；单机和开房主机照常执行
 if not SERVER and not Game.IsSingleplayer then return end
@@ -64,8 +59,7 @@ local function teleport_team(character)
     return true
 end
 
--- 给所有穿装束+（有天赋效果）的人补上「本巡回已用」标记：按钮上的条件认它，按了也不会生效。
--- 只在用掉之后低频跑（每 CATCHUP_INTERVAL 一次），负责重生/新加入的人。
+-- 给所有装束+ 持有者补「本巡回已用」标记（按钮条件认它，按了不生效）；用掉后低频跑，负责重生/新加入者。
 local function mark_used_for_wearers()
     for character in Character.CharacterList do
         if character ~= nil and not character.Removed and not character.IsDead
