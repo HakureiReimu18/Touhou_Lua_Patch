@@ -36,10 +36,11 @@ if Game.IsSingleplayer or SERVER then
     dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Pricer.lua")
     --[[以太回收机：批量回收带等级的武器 → 以太层金属/副产物，见 Items/EtherRecycler.xml]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Ether_Recycler.lua")
-    --[[⚠ 封存（2026-10）：异常物品初版整体下线，效果做得简陋，待重做后再放出。
-        Items/AnomalousItems.xml 与 Items/Afflictions.xml 末尾三件 affliction 已同步注释；
-        恢复时把下行与那两处的注释一起放开]]
-    -- dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Anomalous_Items.lua")
+    --[[异常物品系统（TH-01 会回来的货箱 + TH-02 比里面大的柜子 + TH-03 排斥样本
+        + TH-08 点名喇叭 + 铅封收容箱）。装进收容箱（Touhou_Containment）效果全停；
+        休眠 4 件在 _Archive/AnomalousItems_v1_全8件.xml。
+        见 Items/AnomalousItems.xml 与 Items/Afflictions.xml 末尾]]
+    dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Anomalous_Items.lua")
 
     -- 角色天赋
     --[[红美铃天赋「气与姿态」：须排在 Touhou_Magic_Weapon_Bonus.lua 之后（DamageMultiplier 补丁依赖其加载顺序）]]
@@ -51,14 +52,14 @@ if Game.IsSingleplayer or SERVER then
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Yuyuko_Talent.lua")
     --[[魔理沙天赋「普通的魔法使」：攻击积累魔力过载，按攻击事件去重（原 XML 能力组已注释，见 Talents/TalentsMarisa.xml）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Marisa_Magic_Overload.lua")
+    --[[咲夜天赋「完美而潇洒的从者」：攻击叠加血之时计，按攻击事件去重（原 XML 能力组已注释，见 Talents/TalentsSakuya.xml）]]
+    dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Sakuya_Blood_Clock.lua")
     --[[恋天赋「地底蔷薇」：随机间隔的随机等级无意识（原 XML 能力组与事件已注释，见 Talents/TalentsKoishi.xml）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Koishi_Unconscious.lua")
     --[[紫天赋「境界的妖怪」：一巡回一次的全体传送（原事件已注释，见 Events/Touhou_Talents_Event.xml）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Yukari_Teleport.lua")
     --[[灵梦天赋「童祭」：受到非人类造成的伤害降低 20%（原 XML 能力组已注释，见 Talents/TalentsReimu.xml）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Reimu_Protection.lua")
-    --[[椛天赋「山中的千里眼」：附近有敌人时获得警戒（原 XML 能力组已注释，见 Talents/TalentsMomizi.xml）]]
-    dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Momizi_Alert.lua")
     --[[键山雏天赋「秘神流雏」：主动释放厄运缠身（原 XML 能力组已注释，见 Talents/TalentsKagiyama_Hina.xml；
         装束按钮同步改为只挂释放标记，见 Items/Clothes/Kagiyama_Hina_gear.xml）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Kagiyama_Hina_Misfortune_Release.lua")
@@ -82,9 +83,14 @@ if Game.IsSingleplayer or SERVER then
 --[[    dofile(TLE.Path .. "/Lua/Scripts/Server/Disabled/Touhou_Hisoutensoku_Amor.lua")]]
 end
 
--- 下面两个脚本自己处理客户端/服务端分支，保持与原来一致：两端都加载
-dofile(TLE.Path.."/Lua/Scripts/Server/Systems/Touhou_Monorail.lua")
+-- 下面几个脚本自己处理客户端/服务端分支，保持与原来一致：两端都加载
+--[[单轨蓄力已迁到 C# 通用"松手开火"插件（CSharp/Shared/ReleaseFire.cs + Item.xml 的 <ReleaseFire>），
+    参数/tag 改装都在那边配；回滚就放开下行注释，并把 Item.xml 单轨的 <ReleaseFire> 换回 Holdable 下的 LuaHook。
+dofile(TLE.Path.."/Lua/Scripts/Server/Disabled/Touhou_Monorail.lua")]]
 dofile(TLE.Path.."/Lua/Scripts/Server/Talents/Iroha_Versatile_Adaptation.lua")
+--[[椛天赋「山中的千里眼」：附近有敌人时获得警戒（原 XML 能力组已注释，见 Talents/TalentsMomizi.xml）。
+    客户端也要跑：同步只带强度不带 duration，客户端不自己重施的话警戒会 1.5 秒一到就掉，见脚本头部注释]]
+dofile(TLE.Path.."/Lua/Scripts/Server/Talents/Momizi_Alert.lua")
 
 -- 客户端
 dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Cam_Offset.lua")

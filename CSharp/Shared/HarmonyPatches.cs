@@ -79,6 +79,18 @@ namespace Touhou.Affixes
             }
             return s.Trim();
         }
+
+        /// 余烬：耐久越低伤害越高——100% 无加成，25% 及以下吃满。返回伤害倍率
+        public static float LowConditionMult(Item weapon, float maxMult)
+        {
+            if (weapon == null || maxMult <= 1f) return 1f;
+            float max = weapon.MaxCondition;
+            if (max <= 0f) return 1f;
+            float frac = Math.Min(1f, Math.Max(0f, weapon.Condition / max));
+            const float fullAt = 0.25f;
+            float t = Math.Min(1f, Math.Max(0f, (1f - frac) / (1f - fullAt)));
+            return 1f + (maxMult - 1f) * t;
+        }
     }
 
     /// 反射成员缓存：这些成员都定在固定类型上，解析一次就够，热路径不走字符串查找
@@ -601,6 +613,8 @@ namespace Touhou.Affixes
             if (Mod.ItemAffixes.Count == 0 && Mod.LastKnownAffixes.Count == 0) return; // 全局快速退出
             if (Mod.ItemAffixes.Remove(__instance.ID))
                 CooldownDamageState.Purge(__instance.ID);
+            ProjectileShootPatch.PurgeCrown(__instance.ID);
+            RepairRampState.Purge(__instance.ID);
             // 会话表随物品真正删除一起清理（ID 复用防护；逐条移除，其余物品的条目继续保留）
             Mod.LastKnownAffixes.Remove(__instance.ID);
         }
@@ -631,28 +645,37 @@ namespace Touhou.Affixes
         }
 
         /// <summary>OnUse 前快照内容物耐久，后面按实际消耗结算（锈蚀/节能/虚空/王冠共用）</summary>
-        static void Prefix(object __instance, object[] __args, out Dictionary<ushort, float> __state)
+        /// 使用前后的快照：内容物耐久（燃料/弹药）+ 物品自身耐久（持恒）
+        sealed class UseSnapshot
+        {
+            public Dictionary<ushort, float> Conditions;
+            public float ItemCondition;
+        }
+
+        static void Prefix(object __instance, object[] __args, out UseSnapshot __state)
         {
             __state = null;
             if (!Mod.IsGameplayAuthority) return; // 只跑一边：本地双上下文会让返还翻倍
-            if (!Mod.AnyFuelMultAffixes && !Mod.AnyAmmoSaveAffixes && !Mod.AnyLastShotAffixes && !Mod.AnyFirstShotAffixes) return; // 没这类词缀就没事干
+            if (!Mod.AnyFuelMultAffixes && !Mod.AnyAmmoSaveAffixes && !Mod.AnySelfWearSaveAffixes
+                && !Mod.AnyLastShotAffixes && !Mod.AnyFirstShotAffixes) return; // 没这类词缀就没事干
             if (__args == null || __args.Length < 2) return;
             if (__args[0] is not ActionType at || at != ActionType.OnUse) return;
 
             var item = ReflectionCache.GetItem(__instance);
             if (item == null || !Helpers.TryGetAffix(item, out var def)) return;
-            if (Math.Abs(def.FuelConsumeMult - 1f) < 0.0001f && def.AmmoSaveChance <= 0f
+            if (Math.Abs(def.FuelConsumeMult - 1f) < 0.0001f && def.AmmoSaveChance <= 0f && def.SelfWearSaveChance <= 0f
                 && def.LastShotDamageMult <= 1f && def.FirstShotDamageMult <= 1f) return;
             if (item.ContainedItems == null) return;
 
-            __state = new Dictionary<ushort, float>();
+            var snap = new UseSnapshot { ItemCondition = item.Condition };
             foreach (var c in item.ContainedItems)
             {
-                if (c != null) __state[c.ID] = c.Condition;
+                if (c != null) (snap.Conditions ??= new Dictionary<ushort, float>())[c.ID] = c.Condition;
             }
+            __state = snap;
         }
 
-        static void Postfix(object __instance, object[] __args, Dictionary<ushort, float> __state)
+        static void Postfix(object __instance, object[] __args, UseSnapshot __state)
         {
             if (!Mod.IsGameplayAuthority) return; // 单上下文执行：本地服务器双上下文补丁会让命中特效/affliction 双倍
             // 这道是每帧热路径：全场没词缀物品时一个 Count 就打发
@@ -691,14 +714,16 @@ namespace Touhou.Affixes
                 return;
             }
 
+            var before = __state?.Conditions;
             // 耗材百分比结算（锈蚀/节能），跟有没有 StatusEffect 无关
-            if (!viaProjectile) ApplyFuelConsumeMult(item, def, __state);
+            if (!viaProjectile) ApplyFuelConsumeMult(item, def, before);
             // 虚空：这一发掷一次，中了就全额返还本次弹药消耗
-            if (!viaProjectile) ApplyAmmoSave(item, def, __state);
-            // 王冠：这一发打空弹匣时，给刚射出的投射物增伤
-            if (!viaProjectile) ApplyLastShotBonus(item, def, __state);
+            if (!viaProjectile) ApplyAmmoSave(item, def, before);
+            // 持恒：本次使用扣掉的自身耐久按概率退回
+            if (!viaProjectile && def.SelfWearSaveChance > 0f) ApplySelfWearSave(item, def, __state);
+            // 王冠不在这结算：改到 Projectile.Shoot 前缀按弹匣剩余比例算（见 ProjectileShootPatch.CrownRamp）
             // 领先：满弹匣打出的第一发增伤
-            if (!viaProjectile) ApplyFirstShotBonus(item, def, __state);
+            if (!viaProjectile) ApplyFirstShotBonus(item, def, before);
 
             if (def.Effects == null || def.Effects.Count == 0) return;
 
@@ -709,8 +734,15 @@ namespace Touhou.Affixes
                 // 已注册进组件列表的效果由引擎正常触发，这里跳过避免双倍生效
                 if (!viaProjectile && IsEffectRegistered(__instance, type, effect)) continue;
 
-                // 补丁管的命中特效只认真命中：打墙/落空不触发、不耗冷却
-                if (useTarget is not Character && limb == null) continue;
+                // 药物：ApplyTreatment / Item.Use 会对每个组件各调一次本方法，同一帧里同一个效果只结算一次，
+                // 否则一次用药的治疗量按组件数翻倍（健康界面还会连 OnSuccess+OnUse 两轮，XML 里只留 OnUse 了）
+                if (!viaProjectile && Mod.IsMedicalItem(item) && !ProcOncePerFrame(item.ID, i)) continue;
+
+                // 补丁管的命中特效只认真命中：打墙/落空不触发、不耗冷却。
+                // 例外：纯自伤效果（只 target=Character 且带非 buff affliction，如愤怒）在使用时就结算——
+                // 枪械开火时 useTarget/limb 都是空的，不放开的话这类效果既进不了引擎列表（带 interval 被
+                // Mod.RegisterEffectsForDisplay 跳过）、又被这道闸门挡住，等于永远不生效
+                if (useTarget is not Character && limb == null && !IsSelfHarmEffect(effect)) continue;
 
                 // 带 interval 的没注册进组件（见 Mod.RegisterEffectsForDisplay），冷却补丁按真实秒数管；
                 // 引擎那套按命中次数扣，高射速几下就烧完
@@ -746,6 +778,18 @@ namespace Touhou.Affixes
         /// <summary>命中特效的真实时间冷却表</summary>
         static readonly Dictionary<(ushort ItemId, int EffectIndex), double> ProcTimers = new();
 
+        /// <summary>药物词缀的同帧去重表：ApplyTreatment 对每个组件各触发一次，同一帧里同一个效果只认第一次</summary>
+        static readonly Dictionary<(ushort ItemId, int EffectIndex), double> MedicalProcFrames = new();
+
+        static bool ProcOncePerFrame(ushort itemId, int effectIndex)
+        {
+            var key = (itemId, effectIndex);
+            double now = Timing.TotalTime;
+            if (MedicalProcFrames.TryGetValue(key, out double lastProc) && lastProc == now) return false;
+            MedicalProcFrames[key] = now;
+            return true;
+        }
+
         /// 待发增伤（王冠/领先）：OnUse 里这发子弹还没造出来，LastProjectile 还是上一发，
         /// 只能先记下倍率等同一帧的 Shoot 来消费；隔帧的陈旧值直接扔
         public static readonly Dictionary<ushort, (float Mult, double At)> PendingShotBoosts = new();
@@ -753,8 +797,11 @@ namespace Touhou.Affixes
         public static void ClearProcTimers()
         {
             ProcTimers.Clear();
+            MedicalProcFrames.Clear();
             PendingShotBoosts.Clear();
             CooldownDamageState.Clear();
+            ProjectileShootPatch.ClearCrown();
+            RepairRampState.Clear();
         }
 
         static void ApplyFuelConsumeMult(Item item, AffixDef def, Dictionary<ushort, float> before)
@@ -793,31 +840,15 @@ namespace Touhou.Affixes
             if (refunded) Mod.DebugLog($"[{def.Identifier}] ammo save proc on {item.Name}");
         }
 
-        /// 王冠：这发打空弹匣（耐久弹药归零，或散装弹最后一枚离膛）就给刚射出的投射物增伤。
-        /// 命中时才读 DamageMultiplier，弹道途中改是有效的
-        static void ApplyLastShotBonus(Item item, AffixDef def, Dictionary<ushort, float> before)
+        /// 持恒：本次使用（OnUse 这一轮）扣掉的自身耐久按概率退回去
+        static void ApplySelfWearSave(Item item, AffixDef def, UseSnapshot snap)
         {
-            if (before == null || def.LastShotDamageMult <= 1f) return;
-            if (item.ContainedItems == null || item.Components == null) return;
-
-            bool emptied = false;
-            foreach (var c in item.ContainedItems)
-            {
-                if (c == null || !before.TryGetValue(c.ID, out float oldCond)) continue;
-                if (oldCond > 0.001f && c.Condition <= 0.001f) { emptied = true; break; }
-            }
-            if (!emptied)
-            {
-                foreach (var kv in before)
-                {
-                    if (item.ContainedItems.Any(c => c != null && c.ID == kv.Key)) continue;
-                    if (Entity.FindEntityByID(kv.Key) is not Item spent) continue;
-                    bool anyLeft = item.ContainedItems.Any(c => c != null && !c.Removed && c.Prefab == spent.Prefab);
-                    if (!anyLeft) { emptied = true; break; }
-                }
-            }
-            if (!emptied) return;
-            BoostLastProjectile(item, def.LastShotDamageMult, def.Identifier, "last-shot");
+            if (snap == null) return;
+            float consumed = snap.ItemCondition - item.Condition;
+            if (consumed <= 0f) return;
+            if (Rand.Range(0f, 1f, Rand.RandSync.Unsynced) >= def.SelfWearSaveChance) return;
+            item.Condition = Math.Min(item.MaxCondition, item.Condition + consumed);
+            Mod.DebugLog($"[{def.Identifier}] self-wear save proc on {item.Name}");
         }
 
         /// 领先：射前满耐久、这发又确实扣了 → 满匣首发，增伤。散装弹药没这概念，不支持
@@ -850,6 +881,33 @@ namespace Touhou.Affixes
             return lists.TryGetValue(type, out var list) && list.Contains(effect);
         }
 
+        /// 纯自伤：只作用于使用者自己（target 仅 Character）且带非 buff 的 affliction。
+        /// 这类效果不需要命中对象，使用时（含枪械开火）就该结算，见上面那道命中闸门的例外
+        static bool IsSelfHarmEffect(StatusEffect effect)
+        {
+            if (effect == null || !effect.HasTargetType(StatusEffect.TargetType.Character)) return false;
+            if (effect.HasTargetType(StatusEffect.TargetType.This)
+                || effect.HasTargetType(StatusEffect.TargetType.Parent)
+                || effect.HasTargetType(StatusEffect.TargetType.Contained)
+                || effect.HasTargetType(StatusEffect.TargetType.NearbyCharacters)
+                || effect.HasTargetType(StatusEffect.TargetType.NearbyItems)
+                || effect.HasTargetType(StatusEffect.TargetType.UseTarget)
+                || effect.HasTargetType(StatusEffect.TargetType.Hull)
+                || effect.HasTargetType(StatusEffect.TargetType.Limb)
+                || effect.HasTargetType(StatusEffect.TargetType.AllLimbs)
+                || effect.HasTargetType(StatusEffect.TargetType.LastLimb)
+                || effect.HasTargetType(StatusEffect.TargetType.LinkedEntities))
+            {
+                return false;
+            }
+            if (effect.Afflictions == null) return false;
+            foreach (Affliction affliction in effect.Afflictions)
+            {
+                if (affliction?.Prefab != null && !affliction.Prefab.IsBuff) return true;
+            }
+            return false;
+        }
+
         public static Item GetProjectileLauncher(Item item)
         {
             if (item.Components == null) return null;
@@ -862,23 +920,42 @@ namespace Touhou.Affixes
         }
     }
 
-    /// 金冠每武器计时：命中才开始走冷却，挥空不耗。同一次攻击按"同一帧"算，
-    /// 多肢体/多弹丸一起放行；加宽限反而会让高射速一梭子全吃到加成
+    /// 攻击状态表：荆棘反伤的冷却（Timers）+ 金冠的蓄能（CrownCharge）
     public static class CooldownDamageState
     {
         static readonly Dictionary<ushort, (double NextReady, double LastProc)> Timers = new();
+        // 金冠：上次命中的时间与那一发吃到的倍率（同帧齐射共享一份）
+        static readonly Dictionary<ushort, (double At, float Mult)> CrownCharge = new();
 
-        public static void Clear() => Timers.Clear();
+        public static void Clear() { Timers.Clear(); CrownCharge.Clear(); }
 
         /// <summary>物品删除时随词缀条目一起清理（ID 复用防护，见 ItemRemovePurgePatch）</summary>
-        public static void Purge(ushort itemId) => Timers.Remove(itemId);
+        public static void Purge(ushort itemId) { Timers.Remove(itemId); CrownCharge.Remove(itemId); }
 
-        public static bool Proc(Item source, float interval)
+        /// 金冠：伤害倍率随"距上次命中的间隔"线性充能，fullAtSeconds 秒吃满 maxMult。
+        /// 同一次攻击的多弹丸/多肢体（同一帧）共享同一份倍率；首次命中直接吃满
+        public static float CrownMult(Item source, float maxMult, float fullAtSeconds)
+        {
+            double now = Timing.TotalTime;
+            if (CrownCharge.TryGetValue(source.ID, out var prev) && prev.At == now)
+                return prev.Mult;
+            double dt = prev.At > 0.0 ? now - prev.At : double.MaxValue;
+            float t = fullAtSeconds <= 0.01f ? 1f : (float)Math.Min(1.0, dt / fullAtSeconds);
+            float mult = 1f + (maxMult - 1f) * t;
+            CrownCharge[source.ID] = (now, mult);
+            return mult;
+        }
+
+        /// <param name="sameFrameRepeats">
+        /// true（默认，历史语义）= 同帧重复调用算同一次攻击，全部放行。
+        /// false（荆棘反伤用）= 同帧只放行第一次：一次攻击不管命中几发/几根肢体，只反伤一次。
+        /// </param>
+        public static bool Proc(Item source, float interval, bool sameFrameRepeats = true)
         {
             double now = Timing.TotalTime; // 每帧更新一次：同帧调用 now 完全相同
             if (Timers.TryGetValue(source.ID, out var t))
             {
-                if (now == t.LastProc) return true; // 同一次攻击的后续命中（多肢体/多弹丸）
+                if (now == t.LastProc) return sameFrameRepeats; // 同一次攻击的后续命中（多肢体/多弹丸）
                 if (now < t.NextReady) return false;
             }
             Timers[source.ID] = (now + interval, now);
@@ -924,11 +1001,74 @@ namespace Touhou.Affixes
             if (Math.Abs(def.DamageMult - 1f) > 0.0001f
                 && (def.IsComposite || Mod.ChargeGatedDamageApplies(def, launcher)))
                 damageMultiplier *= def.DamageMult;
+            // 余烬：耐久越低伤害越高（开火时读武器当前耐久）
+            if (def.LowConditionDamageMult > 1f)
+                damageMultiplier *= Helpers.LowConditionMult(launcher, def.LowConditionDamageMult);
             // 优先：槽位激活标记 TickSlotOneBonuses 管（连"从 1 号槽拿到手上"都记着）
             if (def.SlotOneDamageMult > 1f &&
                 Mod.TryGetAffixData(launcher, out var sdata) && sdata.SlotBonusActive)
                 damageMultiplier *= def.SlotOneDamageMult;
             // 金冠不在这触发：开火就判会打空也耗冷却，统一挪到命中时（MeleeDamagePatch 回溯发射器）
+            // 王冠在这触发：Shoot 之后才 RemoveContained，开火这一刻弹匣还没扣，正好能读"算上这一发"的剩余量
+            if (def.LastShotDamageMult > 1f)
+            {
+                if (!CrownFrameMult.TryGetValue(launcher.ID, out var crown) || crown.At != Timing.TotalTime)
+                {
+                    crown = (Timing.TotalTime, CrownRamp(launcher, ReflectionCache.GetItem(__instance), def.LastShotDamageMult));
+                    CrownFrameMult[launcher.ID] = crown;
+                }
+                damageMultiplier *= crown.Mult;
+            }
+        }
+
+        /// <summary>王冠：每把枪见过的满弹数，当弹匣容量的分母</summary>
+        static readonly Dictionary<ushort, int> CrownMagMax = new();
+        /// <summary>王冠：同帧齐射的多发弹丸共用一份档位倍率（按第一发的弹匣状态算）</summary>
+        static readonly Dictionary<ushort, (double At, float Mult)> CrownFrameMult = new();
+
+        public static void PurgeCrown(ushort itemId)
+        {
+            CrownMagMax.Remove(itemId);
+            CrownFrameMult.Remove(itemId);
+        }
+
+        public static void ClearCrown()
+        {
+            CrownMagMax.Clear();
+            CrownFrameMult.Clear();
+        }
+
+        /// 王冠：弹匣剩得越少伤害越高。按"已消耗比例"分 10 档、每档 3%，最后 10% 吃满。
+        /// 散装弹药按剩余发数 / 见过的满弹数（这一发也算已消耗）；电池类耐久弹药按 Condition/MaxCondition
+        static float CrownRamp(Item launcher, Item projectile, float maxMult)
+        {
+            if (launcher.ContainedItems == null || projectile == null) return 1f;
+            int count = 0;
+            float condition = 0f, maxCondition = 0f;
+            foreach (var c in launcher.ContainedItems)
+            {
+                if (c == null || c.Removed || c.Prefab != projectile.Prefab) continue;
+                count++;
+                condition += c.Condition;
+                maxCondition += c.MaxCondition;
+            }
+            if (count == 0) return 1f; // 找不到弹匣内容物（特殊发射链）→ 这词缀不参与
+
+            float consumed;
+            if (maxCondition > 0.001f && condition < maxCondition - 0.001f)
+            {
+                consumed = 1f - condition / maxCondition;
+            }
+            else
+            {
+                CrownMagMax.TryGetValue(launcher.ID, out int maxSeen);
+                if (count > maxSeen) CrownMagMax[launcher.ID] = maxSeen = count;
+                // 单发弹匣（maxSeen 1）每一发都是"最后一发" → 吃满档，和旧版行为一致
+                consumed = maxSeen <= 1 ? 1f : (maxSeen - count + 1f) / maxSeen;
+            }
+            int band = (int)Math.Ceiling(consumed * 10f);
+            band = Math.Min(10, Math.Max(1, band));
+            return 1f + (maxMult - 1f) * band / 10f;
         }
     }
 
@@ -1034,14 +1174,15 @@ namespace Touhou.Affixes
                     if (!viaProjectile && Math.Abs(atkDef.DamageMult - 1f) > 0.0001f
                         && (atkDef.IsComposite || Mod.ChargeGatedDamageApplies(atkDef, affixSource)))
                         mult *= atkDef.DamageMult;
+                    // 余烬：耐久越低伤害越高（投射物在开火时已经乘过，这里只管近战）
+                    if (!viaProjectile && atkDef.LowConditionDamageMult > 1f)
+                        mult *= Helpers.LowConditionMult(affixSource, atkDef.LowConditionDamageMult);
                     if (!viaProjectile && atkDef.SlotOneDamageMult > 1f &&
                         Mod.TryGetAffixData(affixSource, out var slotData) && slotData.SlotBonusActive)
                         mult *= atkDef.SlotOneDamageMult;
-                    if (atkDef.CooldownDamageMult > 1f &&
-                        CooldownDamageState.Proc(affixSource, atkDef.CooldownDamageInterval))
-                    {
-                        mult *= atkDef.CooldownDamageMult;
-                    }
+                    // 金冠：按距上次命中的间隔充能（10 秒蓄满），同一次攻击共享一份
+                    if (atkDef.CooldownDamageMult > 1f)
+                        mult *= CooldownDamageState.CrownMult(affixSource, atkDef.CooldownDamageMult, atkDef.CooldownDamageInterval);
                     // 巨人杀手：命中时按目标质量判定（发射时还不知道会命中谁）
                     if (atkDef.MassBonusMult > 1f && victim != null && victim.Mass >= atkDef.MassThreshold)
                         mult *= atkDef.MassBonusMult;
@@ -1120,8 +1261,7 @@ namespace Touhou.Affixes
             // TeamType 的位置随版本变，用 var + ToString 躲编译期依赖
             var atkTeam = attacker.TeamID;
             if (atkTeam == victim.TeamID && atkTeam.ToString() != "None") return;
-            // 凭依武装这类多槽位穿戴物每个槽位都会出现一次，得自己去重；
-            // 指望 Proc 同帧放行不行——同帧重复调用本来就当同一次攻击放行了
+            // 凭依武装这类多槽位穿戴物每个槽位都会出现一次，得自己去重
             List<Item> seen = null;
             int slotCount = Math.Min(inv.Capacity, inv.SlotTypes.Length);
             for (int i = 0; i < slotCount; i++)
@@ -1137,7 +1277,9 @@ namespace Touhou.Affixes
                 if (seen != null && seen.Contains(item)) continue;
                 if (!Helpers.TryGetAffix(item, out var def)) continue;
                 if (def.ThornsBleeding <= 0f && def.ThornsLacerations <= 0f && def.ThornsStun <= 0f) continue;
-                if (!CooldownDamageState.Proc(item, def.ThornsInterval)) continue;
+                // 同帧只放行第一次：一次攻击哪怕同帧命中 6 根肢体/6 发弹丸（爆炸、霰弹、hitscan 多发），
+                // 也只反伤一次。同帧全放行是给冷却增伤留的语义，反伤复用会把 8 点流血翻成 48
+                if (!CooldownDamageState.Proc(item, def.ThornsInterval, sameFrameRepeats: false)) continue;
                 (seen ??= new List<Item>(2)).Add(item);
                 ApplyThornsAffliction(attacker, "bleeding", def.ThornsBleeding);
                 ApplyThornsAffliction(attacker, "lacerations", def.ThornsLacerations);
@@ -1197,6 +1339,87 @@ namespace Touhou.Affixes
         }
     }
 
+    /// 匠人节奏：连续修理时修理速度逐步提升（船体/设备分开的速率，共用上限），停手超过 1 秒清零
+    public static class RepairRampState
+    {
+        // 停手多久清空累积加成（秒）
+        const double RampResetSeconds = 10.0;
+        // 修理 tick 间隔超过这个值就算"停顿"：保持加成但不再增长（避免暂停期间白涨）
+        const double ContinuousRepairGap = 0.25;
+
+        static readonly Dictionary<ushort, (double Last, float Bonus)> State = new();
+
+        public static void Clear() => State.Clear();
+        public static void Purge(ushort itemId) => State.Remove(itemId);
+
+        /// 只读当前加成（不推进）：船体路径在 Use 前缀里取，成功修理后再调 Advance
+        public static float Peek(Item tool)
+        {
+            if (tool == null) return 0f;
+            if (!State.TryGetValue(tool.ID, out var st)) return 0f;
+            return Timing.TotalTime - st.Last > RampResetSeconds ? 0f : st.Bonus;
+        }
+
+        /// 修理 tick 后推进并返回当前加成（0 ~ maxBonus）
+        /// 修理 tick 后推进并返回当前加成（0 ~ maxBonus）。
+        /// 只有连续修理（tick 间隔 ≤0.25 秒）才增长；停手 ≤10 秒保持不清零、也不增长；超过 10 秒清零
+        public static float Advance(Item tool, float ratePerSecond, float maxBonus)
+        {
+            if (tool == null || ratePerSecond <= 0f || maxBonus <= 0f) return 0f;
+            double now = Timing.TotalTime;
+            if (!State.TryGetValue(tool.ID, out var st)) st = (now, 0f);
+            double dt = now - st.Last;
+            if (dt > RampResetSeconds) st.Bonus = 0f;              // 停手超过 10 秒：清零
+            else if (dt <= ContinuousRepairGap)                    // 连续修理：累积（停顿期不涨）
+                st.Bonus = Math.Min(maxBonus, st.Bonus + (float)dt * ratePerSecond);
+            st.Last = now;
+            State[tool.ID] = st;
+            return st.Bonus;
+        }
+    }
+
+    /// 匠人节奏（船体）：修理结构时按连续修理时长临时放大 StructureFixAmount。
+    /// 走 Use 前缀/后缀而不是属性 getter——自动属性 getter 会被 JIT 内联，Harmony 钩不到
+    [HarmonyPatch]
+    public static class RepairRampStructurePatch
+    {
+        static MethodBase TargetMethod()
+        {
+            var t = typeof(Item).Assembly.GetType("Barotrauma.Items.Components.RepairTool");
+            var m = t?.GetMethod("Use", BindingFlags.Public | BindingFlags.Instance);
+            if (m == null) Mod.Warning("RepairRampStructurePatch: RepairTool.Use NOT FOUND");
+            return m;
+        }
+
+        static void Prefix(object __instance, out float __state)
+        {
+            __state = float.NaN;
+            if (!Mod.AnyRepairRampAffixes) return;
+            if (!Mod.IsGameplayAuthority) return;
+            var prop = ReflectionCache.RepairToolStructureFixProp;
+            if (prop == null || !prop.CanRead || !prop.CanWrite) return;
+            var item = ReflectionCache.GetItem(__instance);
+            if (item == null || !Helpers.TryGetAffix(item, out var def) || def.RepairRamp <= 0f) return;
+            float bonus = RepairRampState.Peek(item);
+            if (bonus <= 0f) return;
+            float original = (float)prop.GetValue(__instance);
+            if (original <= 0f) return;
+            __state = original;
+            prop.SetValue(__instance, original * (1f + bonus));
+        }
+
+        static void Postfix(object __instance, float __state, bool __result)
+        {
+            if (!float.IsNaN(__state))
+                ReflectionCache.RepairToolStructureFixProp?.SetValue(__instance, __state);
+            if (!__result) return; // 没修到东西不计时
+            if (!Mod.AnyRepairRampAffixes || !Mod.IsGameplayAuthority) return;
+            var item = ReflectionCache.GetItem(__instance);
+            if (item == null || !Helpers.TryGetAffix(item, out var def) || def.RepairRamp <= 0f) return;
+            RepairRampState.Advance(item, def.RepairRamp, def.RepairRampMax);
+        }
+    }
+
     /// 巧匠（设备修理）：给 GetStatValue(RepairSpeed) 加 (倍率-1)。旧版乘的是 RepairDegreeOfSuccess
     /// 的返回值——0~1 的 lerp 因子不是速度倍率，高技能乘完外推超过 1，fixDuration 变 0 直接命中"秒修"
     /// 分支（用户实测远超 +20%）。引擎是 fixDuration /= 1+talent，加算在那严格线性，而且没状态，叠不了
@@ -1212,7 +1435,7 @@ namespace Touhou.Affixes
 
         static void Postfix(Character __instance, object[] __args, ref float __result)
         {
-            if (!Mod.AnyDeviceRepairAffixes) return; // 全局快速退出
+            if (!Mod.AnyDeviceRepairAffixes && !Mod.AnyRepairRampAffixes) return; // 全局快速退出
             if (!Mod.IsGameplayAuthority) return; // 单上下文执行：本地双上下文各加一遍，+20% 会变 +40%
             if (ReflectionCache.RepairSpeedStat == null) return;
             if (__args == null || __args.Length < 1 || !Equals(__args[0], ReflectionCache.RepairSpeedStat)) return;
@@ -1222,9 +1445,14 @@ namespace Touhou.Affixes
             foreach (var tool in held)
             {
                 if (tool == null) continue;
-                if (Helpers.TryGetAffix(tool, out var def) && def.DeviceRepairMult > 1f)
+                if (!Helpers.TryGetAffix(tool, out var def)) continue;
+                float add = 0f;
+                if (def.DeviceRepairMult > 1f) add += def.DeviceRepairMult - 1f;
+                // 匠人节奏：设备修理每 0.5 秒 +10%（= 0.2/秒），上限共用
+                if (def.RepairRampDevice > 0f) add += RepairRampState.Advance(tool, def.RepairRampDevice, def.RepairRampMax);
+                if (add > 0f)
                 {
-                    __result += def.DeviceRepairMult - 1f;
+                    __result += add;
                     return;
                 }
             }
@@ -1399,6 +1627,11 @@ namespace Touhou.Affixes
             }
 
             var items = inputInventory.AllItems.ToList();
+
+            // 回收：主词缀为回收、带一个额外词缀 + 空白附魔石 → 把额外词缀取到石头上（石头不消耗，变成载体）
+            if (Mod.TryGetSalvageExtraction(items, out var salvageWeapon, out var blankStone, out var salvageExtra))
+                return ExtractSalvageAffix(__instance, inputInventory, salvageWeapon, blankStone, salvageExtra);
+
             var result = Mod.TryGetEnchantingTarget(items, out var weapon, out var material);
             if (result == null)
             {
@@ -1406,6 +1639,11 @@ namespace Touhou.Affixes
                 // 判定走三级兜底（内存表→会话表→tags），不依赖会被 tickbox 擦除的标签
                 if (Mod.HasAffixId(targetItem, Mod.MIRACLE_AFFIX_ID))
                     return StripMiracleExtras(__instance, inputInventory, targetItem);
+
+                // 回收物品同理：额外词缀要用空白石头取，别让它被当普通物品分解掉
+                if (Mod.HasAffixId(targetItem, Mod.SALVAGE_AFFIX_ID))
+                    return ReturnFromStation(__instance, inputInventory, targetItem,
+                        $"EnchantingStation: {targetItem.Name} has [salvage], returned to output (use a blank stone to extract)");
 
                 // 无组合是常态（哨站里随便拆点东西都算），5 秒节流；"补丁没跑"仍可从完全无输出判断
                 Mod.LogThrottled("ench_no_combo", 5.0,
@@ -1427,21 +1665,34 @@ namespace Touhou.Affixes
                 return true;
             }
 
-            // 石头转移按目标分三种走法，其余照旧整组替换。
-            // 当前词缀组走三级兜底读取：内存恢复前的窗口里若只读内存表，会把"给奇迹物品加额外词缀"
-            // 误执行成"整组替换"（实测：转移优先石头时把奇迹连额外一起顶掉）
+            // 石头转移按目标分几种走法，其余照旧整组替换。
+            // 当前词缀组走三级兜底读取：内存恢复前的窗口里若只读内存表，会把"给额外槽物品加词缀"
+            // 误执行成"整组替换"（实测：转移优先石头时把宿主连额外一起顶掉）
             if (result.Value.tierKey == Mod.STONE_TAG && !weapon.HasTag(Mod.STONE_TAG))
             {
-                bool hasMiracle = Mod.TryGetCurrentAffixIds(weapon, out var currentIds)
-                    && currentIds.Count > 0 && currentIds[0] == Mod.MIRACLE_AFFIX_ID;
+                bool hasHost = Mod.TryGetCurrentAffixIds(weapon, out var currentIds)
+                    && currentIds.Count > 0 && Mod.IsExtraSlotHost(currentIds[0]);
                 if (affix.Identifier == Mod.MIRACLE_AFFIX_ID)
                 {
                     // 奇迹石头：覆盖物品原有词缀，物品回到"仅奇迹"状态
                     Mod.SetAffixes(weapon, new List<string> { Mod.MIRACLE_AFFIX_ID });
                 }
-                else if (hasMiracle)
+                else if (affix.Identifier == Mod.SALVAGE_AFFIX_ID)
                 {
-                    // 奇迹的额外词缀槽，槽位不合的在 PickAffixByWeight 就返回 null 取消了
+                    // 回收石头：物品原有的单词缀挪进额外槽；已有别的宿主的整单取消（两边都不消耗）
+                    if (hasHost)
+                    {
+                        Mod.LogThrottled("salvage_host_" + weapon.ID, 5.0,
+                            $"EnchantingStation: {weapon.Name} already has an extra-slot affix, salvage transfer cancelled (stone not consumed)");
+                        return false;
+                    }
+                    var ids = new List<string> { Mod.SALVAGE_AFFIX_ID };
+                    if (currentIds != null) ids.AddRange(currentIds);
+                    Mod.SetAffixes(weapon, ids);
+                }
+                else if (hasHost)
+                {
+                    // 额外槽（奇迹两格/回收一格），槽位不合的在 PickAffixByWeight 就返回 null 取消了
                     currentIds.Add(affix.Identifier);
                     Mod.SetAffixes(weapon, currentIds);
                 }
@@ -1452,8 +1703,36 @@ namespace Touhou.Affixes
             }
             else
             {
-                // 材料随机附魔或目标是石头；奇迹物品在此整体重掷，连额外词缀一起被顶替
-                Mod.ApplyAffix(weapon, affix);
+                // 材料随机附魔或目标是石头；奇迹物品在此整体重掷，连额外词缀一起被顶替。
+                // 回收物品：额外槽只认附魔石转移（描述里也这么写），材料随机到别的词缀整单取消；
+                // 随机到回收本身则按主词缀处理，和石头路径一样把原有词缀挪进额外槽
+                List<string> salvageIds = null;
+                bool salvageHost = !weapon.HasTag(Mod.STONE_TAG) && result.Value.tierKey != Mod.STONE_TAG
+                    && Mod.TryGetCurrentAffixIds(weapon, out salvageIds)
+                    && salvageIds.Count > 0 && salvageIds[0] == Mod.SALVAGE_AFFIX_ID;
+                if (salvageHost && affix.Identifier != Mod.SALVAGE_AFFIX_ID)
+                {
+                    Mod.LogThrottled("salvage_stoneonly_" + weapon.ID, 5.0,
+                        $"EnchantingStation: extra affix on {weapon.Name} requires a stone transfer, material roll cancelled (nothing consumed)");
+                    return false;
+                }
+                if (salvageHost)
+                {
+                    Mod.SetAffixes(weapon, new List<string> { Mod.SALVAGE_AFFIX_ID });
+                }
+                else if (!weapon.HasTag(Mod.STONE_TAG) && result.Value.tierKey != Mod.STONE_TAG
+                    && affix.Identifier == Mod.SALVAGE_AFFIX_ID)
+                {
+                    // 材料随机到回收：像回收石一样把原有词缀挪进额外槽
+                    Mod.TryGetCurrentAffixIds(weapon, out var oldIds);
+                    var ids = new List<string> { Mod.SALVAGE_AFFIX_ID };
+                    if (oldIds != null) ids.AddRange(oldIds);
+                    Mod.SetAffixes(weapon, ids);
+                }
+                else
+                {
+                    Mod.ApplyAffix(weapon, affix);
+                }
             }
             Mod.BroadcastAffixApplied(weapon, affix);
             // 马上写桥接文件：附魔台流程本来就不写档，崩了的话词缀只能靠标签兜底
@@ -1519,6 +1798,63 @@ namespace Touhou.Affixes
             {
                 inputInventory.TryPutItem(targetItem, null);
                 Mod.Log($"EnchantingStation: output full, strip cancelled for {targetItem.Name}");
+            }
+            return false;
+        }
+
+        /// 回收取词缀：把武器额外槽里的词缀转到空白附魔石上，武器只留回收；两件都退回输出栏。
+        /// 输出空间不足整单取消，零消耗
+        static bool ExtractSalvageAffix(object __instance, Inventory inputInventory, Item weapon, Item stone, string extraId)
+        {
+            if (!Mod.AffixDefs.ContainsKey(extraId))
+            {
+                Mod.Log($"EnchantingStation: salvage extraction cancelled, unknown affix {extraId}");
+                return false;
+            }
+            var outputContainer = Traverse.Create(__instance).Field("outputContainer").GetValue<Barotrauma.Items.Components.ItemContainer>();
+            if (outputContainer == null) return false;
+            var output = outputContainer.Inventory;
+
+            // 先搬石头再搬武器；第二步失败就把石头放回去，保证不出现半截状态
+            inputInventory.RemoveItem(stone);
+            if (!output.TryPutItem(stone, null))
+            {
+                inputInventory.TryPutItem(stone, null);
+                Mod.Log($"EnchantingStation: output full, salvage extraction cancelled for {weapon.Name}");
+                return false;
+            }
+            inputInventory.RemoveItem(weapon);
+            if (!output.TryPutItem(weapon, null))
+            {
+                output.RemoveItem(stone);
+                inputInventory.TryPutItem(stone, null);
+                inputInventory.TryPutItem(weapon, null);
+                Mod.Log($"EnchantingStation: output full, salvage extraction cancelled for {weapon.Name}");
+                return false;
+            }
+
+            Mod.SetAffixes(stone, new List<string> { extraId });
+            Mod.SetAffixes(weapon, new List<string> { Mod.SALVAGE_AFFIX_ID });
+            if (Mod.AffixDefs.TryGetValue(extraId, out var extraDef)) Mod.BroadcastAffixApplied(stone, extraDef);
+            if (Mod.AffixDefs.TryGetValue(Mod.SALVAGE_AFFIX_ID, out var salvageDef)) Mod.BroadcastAffixApplied(weapon, salvageDef);
+            Mod.SaveAffixData();
+            Mod.Log($"EnchantingStation: extracted [{extraId}] from {weapon.Name} onto {stone.Name}");
+            return false;
+        }
+
+        /// 回收物品单独放进附魔台：原样退回输出栏，不分解也不剥词缀
+        static bool ReturnFromStation(object __instance, Inventory inputInventory, Item targetItem, string logMessage)
+        {
+            inputInventory.RemoveItem(targetItem);
+            var outputContainer = Traverse.Create(__instance).Field("outputContainer").GetValue<Barotrauma.Items.Components.ItemContainer>();
+            if (outputContainer != null && outputContainer.Inventory.TryPutItem(targetItem, null))
+            {
+                Mod.Log(logMessage);
+            }
+            else
+            {
+                inputInventory.TryPutItem(targetItem, null);
+                Mod.Log($"EnchantingStation: output full, return cancelled for {targetItem.Name}");
             }
             return false;
         }

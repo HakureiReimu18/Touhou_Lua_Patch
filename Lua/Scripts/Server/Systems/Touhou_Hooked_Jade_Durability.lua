@@ -2,15 +2,16 @@
 
 --[[
     受击扣勾玉耐久，LuaCS版。代替原XML那套（OnDamaged → 过渡affliction → condition阶梯扣Condition），
-    现在直接在 character.applyDamage 钩子里算完就扣。
+    现在直接在 character.applyDamage 钩子里算完就扣。挂勾玉的穿戴物都算：潜水服在 OuterClothes、
+    小熊腰包在 Bag，两个都穿着就一起扣。
     只跑服务端：耐久是服务端说了算，客户端别加载这个脚本。
 ]]
 
 local JadeDurability = {}
 TLE.JadeDurability = JadeDurability
 
--- 潜水服都穿在 OuterClothes
-local SUIT_SLOT = InvSlotType.OuterClothes
+-- 会挂勾玉的穿戴位：潜水服在 OuterClothes，小熊腰包在 Bag
+local GEAR_SLOTS = { InvSlotType.OuterClothes, InvSlotType.Bag }
 
 -- 带这tag的就是模组潜水服
 local SUIT_TAG = "Touhou_Divinggear"
@@ -19,6 +20,8 @@ local JADE_IDENTIFIER_SUFFIX = "_Hooked_Jade"
 
 -- 各装备的勾玉槽索引（按 XML 里 SubContainer 声明顺序数）。只扣这些槽，塞别的储物槽里的勾玉不管。
 -- 新装备有勾玉槽必须来这儿登记，不然不扣（调试日志里会有提示）。
+-- variantof 派生的变体（凭依武装02~07、魔力披纱粉）不用单独登记：槽位布局是从原型继承的，
+-- 按 prefab 父链往上找登记项就够了。
 local JADE_SLOTS = {
     gensokyo_divinggear                = {2, 3, 4, 5},
     Touhou_Boudary_Divinggear          = {1, 2, 3},
@@ -61,9 +64,43 @@ local COUNTED_AFFLICTION_TYPES = {
     bleeding = true,
 }
 
--- 下面两张缓存的键都是常驻的 prefab 对象，普通表不会泄漏；命中后伤害路径上不再重新分配字符串
+-- 下面几张缓存的键都是常驻的 prefab 对象，普通表不会泄漏；命中后伤害路径上不再重新分配字符串
 local affliction_type_cache = {} -- AfflictionPrefab → AfflictionType 的 tostring 结果
 local jade_prefab_cache = {}     -- ItemPrefab → { id = Identifier 的 tostring 结果, isJade = 是否以勾玉后缀结尾 }
+local gear_slots_cache = {}      -- ItemPrefab → 登记过的勾玉槽位表 或 false（自己和原型都没登记）
+local gear_tag_cache = {}        -- ItemPrefab → 是否带 Touhou_Divinggear tag
+
+-- 找这件穿戴物登记过的勾玉槽位。变体（variantof）自己不在表里，沿父链找原型要槽位表；
+-- 父链拿不到就当没登记，不硬上。
+local function ResolveJadeSlots(prefab, depth)
+    local cached = gear_slots_cache[prefab]
+    if cached ~= nil then
+        if cached == false then return nil end
+        return cached
+    end
+
+    local slots = JADE_SLOTS[tostring(prefab.Identifier)]
+    if slots == nil and (depth or 0) < 8 then
+        local ok, parent = pcall(function() return prefab.ParentPrefab end)
+        if ok and parent ~= nil and parent ~= prefab then
+            slots = ResolveJadeSlots(parent, (depth or 0) + 1)
+        end
+    end
+
+    gear_slots_cache[prefab] = slots or false
+    return slots
+end
+
+-- 这件穿戴物受击要不要扣勾玉：模组潜水服（带tag）或登记表里有（含变体）
+local function IsJadeGear(item)
+    local prefab = item.Prefab
+    local tagged = gear_tag_cache[prefab]
+    if tagged == nil then
+        tagged = item.HasTag(SUIT_TAG)
+        gear_tag_cache[prefab] = tagged
+    end
+    return tagged or ResolveJadeSlots(prefab) ~= nil
+end
 
 -- 这次攻击该扣多少
 local function CalcDurabilityLoss(totalDamage)
@@ -85,17 +122,17 @@ local function CalcDurabilityLoss(totalDamage)
 end
 
 -- 把登记槽里的勾玉挨个扣一遍
-local function DrainJades(suit, loss)
-    local container = suit.OwnInventory
+local function DrainJades(gear, loss)
+    local container = gear.OwnInventory
     if container == nil then
-        DebugPrint("警告：护甲 " .. tostring(suit.Prefab.Identifier) .. " 没有 OwnInventory，无法扣耐久")
+        DebugPrint("警告：穿戴物 " .. tostring(gear.Prefab.Identifier) .. " 没有 OwnInventory，无法扣耐久")
         return
     end
 
-    local suitId = tostring(suit.Prefab.Identifier)
-    local jadeSlots = JADE_SLOTS[suitId]
+    local gearId = tostring(gear.Prefab.Identifier)
+    local jadeSlots = ResolveJadeSlots(gear.Prefab)
     if jadeSlots == nil then
-        DebugPrint("警告：护甲 " .. suitId .. " 未在 JADE_SLOTS 登记勾玉槽位，本次不扣耐久（请在脚本中补充）")
+        DebugPrint("警告：穿戴物 " .. gearId .. " 未在 JADE_SLOTS 登记勾玉槽位，本次不扣耐久（请在脚本中补充）")
         return
     end
 
@@ -124,11 +161,30 @@ local function DrainJades(suit, loss)
                 end
             end
         else
-            DebugPrint(string.format("警告：登记的勾玉槽位 %d 超出护甲 %s 的容器容量 %d", slot, suitId, container.Capacity))
+            DebugPrint(string.format("警告：登记的勾玉槽位 %d 超出穿戴物 %s 的容器容量 %d", slot, gearId, container.Capacity))
         end
     end
     if drained == 0 then
         DebugPrint("勾玉槽内没有勾玉，本次不扣耐久")
+    end
+end
+
+-- 身上有挂勾玉的穿戴物吗（用来在算伤害前先挡掉大多数角色）
+local function HasJadeGear(character)
+    for _, slotType in ipairs(GEAR_SLOTS) do
+        local item = character.Inventory.GetItemInLimbSlot(slotType)
+        if item ~= nil and IsJadeGear(item) then return true end
+    end
+    return false
+end
+
+-- 所有挂勾玉的穿戴物都扣（潜水服和小熊腰包可以同时穿）
+local function DrainWornJades(character, loss)
+    for _, slotType in ipairs(GEAR_SLOTS) do
+        local item = character.Inventory.GetItemInLimbSlot(slotType)
+        if item ~= nil and IsJadeGear(item) then
+            DrainJades(item, loss)
+        end
     end
 end
 
@@ -138,8 +194,7 @@ Hook.Add("character.applyDamage", "Touhou_JadeDurability.OnDamage", function(cha
     local character = characterHealth.Character
     if character == nil or character.IsDead or character.Inventory == nil then return end
 
-    local suit = character.Inventory.GetItemInLimbSlot(SUIT_SLOT)
-    if suit == nil or not suit.HasTag(SUIT_TAG) then return end
+    if not HasJadeGear(character) then return end
 
     local totalDamage = 0
     local detail = nil
@@ -177,7 +232,7 @@ Hook.Add("character.applyDamage", "Touhou_JadeDurability.OnDamage", function(cha
         DebugPrint(string.format("%s 受击，计入伤害 %.1f（%s）→ 扣耐久 %.1f（模式 %s）",
             character.Name, totalDamage, table.concat(detail, ", "), loss, JadeDurability.TIER_MODE))
     end
-    DrainJades(suit, loss)
+    DrainWornJades(character, loss)
 end)
 
 DebugPrint("脚本已加载")

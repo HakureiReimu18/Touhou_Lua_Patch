@@ -75,28 +75,30 @@ namespace Touhou.ChargedTurret
             harmony.PatchAll(typeof(ChargedSpellCardAmmoPatch));
             harmony.PatchAll(typeof(ChargedSpellCardLaunchPatch));
 
-            // 探针 + 反向光束处置补丁。
-            // 假命中处置属于功能补丁（反向光束/被吃弹的修复）：挂不上就说明引擎改版，必须显式报出来；
-            // 探针里只有射线记录是功能性的（假命中判定要用），日志部分在 Verbose 关掉后不产生任何输出。
+            ChargedSpellCardCandidates.ComponentTrackingReady = false;
             try
             {
-                harmony.PatchAll(typeof(ChargedSpellCardBogusHitPatch));
-                harmony.PatchAll(typeof(ChargedSpellCardSpawnFlushPatch));   // 客户端补射显形（生成消息一到就重演）
-                harmony.PatchAll(typeof(ChargedSpellCardHitscanHoldPatch));  // hitscan 弹延后移除（给客户端留重演窗口）
+                harmony.PatchAll(typeof(ChargedSpellCardComponentPatch));
+                ChargedSpellCardCandidates.ComponentTrackingReady = true;
             }
             catch (Exception e)
             {
-                ChargedLog.Warn("功能补丁未挂上（反向光束/多人补射同步可能复发）: " + e.Message);
+                ChargedLog.Warn("组件变动监听未挂上，补射退回逐弹扫描: " + e.Message);
             }
-            try
-            {
-                harmony.PatchAll(typeof(ChargedSpellCardHitscanProbePatch));
-                harmony.PatchAll(typeof(ChargedSpellCardTracerProbePatch));
-            }
-            catch (Exception e)
-            {
-                ChargedLog.Warn("探针补丁未挂上（不影响炮塔功能）: " + e.Message);
-            }
+
+            // 补丁按"类"分别挂。Harmony 的 PatchAll 是整类一起做的：某个挂点解析不出来时（比如目标方法
+            // 只存在于客户端程序集），同一批里的兄弟补丁会被一起带下去——服务端就踩过这个，
+            // 报的是 "Patching exception in method null"。
+            PatchOne(harmony, "假命中处置", typeof(ChargedSpellCardBogusHitPatch));
+            PatchOne(harmony, "hitscan 弹延后移除", typeof(ChargedSpellCardHitscanHoldPatch));
+            PatchOne(harmony, "hitscan 射线记录", typeof(ChargedSpellCardHitscanProbePatch));
+#if CLIENT
+            // 下面两个的挂点只存在于客户端程序集（Barotrauma.dll）：Item.ReadSpawnData 读实体生成消息、
+            // Projectile.LaunchProjSpecific 画弹道光束。DedicatedServer.dll 里没有这两个方法，
+            // 在服务端挂必然失败，所以只在客户端挂。
+            PatchOne(harmony, "客户端补射显形", typeof(ChargedSpellCardSpawnFlushPatch));
+            PatchOne(harmony, "光束探针", typeof(ChargedSpellCardTracerProbePatch));
+#endif
 
             // 多人：注册"补射发射"同步消息（不处理的一侧也要占位注册，LuaCs 靠它交换 netId）
             ChargedSpellCardNetSync.EnsureRegistered();
@@ -106,9 +108,27 @@ namespace Touhou.ChargedTurret
 
         public void Dispose()
         {
+            ChargedSpellCardCandidates.ComponentTrackingReady = false;
             harmony?.UnpatchSelf();
             ChargedSpellCardData.Reset();
             oneTimeInitDone = false;
+        }
+
+        /// <summary>
+        /// 挂一个补丁类，失败只点名这一个。Harmony 的 PatchAll 是整类一起挂的：某个挂点解析不出来
+        /// （比如目标方法只存在于客户端程序集）时，同一批里排在后面的兄弟补丁会被一起带下去——
+        /// 服务端就踩过这个，日志里只留一句 "Patching exception in method null"，看不出是谁。
+        /// </summary>
+        private static void PatchOne(Harmony harmony, string what, Type patchClass)
+        {
+            try
+            {
+                harmony.PatchAll(patchClass);
+            }
+            catch (Exception e)
+            {
+                ChargedLog.Warn($"补丁未挂上：{what}（{patchClass.Name}）: {e.Message}");
+            }
         }
     }
 
@@ -815,10 +835,12 @@ namespace Touhou.ChargedTurret
         }
     }
 
+#if CLIENT
     /// <summary>
     /// 光束探针 + 兜底修正：记录 hitscan 光束真正描出来的两个端点（引擎 LaunchProjSpecific 的 tracer 参数）
     /// 和"起点→终点"的连线方向。顺带做一道保险：hitscan 的光束不可能指向弹体自己的背面，
     /// 万一有别的机制又把终点算歪（比如引擎未来改版），这里按弹体朝向把长度接回去，不让玩家看到反向光束。
+    /// 只在客户端挂：LaunchProjSpecific 是客户端专属方法（服务端程序集里没有），弹道光束也只在客户端画。
     /// </summary>
     [HarmonyPatch(typeof(Projectile), "LaunchProjSpecific", new Type[] { typeof(Vector2), typeof(Vector2) })]
     internal static class ChargedSpellCardTracerProbePatch
@@ -856,6 +878,7 @@ namespace Touhou.ChargedTurret
             catch (Exception e) { ChargedLog.Warn("[探针·光束] 记录出错: " + e.Message); }
         }
     }
+#endif
 
     /// <summary>
     /// 补射统一的"打出"动作。
@@ -955,7 +978,8 @@ namespace Touhou.ChargedTurret
         /// 客户端手上只有自己在重演的这一发，所以按"炮口附近带 Projectile 的东西"来兜——
         /// 同一轮里引擎那一发和兄弟弹都落在炮口附近，正好一网打尽，也不会误伤远处的正常目标。
         /// </summary>
-        internal static List<FarseerPhysics.Dynamics.Body> BuildClientIgnoredBodies(Item turretItem, Vector2 muzzleSimPos, Item exclude)
+        internal static List<FarseerPhysics.Dynamics.Body> BuildClientIgnoredBodies(Item turretItem, Vector2 muzzleSimPos, Item exclude,
+                                                                                  ChargedSpellCardCandidates candidates)
         {
             List<FarseerPhysics.Dynamics.Body> list = new List<FarseerPhysics.Dynamics.Body>();
             try
@@ -963,7 +987,7 @@ namespace Touhou.ChargedTurret
                 if (turretItem?.Submarine?.PhysicsBody != null) { list.Add(turretItem.Submarine.PhysicsBody.FarseerBody); }
                 const float radius = 3f;                     // sim 单位（3 米）
                 float radiusSq = radius * radius;
-                foreach (Item other in Item.ItemList)
+                foreach (Item other in candidates.GetItems())
                 {
                     if (other == null || other == exclude || other.Removed || other.body == null) { continue; }
                     if (Vector2.DistanceSquared(other.SimPosition, muzzleSimPos) > radiusSq) { continue; }
@@ -973,6 +997,61 @@ namespace Touhou.ChargedTurret
             }
             catch (Exception e) { ChargedLog.Warn("构建忽略表出错: " + e.Message); }
             return list;
+        }
+    }
+
+    internal sealed class ChargedSpellCardCandidates
+    {
+        internal static bool ComponentTrackingReady;
+        internal static ulong ComponentRevision;
+        readonly List<Item> projectiles = new List<Item>();
+        List<Item> source;
+        List<Item>.Enumerator versionGuard;
+        ulong componentRevision;
+
+        internal IEnumerable<Item> GetItems()
+        {
+            if (!ComponentTrackingReady) { return Item.ItemList; }
+            bool valid = ReferenceEquals(source, Item.ItemList) && componentRevision == ComponentRevision;
+            if (valid)
+            {
+                try
+                {
+                    // List 的枚举器校验版本，连等量替换、清空再添加也能认出，不靠 Count 猜。
+                    var probe = versionGuard;
+                    probe.MoveNext();
+                }
+                catch (InvalidOperationException) { valid = false; }
+            }
+            if (!valid)
+            {
+                source = null;
+                projectiles.Clear();
+                var items = Item.ItemList;
+                var guard = items.GetEnumerator();
+                foreach (Item item in items)
+                {
+                    if (item?.GetComponent<Projectile>() != null) { projectiles.Add(item); }
+                }
+                source = items;
+                versionGuard = guard;
+                componentRevision = ComponentRevision;
+            }
+            return projectiles;
+        }
+    }
+
+    [HarmonyPatch(typeof(Item), "AddComponent")]
+    internal static class ChargedSpellCardComponentPatch
+    {
+        static void Prefix()
+        {
+            unchecked { ChargedSpellCardCandidates.ComponentRevision++; }
+        }
+
+        static void Finalizer()
+        {
+            unchecked { ChargedSpellCardCandidates.ComponentRevision++; }
         }
     }
 
@@ -1013,6 +1092,7 @@ namespace Touhou.ChargedTurret
 
         static readonly List<PendingBolt> pending = new List<PendingBolt>();
         static bool pumpScheduled;
+        static ulong pumpRevision;
 
         /// <summary>注册同步消息。两侧都要注册（本侧不处理也注册，LuaCs 靠它交换 netId）。</summary>
         public static void EnsureRegistered()
@@ -1212,8 +1292,9 @@ namespace Touhou.ChargedTurret
         /// </summary>
         internal static void PumpPending()
         {
-            pumpScheduled = false;
             if (pending.Count == 0) { return; }
+            unchecked { pumpRevision++; }
+            var candidates = new ChargedSpellCardCandidates();
             try
             {
                 for (int i = pending.Count - 1; i >= 0; i--)
@@ -1236,23 +1317,34 @@ namespace Touhou.ChargedTurret
                     Character user = Entity.FindEntityByID(entry.UserId) as Character;
                     // 扫描中心只是个近似值（引擎的炮口计算在 Launch 内部自己会做），用来找炮口附近的同位弹
                     Vector2 muzzle = ChargedSpellCardLaunchPatch.GetMuzzleSimPosition(turret);
-                    var ignored = ChargedSpellCardLauncher.BuildClientIgnoredBodies(turretItem, muzzle, bolt);
+                    var ignored = ChargedSpellCardLauncher.BuildClientIgnoredBodies(turretItem, muzzle, bolt, candidates);
+                    ulong revision = pumpRevision;
                     ChargedSpellCardLauncher.LaunchBolt(turretItem, turret, bolt, entry.Rotation, user, 0f, ignored);
+                    // 发射里的生成回调可能重入并删掉前面的任务，不能继续用旧下标。
+                    if (revision != pumpRevision) { i = pending.Count; }
                 }
             }
             catch (Exception e) { ChargedLog.Warn("补射重演出错: " + e.Message); }
             if (pending.Count > 0 && !pumpScheduled)
             {
                 pumpScheduled = true;
-                CoroutineManager.Invoke(PumpPending, 0.05f);
+                CoroutineManager.Invoke(PumpScheduled, 0.05f);
             }
+        }
+
+        static void PumpScheduled()
+        {
+            pumpScheduled = false;
+            PumpPending();
         }
     }
 
+#if CLIENT
     /// <summary>
     /// 客户端补射显形用的小补丁：客户端的实体生成消息（Item.ReadSpawnData）一落地就立刻处理挂起的补射。
     /// 我们的同步消息和"实体生成"走的是两条通道，谁先到都可能；只靠 50ms 轮询的话，
     /// hitscan 弹（服务端紧接着就把它删了）经常会错过——所以生成一到就马上发射。
+    /// 只在客户端挂：ReadSpawnData 是客户端专属方法（服务端程序集里没有，服务端也不收生成消息）。
     /// </summary>
     [HarmonyPatch(typeof(Item), "ReadSpawnData")]
     internal static class ChargedSpellCardSpawnFlushPatch
@@ -1262,6 +1354,7 @@ namespace Touhou.ChargedTurret
             if (ChargedSpellCardNetSync.HasPending) { ChargedSpellCardNetSync.PumpPending(); }
         }
     }
+#endif
 
     /// <summary>
     /// hitscan 弹"多活一会儿"的补丁。

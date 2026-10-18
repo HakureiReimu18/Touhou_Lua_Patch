@@ -183,6 +183,27 @@ local L = {
         dmg_noedit_toast = "提交失败：无法写入请求文件（目录被占用？）",
         dmg_denied_generic = "服务器拒绝了本次修改",
         dmg_denied_prefix = "⚠ ",
+        fx_settings = "物品特效配置",
+        fx_hint = "预设只限制绘制精度/光带/闪点数量，不会改变武器等级；改动要点「保存并立即应用」，返回即放弃",
+        fx_preset_low = "低开销",
+        fx_preset_mid = "均衡",
+        fx_preset_high = "华丽",
+        fx_enabled = "启用扫光",
+        fx_affix_glow = "物品背景特效",
+        fx_sparkles = "闪点",
+        fx_inventory = "背包",
+        fx_previews = "预览",
+        fx_world = "场景",
+        fx_max_frame = "每帧特效量",
+        fx_cache = "遮罩缓存 MiB",
+        fx_brightness = "场景亮度",
+        fx_save = "保存并立即应用",
+        fx_saved = "已保存并立即生效",
+        fx_save_fail = "保存失败：%s",
+        fx_reset_done = "已恢复默认（华丽档 + 全范围），点保存后生效",
+        fx_unsaved = "有未保存的修改",
+        fx_missing = "（未检测到物品特效模块，请确认 Lua 补丁的 C# 部分已加载）",
+        fx_read_fail = "（读取当前设置失败，下面显示的是包默认值）",
         menu_hotkey = "快捷键设置",
         cl_settings = "装束锁定设置",
         cl_enable = "启用装束锁定",
@@ -316,6 +337,27 @@ local L = {
         dmg_noedit_toast = "Submit failed: could not write the request file",
         dmg_denied_generic = "The server rejected the change",
         dmg_denied_prefix = "⚠ ",
+        fx_settings = "Item effect settings",
+        fx_hint = "Presets only cap draw detail / bands / sparkles - they never raise a weapon's tier. Click Save & apply; leaving discards changes",
+        fx_preset_low = "Low",
+        fx_preset_mid = "Balanced",
+        fx_preset_high = "Fancy",
+        fx_enabled = "Enable sweep",
+        fx_affix_glow = "Item background",
+        fx_sparkles = "Sparkles",
+        fx_inventory = "Inventory",
+        fx_previews = "Previews",
+        fx_world = "World",
+        fx_max_frame = "Effects per frame",
+        fx_cache = "Mask cache MiB",
+        fx_brightness = "World brightness",
+        fx_save = "Save & apply",
+        fx_saved = "Saved and applied",
+        fx_save_fail = "Save failed: %s",
+        fx_reset_done = "Defaults restored (Fancy + all ranges); click Save to apply",
+        fx_unsaved = "Unsaved changes",
+        fx_missing = "(Item effect module not detected - is the Lua patch's C# part loaded?)",
+        fx_read_fail = "(Could not read current settings - showing package defaults)",
         menu_hotkey = "Hotkey settings",
         cl_settings = "Costume Lock Settings",
         cl_enable = "Enable costume lock",
@@ -1560,6 +1602,133 @@ local function bs_textbox_row(layout, label, key, pending)
     if box ~= nil then bs_boxes[key] = box end
 end
 
+-- ==================== 物品特效配置页（effects） ====================
+-- C# 接口在 CSharp/Client/EffectSettings.cs（命名空间 Touhou.WeaponBadges）：
+--   Read() 返回 "键=值" 多行快照；Save(文本) 校验通过才写盘并即时生效，返回空串 = 成功、否则是失败原因。
+-- 页面只在打开/保存时碰 C#（不做每帧轮询）；编辑走暂存表，返回/Esc 直接丢弃。
+local FX_TYPE = "Touhou.WeaponBadges.EffectSettings"
+local fx_api_cache = nil   -- nil = 未探测，false = 探测过但拿不到
+local fx_state = nil       -- 暂存设置表
+local fx_dirty = false     -- 有未保存改动
+local fx_status = nil      -- 状态行文本（保存结果/提示）
+
+local function fx_api()
+    if fx_api_cache ~= nil then return fx_api_cache or nil end
+    local ok, api = pcall(function() return LuaUserData.CreateStatic(FX_TYPE) end)
+    api = (ok and api) or nil
+    if api == nil then
+        -- 正常路径是插件初始化时自己 RegisterType；SafeLuaUserDataService 会拒绝插件命名空间的
+        -- 补注册，这里只是防加载顺序变化，失败就按"模块未加载"提示
+        pcall(function() LuaUserData.RegisterType(FX_TYPE) end)
+        local ok2, api2 = pcall(function() return LuaUserData.CreateStatic(FX_TYPE) end)
+        api = (ok2 and api2) or nil
+    end
+    fx_api_cache = api or false
+    return api or nil
+end
+
+local FX_DEFAULTS = {
+    enabled = true, inventory = true, previews = true, world = true,
+    quality = "high", sparkles = true, maxPerFrame = 128, cacheMegabytes = 32, worldIntensity = 0.65,
+    affixGlow = true,
+}
+
+-- 三档预设对齐原徽章包说明：低开销 8 行×3 段 / 单带无闪点 / 仅背包与预览；均衡 12×5 / 32 帧 32MiB；
+-- 华丽 24×7 / 128 帧 32MiB。预设只压绘制精度，不会把低等级武器升成高等级效果
+local FX_PRESETS = {
+    { key = "fx_preset_low",  quality = "low",      sparkles = false, maxPerFrame = 16,  cacheMegabytes = 16, world = false },
+    { key = "fx_preset_mid",  quality = "balanced", sparkles = true,  maxPerFrame = 32,  cacheMegabytes = 32, world = true },
+    { key = "fx_preset_high", quality = "high",     sparkles = true,  maxPerFrame = 128, cacheMegabytes = 32, world = true },
+}
+
+local function fx_bool_text(v) return v and "true" or "false" end
+
+local function fx_blank_state()
+    local st = {}
+    for k, v in pairs(FX_DEFAULTS) do st[k] = v end
+    return st
+end
+
+-- 读 C# 快照；失败返回 nil（调用方退回默认值并给提示）
+local function fx_load()
+    local api = fx_api()
+    if api == nil then return nil end
+    local ok, text = pcall(function() return api.Read() end)
+    if not ok or text == nil or text == "" then return nil end
+    local raw = {}
+    for line in string.gmatch(text, "[^\r\n]+") do
+        local k, v = string.match(line, "^([^=]+)=(.*)$")
+        if k ~= nil then raw[k] = v end
+    end
+    local affix_glow = FX_DEFAULTS.affixGlow
+    if raw.affixGlow ~= nil then affix_glow = raw.affixGlow == "true" end
+    return {
+        enabled = raw.enabled == "true", inventory = raw.inventory == "true",
+        previews = raw.previews == "true", world = raw.world == "true", sparkles = raw.sparkles == "true",
+        quality = raw.quality or FX_DEFAULTS.quality,
+        maxPerFrame = tonumber(raw.maxPerFrame) or FX_DEFAULTS.maxPerFrame,
+        cacheMegabytes = tonumber(raw.cacheMegabytes) or FX_DEFAULTS.cacheMegabytes,
+        worldIntensity = tonumber(raw.worldIntensity) or FX_DEFAULTS.worldIntensity,
+        affixGlow = affix_glow,
+    }
+end
+
+local function fx_build_text(st)
+    return table.concat({
+        "enabled=" .. fx_bool_text(st.enabled),
+        "inventory=" .. fx_bool_text(st.inventory),
+        "previews=" .. fx_bool_text(st.previews),
+        "world=" .. fx_bool_text(st.world),
+        "quality=" .. tostring(st.quality),
+        "sparkles=" .. fx_bool_text(st.sparkles),
+        "maxPerFrame=" .. tostring(math.floor(st.maxPerFrame + 0.5)),
+        "cacheMegabytes=" .. tostring(math.floor(st.cacheMegabytes + 0.5)),
+        "worldIntensity=" .. string.format("%.2f", st.worldIntensity),
+        "affixGlow=" .. fx_bool_text(st.affixGlow),
+    }, "\n")
+end
+
+local function fx_apply_preset(p)
+    fx_state.quality = p.quality
+    fx_state.sparkles = p.sparkles
+    fx_state.maxPerFrame = p.maxPerFrame
+    fx_state.cacheMegabytes = p.cacheMegabytes
+    fx_state.world = p.world
+    fx_state.inventory = true
+    fx_state.previews = true
+    fx_dirty = true
+    fx_status = nil
+end
+
+-- 状态行控件：改动只改它的文本，不重建页面（拖滑条不会被销毁）
+local fx_status_block = nil
+
+local function fx_refresh_status()
+    if fx_status_block == nil then return end
+    fx_status_block.Text = RichString.Plain(RawLString(fx_status or (fx_dirty and T("fx_unsaved") or "")))
+end
+
+-- 效果页专用滑条行：只改暂存值 + 标脏；写盘与生效统一由「保存并立即应用」提交
+local function fx_slider_row(layout, height, label, min, max, fmt, field, integer)
+    local row = add_row(layout, height)
+    hb_add_text(Vector2(0.3, 1), row.RectTransform, label, GUI.Alignment.CenterLeft)
+    local scroll = GUI.ScrollBar(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), 0.1)
+    scroll.Range = Vector2(min, max)
+    local value_text = hb_add_text(Vector2(0.2, 1), row.RectTransform,
+        string.format(fmt, fx_state[field]), GUI.Alignment.CenterLeft)
+    scroll.BarScroll = math.min(math.max((fx_state[field] - min) / (max - min), 0), 1)
+    scroll.OnMoved = function(bar, s)
+        local v = min + (max - min) * s
+        if integer then v = math.floor(v + 0.5) end
+        fx_state[field] = v
+        fx_dirty = true
+        fx_status = nil
+        value_text.Text = RichString.Plain(RawLString(string.format(fmt, v)))
+        fx_refresh_status()
+        return true
+    end
+end
+
 local function open_menu()
     close_menu()
 
@@ -1639,6 +1808,17 @@ local function open_menu()
             cl_list_scroll = 0
             cl_unlockall_confirm = nil
             menu_page = "costumelock"
+            pcall(open_menu)
+            return true
+        end
+
+        local btn_effects = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("fx_settings")))
+        btn_effects.OnClicked = function()
+            -- 进页重读 C# 快照；上次未保存的暂存在这里被丢弃
+            fx_state = nil
+            fx_dirty = false
+            fx_status = nil
+            menu_page = "effects"
             pcall(open_menu)
             return true
         end
@@ -2195,6 +2375,144 @@ local function open_menu()
         end
 
         -- 返回主菜单 / 关闭（与其他页同款）
+        do
+            local bottom_row = add_row(layout, HB_H)
+            local back_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("back")))
+            back_btn.OnClicked = function()
+                menu_page = "hub"
+                pcall(open_menu)
+                return true
+            end
+            local close_button = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("close")))
+            close_button.OnClicked = function()
+                close_menu()
+                return true
+            end
+        end
+        return
+    end
+
+    if menu_page == "effects" then
+        local api = fx_api()
+        add_text(Vector2(1, HB_H), layout.RectTransform, T("window_title") .. " - " .. T("fx_settings"), GUI.Alignment.Center)
+
+        if api == nil then
+            add_text(Vector2(1, HB_H), layout.RectTransform, T("fx_missing"), GUI.Alignment.Center)
+        else
+            if fx_state == nil then
+                fx_state = fx_load()
+                if fx_state == nil then
+                    fx_state = fx_blank_state()
+                    fx_status = T("fx_read_fail")
+                end
+                fx_dirty = false
+            end
+
+            add_text(Vector2(1, HB_H), layout.RectTransform, T("fx_hint"), GUI.Alignment.Center)
+
+            -- 预设行：只改暂存值，真正写盘在下面的保存按钮
+            do
+                local row = add_row(layout, 0.088)
+                for _, p in ipairs(FX_PRESETS) do
+                    local btn = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), row.RectTransform), RawLString(T(p.key)))
+                    btn.OnClicked = function()
+                        fx_apply_preset(p)
+                        fx_status = nil
+                        pcall(open_menu)
+                        return true
+                    end
+                end
+            end
+
+            -- 扫光总开关 + 物品背景 + 闪点
+            do
+                local row = add_row(layout, 0.075)
+                local tick_on = GUI.TickBox(GUI.RectTransform(Vector2(0.33, 1), row.RectTransform), RawLString(T("fx_enabled")))
+                tick_on.Selected = fx_state.enabled
+                tick_on.OnSelected = function(tb)
+                    fx_state.enabled = tb.Selected
+                    fx_dirty = true
+                    fx_status = nil
+                    fx_refresh_status()
+                    return true
+                end
+                local tick_glow = GUI.TickBox(GUI.RectTransform(Vector2(0.33, 1), row.RectTransform), RawLString(T("fx_affix_glow")))
+                tick_glow.Selected = fx_state.affixGlow
+                tick_glow.OnSelected = function(tb)
+                    fx_state.affixGlow = tb.Selected
+                    fx_dirty = true
+                    fx_status = nil
+                    fx_refresh_status()
+                    return true
+                end
+                local tick_sp = GUI.TickBox(GUI.RectTransform(Vector2(0.33, 1), row.RectTransform), RawLString(T("fx_sparkles")))
+                tick_sp.Selected = fx_state.sparkles
+                tick_sp.OnSelected = function(tb)
+                    fx_state.sparkles = tb.Selected
+                    fx_dirty = true
+                    fx_status = nil
+                    fx_refresh_status()
+                    return true
+                end
+            end
+
+            -- 生效范围：背包 / GUI 预览 / 场景
+            do
+                local row = add_row(layout, 0.075)
+                local ranges = {
+                    { key = "fx_inventory", field = "inventory" },
+                    { key = "fx_previews",  field = "previews" },
+                    { key = "fx_world",     field = "world" },
+                }
+                for _, r in ipairs(ranges) do
+                    local tick = GUI.TickBox(GUI.RectTransform(Vector2(0.33, 1), row.RectTransform), RawLString(T(r.key)))
+                    tick.Selected = fx_state[r.field]
+                    tick.OnSelected = function(tb)
+                        fx_state[r.field] = tb.Selected
+                        fx_dirty = true
+                        fx_status = nil
+                        fx_refresh_status()
+                        return true
+                    end
+                end
+            end
+
+            fx_slider_row(layout, 0.075, T("fx_max_frame"), 0, 512, "%.0f", "maxPerFrame", true)
+            fx_slider_row(layout, 0.075, T("fx_cache"), 1, 256, "%.0f", "cacheMegabytes", true)
+            fx_slider_row(layout, 0.075, T("fx_brightness"), 0, 1, "%.2f", "worldIntensity", false)
+
+            -- 状态行：保存结果 / 未保存提醒（控件记进模块变量，回调里直接改文本）
+            fx_status_block = add_text(Vector2(1, HB_H), layout.RectTransform,
+                fx_status or (fx_dirty and T("fx_unsaved") or ""), GUI.Alignment.Center)
+
+            -- 保存（校验通过才写盘并即时生效）/ 重置默认
+            do
+                local row = add_row(layout, 0.075)
+                local btn_save = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), RawLString(T("fx_save")))
+                btn_save.OnClicked = function()
+                    local ok, result = pcall(function() return api.Save(fx_build_text(fx_state)) end)
+                    if ok and result == "" then
+                        fx_dirty = false
+                        fx_status = T("fx_saved")
+                    else
+                        fx_status = string.format(T("fx_save_fail"), tostring(result))
+                    end
+                    print(T("log_prefix") .. tostring(fx_status))
+                    pcall(open_menu)
+                    return true
+                end
+                local btn_reset = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), RawLString(T("reset_default")))
+                btn_reset.OnClicked = function()
+                    fx_state = fx_blank_state()
+                    fx_dirty = true
+                    fx_status = T("fx_reset_done")
+                    pcall(open_menu)
+                    return true
+                end
+            end
+        end
+
+        -- 返回主菜单（暂存表在 hub 入口重置 = 放弃未保存的改动）/ 关闭
         do
             local bottom_row = add_row(layout, HB_H)
             local back_btn = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("back")))

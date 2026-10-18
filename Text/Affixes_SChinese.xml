@@ -83,20 +83,20 @@
 	<affix.prefix.heavy>‖color:74,144,255,255‖重击‖color:end‖‖color:255,255,255,255‖</affix.prefix.heavy>
 	<affix.desc.heavy>伤害 +10%，挥速 -4%</affix.desc.heavy>
 	<affix.prefix.deadeye>‖color:74,144,255,255‖神射‖color:end‖‖color:255,255,255,255‖</affix.prefix.deadeye>
-	<affix.desc.deadeye>伤害 +5%，散布 -10%</affix.desc.deadeye>
+	<affix.desc.deadeye>伤害 +5%，散布 -15%</affix.desc.deadeye>
 	<affix.prefix.resilient>‖color:74,144,255,255‖坚韧‖color:end‖‖color:255,255,255,255‖</affix.prefix.resilient>
 	<affix.desc.resilient>受到的伤害 -4%；穿戴时眩晕 -0.05/秒</affix.desc.resilient>
 	<affix.prefix.first_aid>‖color:74,144,255,255‖急救‖color:end‖‖color:255,255,255,255‖</affix.prefix.first_aid>
-	<affix.desc.first_aid>耐久大于20%时，使用时额外治疗 8 点烧伤与 10 点缺氧</affix.desc.first_aid>
+	<affix.desc.first_aid>耐久大于20%时，使用时额外治疗 5 点烧伤与 10 点缺氧</affix.desc.first_aid>
 	<affix.prefix.void>‖color:255,64,64,255‖虚空‖color:end‖‖color:255,255,255,255‖</affix.prefix.void>
-	<affix.desc.void>射击 25% 概率不消耗弹药</affix.desc.void>
+	<affix.desc.void>射击 60% 概率不消耗弹药</affix.desc.void>
 	<affix.prefix.reflux>‖color:255,64,64,255‖回流‖color:end‖‖color:255,255,255,255‖</affix.prefix.reflux>
 	<affix.desc.reflux>使用时 30% 概率不消耗耐久（一次性药物除外）</affix.desc.reflux>
 	<affix.dormantline>（耐久不足，词缀效果休眠）</affix.dormantline>
 	<affix.prefix.goldencrown>‖color:255,140,0,255‖金冠‖color:end‖‖color:255,255,255,255‖</affix.prefix.goldencrown>
-	<affix.desc.goldencrown>命中时该次攻击伤害 +25%，随后进入 10 秒冷却（未命中不触发）</affix.desc.goldencrown>
+	<affix.desc.goldencrown>距上次命中间隔时间越久，造成的伤害越高：最多 +25%（10 秒蓄满）</affix.desc.goldencrown>
 	<affix.prefix.crown>‖color:255,64,64,255‖王冠‖color:end‖‖color:255,255,255,255‖</affix.prefix.crown>
-	<affix.desc.crown>弹匣最后一发弹药伤害 +30%</affix.desc.crown>
+	<affix.desc.crown>武器剩余弹药越少，造成的伤害越高，最高30%</affix.desc.crown>
 	<affix.prefix.devoted>‖color:255,64,64,255‖专一‖color:end‖‖color:255,255,255,255‖</affix.prefix.devoted>
 	<affix.desc.devoted>单手近战武器变为双手握持，伤害 +70%</affix.desc.devoted>
 	<affix.prefix.ragnarok>‖color:255,140,0,255‖诸神黄昏‖color:end‖‖color:255,255,255,255‖</affix.prefix.ragnarok>
@@ -106,7 +106,7 @@
 	<affix.prefix.abyssal>‖color:255,140,0,255‖深渊‖color:end‖‖color:255,255,255,255‖</affix.prefix.abyssal>
 	<affix.desc.abyssal>伤害 +10%，射速 +6%；命中有 50% 概率附加 10 点「梦消失」（4 秒冷却）</affix.desc.abyssal>
 	<affix.prefix.euphoria>‖color:255,64,64,255‖亢奋‖color:end‖‖color:255,255,255,255‖</affix.prefix.euphoria>
-	<affix.desc.euphoria>耐久大于20%时，使用后目标 45 秒内移速 +35%，持续恢复物理伤害并止血，附加 10 醉酒与 5 精神病</affix.desc.euphoria>
+	<affix.desc.euphoria>耐久大于20%时，使用后目标 45 秒内移速 +35%，持续恢复物理伤害并止血，附加 5 醉酒与 2 精神病</affix.desc.euphoria>
 	<affix.prefix.weightless>‖color:255,64,64,255‖失重‖color:end‖‖color:255,255,255,255‖</affix.prefix.weightless>
 	<affix.desc.weightless>穿戴时移速 +30%，受伤 -8%，眩晕积累 -0.1/s；受到攻击时反击：必定使攻击者眩晕 0.2 秒（1 秒冷却，不影响队友）</affix.desc.weightless>
 	<affix.prefix.priority>‖color:192,64,255,255‖优先‖color:end‖‖color:255,255,255,255‖</affix.prefix.priority>
@@ -137,4 +137,14 @@
 	<affix.desc.lonewolf>快捷栏只携带这一把附魔武器时，伤害 +18%</affix.desc.lonewolf>
 	<affix.prefix.miracle>‖color:255,64,64,255‖奇迹‖color:end‖‖color:255,255,255,255‖</affix.prefix.miracle>
 	<affix.desc.miracle>允许物品额外再拥有一个史诗及以下词缀和一个任意稀有度词缀（需用附魔石转移附上）；不放置材料进行附魔可去除额外词缀</affix.desc.miracle>
+	<affix.prefix.salvage>‖color:192,64,255,255‖回收‖color:end‖‖color:255,255,255,255‖</affix.prefix.salvage>
+	<affix.desc.salvage>武器额外获得一个词缀槽（任意词缀，不能是回收）；额外词缀必须用附魔石转移附上，可在附魔台用空白附魔石把该词缀取下保存</affix.desc.salvage>
+	<affix.prefix.overdrive>‖color:74,144,255,255‖过载焊接‖color:end‖‖color:255,255,255,255‖</affix.prefix.overdrive>
+	<affix.desc.overdrive>船体修复速度 +40%，设备修理速度 +30%，耗材消耗 +20%</affix.desc.overdrive>
+	<affix.prefix.rhythm>‖color:74,144,255,255‖匠人节奏‖color:end‖‖color:255,255,255,255‖</affix.prefix.rhythm>
+	<affix.desc.rhythm>持续修理时修理速度递增：船体每秒 +10%，设备每 0.5 秒 +10%，最高 +50%；停手 10 秒清零</affix.desc.rhythm>
+	<affix.prefix.embers>‖color:192,64,255,255‖余烬‖color:end‖‖color:255,255,255,255‖</affix.prefix.embers>
+	<affix.desc.embers>耐久越低伤害越高：耐久 25% 及以下时伤害 +15%</affix.desc.embers>
+	<affix.prefix.endurance>‖color:192,64,255,255‖持恒‖color:end‖‖color:255,255,255,255‖</affix.prefix.endurance>
+	<affix.desc.endurance>使用时 30% 概率不消耗自身耐久</affix.desc.endurance>
 </infotexts>

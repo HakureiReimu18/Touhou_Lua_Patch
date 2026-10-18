@@ -1,7 +1,7 @@
 -- 红美铃天赋「气与姿态」服务端逻辑（Lua 补丁侧）。
 -- 职责：有装束效果的角色无姿态时补默认「蓄势」；蓄势每秒 +1 气、全力每秒 -1 气；
--- 蓄势下造成/受到敌人伤害按伤害量折算获气（单次有上下限）；全力专属武器命中时 20% 概率
--- 额外 50% 伤害并消耗 2 气；装束效果没了或死亡后清除姿态与气。
+-- 蓄势下造成/受到敌人伤害按伤害量折算获气（单次有上下限）；护身受击按伤害量折算耗气；
+-- 全力专属武器命中时 20% 概率额外 50% 伤害并消耗 2 气；装束效果没了或死亡后清除姿态与气。
 -- 判定只认装束给的效果 aff，不认装束本体 —— 别的变体、别的模组授予同一个 aff 也能生效。
 -- 姿态切换本身由装束按钮 XML 完成（见 Hong_Meirin_gear.xml 的 CustomInterface）；
 -- 气与姿态的数值效果都在本体模组 Touhou_Character_Afflictions.xml 的 affliction 定义里，本脚本只驱动强度。
@@ -28,6 +28,8 @@ local QI_ALLOUT_PER_SEC = -1
 -- 战斗获气：gain = clamp(伤害 × K, MIN, MAX)，上下限防止高频低伤刷气与低频高伤爆气（数值待平衡）
 local DEAL_K, DEAL_MIN, DEAL_MAX = 0.15, 0.2, 4
 local TAKE_K, TAKE_MIN, TAKE_MAX = 0.2, 0.2, 4
+-- 护身受击耗气：cost = clamp(伤害 × K, MIN, MAX)
+local GUARD_TAKE_K, GUARD_TAKE_MIN, GUARD_TAKE_MAX = 0.1, 0.25, 2
 -- 全力专属武器触发
 local ALLOUT_PROC_CHANCE = 0.2
 local ALLOUT_PROC_MULTIPLIER = 1.5
@@ -135,6 +137,19 @@ local function grant_combat_qi(character, attack, k, min_gain, max_gain)
     add_qi(character, clamp(damage * k, min_gain, max_gain))
 end
 
+-- 护身受击耗气：按攻击强度折算扣气（触底停 0）
+local function drain_guard_qi(character, attack)
+    if get_active_stance(character) ~= AFF_STANCE_GUARD then return end
+    if attack == nil then return end
+
+    local damage = 0
+    local ok, result = pcall(total_character_damage, attack)
+    if ok and result ~= nil then damage = result end
+    if damage <= 0 then return end
+
+    add_qi(character, -clamp(damage * GUARD_TAKE_K, GUARD_TAKE_MIN, GUARD_TAKE_MAX))
+end
+
 -- 全力专属武器判定：优先攻击来源物品，退回双手物品（照 Touhou_Magic_Weapon_Bonus 的模式）
 local function is_exclusive_weapon_attack(attacker, attack)
     if attack ~= nil and attack.SourceItem ~= nil then
@@ -191,9 +206,10 @@ Hook.Patch("Barotrauma.Character", "ApplyAttack", function(instance, ptable)
         grant_combat_qi(attacker, attack, DEAL_K, DEAL_MIN, DEAL_MAX)
     end
 
-    -- 美铃受到敌人攻击伤害
+    -- 美铃受到敌人攻击伤害：蓄势折算获气，护身折算耗气（各自内部再判定姿态）
     if is_enemy_of(attacker, victim) and victim.IsHuman and has_outfit_effect(victim) then
         grant_combat_qi(victim, attack, TAKE_K, TAKE_MIN, TAKE_MAX)
+        drain_guard_qi(victim, attack)
     end
 end, Hook.HookMethodType.After)
 
@@ -233,7 +249,7 @@ local function tick_qi(character)
     elseif stance == AFF_STANCE_ALLOUT then
         add_qi(character, QI_ALLOUT_PER_SEC)
     end
-    -- 护身：不增不减
+    -- 护身：被动不增不减（受击耗气在 ApplyAttack 分支里）
 end
 
 print("Meiling.QiTalent: 脚本已加载 (DEBUG_LOG=" .. tostring(DEBUG_LOG) .. ")")

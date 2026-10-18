@@ -8,6 +8,8 @@
 -- 服务端权威：联机客户端不执行；单机和开房主机照常执行
 if not SERVER and not Game.IsSingleplayer then return end
 
+local TT = TouhouTalents
+
 local AFF_TALENT = Identifier("Touhou_Marisa_Character_Effect")
 -- 魔力过载；Prefabs 字典按项目惯例用字符串索引
 local OVERLOAD_NAME = "Touhou_Magic_Overload"
@@ -90,13 +92,9 @@ local function add_overload(character, amount)
     health.ApplyAffliction(nil, prefab.Instantiate(amount))
 end
 
--- 同一次攻击只判定一次（爆炸/多目标命中会各建一次 AbilityAttackData）；表每帧整体换新，
--- 不依赖弱表语义，也不会随攻击对象累积。
-local rolled_attacks = {}
-
-Hook.Add("think", "Marisa.MagicOverload.Tick", function()
-    rolled_attacks = {}
-end)
+-- 同一帧内同一次攻击只判定一次（爆炸按肢体、多段伤害按命中各建一次 AbilityAttackData 时只算一发）；
+-- 去重器由 Shared/TalentUtils.lua 提供，咲夜的血之时计用的是同一个
+local roll_once_per_attack = TT.new_frame_dedupe("Marisa.MagicOverload.Tick")
 
 Hook.Patch("Barotrauma.AbilityAttackData", ".ctor", function(instance, ptable)
     local attacker = ptable["attacker"]
@@ -109,9 +107,7 @@ Hook.Patch("Barotrauma.AbilityAttackData", ".ctor", function(instance, ptable)
         return
     end
 
-    local rolled = rolled_attacks[attack]
-    rolled_attacks[attack] = true
-    if rolled then
+    if roll_once_per_attack(attack) then
         return
     end
 

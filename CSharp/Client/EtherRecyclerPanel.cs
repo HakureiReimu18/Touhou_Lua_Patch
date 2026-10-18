@@ -12,12 +12,11 @@ using Microsoft.Xna.Framework.Graphics;
 //  · 面板由 C# 自绘（背景 + 标题 + 状态），把三个容器的「库存本体」直接画进面板里；
 //  · 槽位仍是原生 Inventory（没有任何私有实现）：拖放/堆叠/右键/过滤/联机同步全部走原版
 //    （拖放由 CharacterHUD.Update → Inventory.UpdateDragging 全局处理，依据是 Inventory.RectTransform 算出的槽位矩形）；
-//  · 两个按钮仍用 XML 的原生 CustomInterface 窗格（负责客户端→服务端事件 + LuaHook），只是被摆进面板右下角；
-//  · 三条触发路径互为兜底：Item.DrawHUD 补丁（设备 HUD 显示时每帧走到）、CharacterHUD.Update 补丁（收起面板）、
-//    LuaCs 的 think 钩子（Harmony 万一没生效也能工作）；
+//  · 自绘按钮转发 XML 原生 CustomInterface 的点击（客户端→服务端事件 + LuaHook）；
+//  · Lua 同步和 C# think 互为兜底，同一个固定更新周期只做一次布局，GUI 注册仍逐入口维护；
 //  · 失败安全：出任何异常都吞掉、恢复原生窗口、停用面板；面板没接管时设备照 XML 排版工作。
 //
-// 调布局就改 PanelConfig；尺寸单位是 1080p 下的界面像素，其他分辨率/UI 缩放自动换算。
+// 调布局就改下方常量；尺寸单位是 1080p 下的界面像素，其他分辨率/UI 缩放自动换算。
 
 namespace Touhou.EtherRecycler;
 
@@ -34,12 +33,10 @@ public sealed class EtherRecyclerPanelPlugin : IAssemblyPlugin
         {
             if (!patched)
             {
-                // 只用 Lua 驱动（客户端每帧 Hook.Call）+ think 兜底；不再打 Harmony 补丁，
-                // 避免多套显示判定互相打架（联机拿在手里时表现为窗口闪烁）
-                // 兜底：LuaCs 每帧 think 钩子（Harmony 两个补丁都没挂上时，靠它整条链路也能跑）
+                // 两路入口共用显示判定，避免联机换手时窗口闪烁。
                 LuaCsSetup.Instance.Hook.Add("think", "Touhou.EtherRecyclerPanel.Think", OnThink);
-                // 主驱动：客户端 Lua 每帧把「选中物品」交过来（Lua 链路已验证可用，最可靠）
                 LuaCsSetup.Instance.Hook.Add("Touhou.EtherRecyclerPanel.Sync", "Touhou.EtherRecyclerPanel", OnLuaSync);
+                LuaCsSetup.Instance.Hook.Add("roundEnd", "Touhou.EtherRecyclerPanel.RoundEnd", OnRoundEnd);
 
                 patched = true;
                 EtherRecyclerPanel.Log("面板插件已加载（Lua 驱动 + think 兜底）");
@@ -57,9 +54,16 @@ public sealed class EtherRecyclerPanelPlugin : IAssemblyPlugin
     {
         try { LuaCsSetup.Instance.Hook.Remove("think", "Touhou.EtherRecyclerPanel.Think"); } catch { /* 卸载时无所谓 */ }
         try { LuaCsSetup.Instance.Hook.Remove("Touhou.EtherRecyclerPanel.Sync", "Touhou.EtherRecyclerPanel"); } catch { /* 同上 */ }
+        try { LuaCsSetup.Instance.Hook.Remove("roundEnd", "Touhou.EtherRecyclerPanel.RoundEnd"); } catch { /* 同上 */ }
         harmony?.UnpatchSelf();
         patched = false;
         EtherRecyclerPanel.ResetAll();
+    }
+
+    private static object OnRoundEnd(params object[] args)
+    {
+        EtherRecyclerPanel.ResetAll();
+        return null;
     }
 
     private static object OnThink(params object[] args)
@@ -88,6 +92,7 @@ public sealed class EtherRecyclerPanelPlugin : IAssemblyPlugin
 
 internal sealed class EtherRecyclerPanelState
 {
+    public Item Machine;
     public GUIFrame Panel;
     public GUITextBlock Title;
     public GUITextBlock Status;
@@ -101,7 +106,10 @@ internal sealed class EtherRecyclerPanelState
     public GUICustomComponent CatalystSlots;
     public GUICustomComponent OutputSlots;
     public readonly List<ItemContainer> HiddenContainers = new();
-    public GUIComponent HiddenButtonFrame;
+    public readonly Dictionary<GUIComponent, (bool Visible, bool Focused, Anchor Anchor, Vector2 Size, Vector2 Offset)> NativeFrames = new();
+    public readonly Dictionary<ItemInventory, (RectTransform Native, RectTransform Custom)> NativeInventories = new();
+    public bool Attached;
+    public double LastLayoutTime = double.NaN;
     public bool Failed;
     public int LastScreenW = -1, LastScreenH = -1;
     public float LastUIScale = -1f;
@@ -123,10 +131,11 @@ internal static class EtherRecyclerPanel
     private const float PredictionMinWidth = 220f; // 预计产出文字的宽度下限
 
     private static readonly Dictionary<Item, EtherRecyclerPanelState> States = new();
-    private static readonly Point OffScreenOffset = new Point(-20000, -20000);
+    private static readonly List<Item> removedMachines = new();
+    private static EtherRecyclerPanelState visibleState;
+    private static double lastPruneTime = double.NaN;
     private const bool Verbose = false; // 面板提示日志（加载/接管/驱动接通）默认关闭
     private static bool disabled;
-    private static bool firstTickLogged;
     private static bool firstPanelLogged;
 
     public static void Log(string message)
@@ -150,40 +159,57 @@ internal static class EtherRecyclerPanel
 
     public static void ResetAll()
     {
-        foreach (var panelState in States.Values)
-        {
-            try { RestoreNativeFrames(panelState); } catch { /* 收尾失败无所谓 */ }
-            try { GUI.RemoveFromUpdateList(panelState.Panel, true); } catch { /* 同上 */ }
-            try { panelState.Panel?.Parent?.RemoveChild(panelState.Panel); } catch { /* 同上 */ }
-        }
+        visibleState = null;
+        foreach (var state in States.Values) { DestroyPanel(state); }
         States.Clear();
+        removedMachines.Clear();
+        lastPruneTime = double.NaN;
     }
 
-    // 兜底路径：每帧从本地玩家当前选中的物品判断（LuaCs think 钩子调用）
-    public static void Tick()
+    private static void DestroyPanel(EtherRecyclerPanelState state)
     {
-        if (disabled) { return; }
-        if (!firstTickLogged)
-        {
-            firstTickLogged = true;
-            Log("每帧同步已启动");
-        }
-
-        var machine = GetRecycler(Character.Controlled?.SelectedItem);
-        if (machine == null) { HideAll(); return; }
-        ShowFor(machine);
+        try { RestoreNativeFrames(state); } catch (Exception ex) { LogError("恢复原生界面失败：" + ex.Message); }
+        if (state.Panel != null) { state.Panel.Visible = false; }
+        try { GUI.RemoveFromUpdateList(state.Panel, true); } catch { /* 卸载时可能已被引擎摘掉 */ }
+        try { if (state.Panel != null) { state.Panel.RectTransform.Parent = null; } } catch { /* 同上 */ }
     }
 
-    // 主路径：客户端 Lua 每帧把选中物品交过来（可能为 nil）
+    private static void PruneRemoved(Item selected)
+    {
+        // 1.13.4 的 TotalTime 每次固定更新递增，think 在 CoroutineManager.Update 后发布；不是显示帧号。
+        if (lastPruneTime != Timing.TotalTime)
+        {
+            lastPruneTime = Timing.TotalTime;
+            foreach (var pair in States)
+            {
+                if (pair.Key.Removed) { removedMachines.Add(pair.Key); }
+            }
+        }
+        // 同一周期第二个入口也不能让刚移除的当前设备留下来。
+        if (visibleState?.Machine is Item visible && visible.Removed && !removedMachines.Contains(visible))
+        {
+            removedMachines.Add(visible);
+        }
+        if (selected != null && selected.Removed && States.ContainsKey(selected) && !removedMachines.Contains(selected))
+        {
+            removedMachines.Add(selected);
+        }
+        foreach (var machine in removedMachines)
+        {
+            var state = States[machine];
+            if (visibleState == state) { visibleState = null; }
+            DestroyPanel(state);
+            States.Remove(machine);
+        }
+        removedMachines.Clear();
+    }
+
+    public static void Tick() => SyncFromLua(Character.Controlled?.SelectedItem);
+
     public static void SyncFromLua(Item item)
     {
         if (disabled) { return; }
-        if (!firstTickLogged)
-        {
-            firstTickLogged = true;
-            Log("Lua 驱动已接通（每帧同步）");
-        }
-
+        PruneRemoved(item);
         var machine = GetRecycler(item);
         if (machine != null)
         {
@@ -191,33 +217,31 @@ internal static class EtherRecyclerPanel
             return;
         }
 
-        // 不是我们的回收机 → 收起；但「看起来是回收机却解析失败」（拿在手里/换手时的瞬时异常）
-        // 保持现状，否则这些瞬时失败会让窗口一闪一闪
+        // 换手时第一次解析可能瞬时失败；确认已不是回收机才收起。
         bool looksLikeOurs = false;
         try { looksLikeOurs = item != null && !item.Removed && item.HasTag(MachineTag.ToIdentifier()); } catch { /* 取不到就当作不是 */ }
-        if (!looksLikeOurs)
-        {
-            HideAll();
-        }
+        if (!looksLikeOurs) { HideAll(); }
     }
 
-    // 主路径：设备 HUD 正在显示时被调用（Item.DrawHUD 补丁）
     public static void ShowFor(Item machine)
     {
-        if (disabled) { return; }
-        if (GetRecycler(machine) == null) { return; }
-
+        if (disabled || GetRecycler(machine) == null) { return; }
         var state = GetOrCreate(machine);
         if (state == null || state.Failed) { return; }
+        if (visibleState != state)
+        {
+            HideAll();
+            visibleState = state;
+        }
 
-        bool needsRebuild = state.Panel == null
+        bool needsRebuild = !state.Attached
             || state.LastScreenW != GameMain.GraphicsWidth
             || state.LastScreenH != GameMain.GraphicsHeight
             || Math.Abs(state.LastUIScale - Inventory.UIScale) > 0.0001f;
-
         if (needsRebuild)
         {
             Build(machine, state);
+            if (!state.Attached) { return; }
             if (!firstPanelLogged)
             {
                 firstPanelLogged = true;
@@ -225,25 +249,26 @@ internal static class EtherRecyclerPanel
             }
         }
 
-        Layout(machine, state);
-    }
-
-    public static void HideIfNotApplicable(Character character)
-    {
-        if (disabled) { return; }
-        if (GetRecycler(character?.SelectedItem) == null) { HideAll(); }
+        if (needsRebuild || state.LastLayoutTime != Timing.TotalTime)
+        {
+            Layout(machine, state);
+            state.LastLayoutTime = Timing.TotalTime;
+        }
+        MaintainGUI(state);
     }
 
     private static void HideAll()
     {
-        foreach (var panelState in States.Values)
+        var state = visibleState;
+        if (state == null) { return; }
+        visibleState = null;
+        if (state.Panel != null)
         {
-            if (panelState.Panel != null)
-            {
-                panelState.Panel.Visible = false;
-                try { GUI.RemoveFromUpdateList(panelState.Panel, true); } catch { /* 没在列表里也无所谓 */ }
-            }
+            state.Panel.Visible = false;
+            try { GUI.RemoveFromUpdateList(state.Panel, true); } catch { /* 没在列表里也无所谓 */ }
         }
+        RestoreNativeFrames(state);
+        state.LastLayoutTime = double.NaN;
     }
 
     private static Item GetRecycler(Item item)
@@ -257,7 +282,7 @@ internal static class EtherRecyclerPanel
     {
         if (States.TryGetValue(machine, out var existing)) { return existing; }
 
-        var state = new EtherRecyclerPanelState();
+        var state = new EtherRecyclerPanelState { Machine = machine };
         try
         {
             state.Panel = new GUIFrame(new RectTransform(new Vector2(0.1f, 0.1f), GUI.Canvas, Anchor.Center), style: "ItemUI")
@@ -302,6 +327,7 @@ internal static class EtherRecyclerPanel
         catch (Exception ex)
         {
             state.Failed = true;
+            DestroyPanel(state);
             Disable(ex);
             return null;
         }
@@ -352,6 +378,13 @@ internal static class EtherRecyclerPanel
         return false;
     }
 
+    private static List<GUIButton> CollectButtons(GUIComponent parent)
+    {
+        var result = new List<GUIButton>();
+        CollectButtons(parent, result, 0);
+        return result;
+    }
+
     private static void CollectButtons(GUIComponent parent, List<GUIButton> result, int depth)
     {
         if (parent == null || depth > 4) { return; }
@@ -365,9 +398,12 @@ internal static class EtherRecyclerPanel
         }
     }
 
-    // 面板建立后第一次布局：定尺寸、接管库存、隐藏原生窗口、把按钮窗格挪进来
+    // 重建前先交还原生挂接，按钮未就绪时才能安全退回原版。
     private static void Build(Item machine, EtherRecyclerPanelState state)
     {
+        RestoreNativeFrames(state);
+        state.Panel.Visible = false;
+        GUI.RemoveFromUpdateList(state.Panel, true);
         var containers = GetContainers(machine);
         if (containers == null) { return; }
 
@@ -404,11 +440,19 @@ internal static class EtherRecyclerPanel
         state.HiddenContainers.Add(containers.Value.InputContainer);
         state.HiddenContainers.Add(containers.Value.CatalystContainer);
         state.HiddenContainers.Add(containers.Value.OutputContainer);
-        state.HiddenButtonFrame = buttonComponent?.GuiFrame;        HideNativeFrames(state);
+        // 按钮链路不可用（例如中途加入、原生 UI 还没建立）→ 本轮不接管，让原版窗口继续可用
+        if (CollectButtons(buttonComponent?.GuiFrame).Count == 0)
+        {
+            LogError("按钮链路未就绪，本轮退回原生窗口（下一帧重试）");
+            return;
+        }
 
-        AttachInventory(containers.Value.Input, state.InputSlots);
-        AttachInventory(containers.Value.Catalyst, state.CatalystSlots);
-        AttachInventory(containers.Value.Output, state.OutputSlots);
+        HideNativeFrames(state);
+
+        AttachInventory(state, containers.Value.Input, state.InputSlots);
+        AttachInventory(state, containers.Value.Catalyst, state.CatalystSlots);
+        AttachInventory(state, containers.Value.Output, state.OutputSlots);
+        state.Attached = true;
     }
 
     private static void Layout(Item machine, EtherRecyclerPanelState state)
@@ -450,12 +494,9 @@ internal static class EtherRecyclerPanel
 
         // 库存的 RectTransform 可能被原版重建（分辨率变更）顶掉，发现不一致就抢回来；
         // 绘制区尺寸变了也要重算槽位（CreateSlots 只在调用时按矩形算一次）
-        EnsureAttached(containers.Value.Input, state.InputSlots, ref state.LastInputSize, input);
-        EnsureAttached(containers.Value.Catalyst, state.CatalystSlots, ref state.LastCatalystSize, catalyst);
-        EnsureAttached(containers.Value.Output, state.OutputSlots, ref state.LastOutputSize, output);
-
-        // 原版每帧会把被选中物品的容器/按钮窗口重新显示出来，这里持续压住
-        HideNativeFrames(state);
+        EnsureAttached(state, containers.Value.Input, state.InputSlots, ref state.LastInputSize, input);
+        EnsureAttached(state, containers.Value.Catalyst, state.CatalystSlots, ref state.LastCatalystSize, catalyst);
+        EnsureAttached(state, containers.Value.Output, state.OutputSlots, ref state.LastOutputSize, output);
 
         bool running = machine.GetComponent<LightComponent>()?.IsOn ?? false;
         state.Status.Text = TextManager.Get(running ? "touhou.recycler.isactive" : "touhou.recycler.panel.idle");
@@ -468,9 +509,21 @@ internal static class EtherRecyclerPanel
         if (containers.Value.Input.Locked != running) { containers.Value.Input.Locked = running; }
         if (containers.Value.Catalyst.Locked != running) { containers.Value.Catalyst.Locked = running; }
 
-        // 暂停菜单等模态 UI 打开时把面板收起来（避免盖在暂停菜单上面）
+    }
+
+    private static void MaintainGUI(EtherRecyclerPanelState state)
+    {
+        HideNativeFrames(state);
+        RepairAttachment(state, state.InputSlots);
+        RepairAttachment(state, state.CatalystSlots);
+        RepairAttachment(state, state.OutputSlots);
+        // GUI 更新列表每个固定更新都会清空，不能和昂贵布局一起跳过。
+        // 暂停菜单打开时把面板收起来（避免盖在暂停菜单上面）。
+        // 注意：要用引擎自己的标志 GUI.PauseMenuOpen——用帧对象 PauseMenu.Visible 判断会踩脏状态：
+        // 中途加入时该帧要么还没建、要么留着上次的可见性，会把面板一直误判成"暂停中"藏着，
+        // 直到玩家真正按一次 ESC 翻转标志位（实机症状：刚加入看不到窗口，按 ESC 后就能看到了）。
         bool modalOpen = false;
-        try { modalOpen = GUI.PauseMenu is GUIComponent pause && pause.Visible; } catch { /* 取不到就算了 */ }
+        try { modalOpen = GUI.PauseMenuOpen; } catch { /* 取不到就算了 */ }
         if (modalOpen)
         {
             state.Panel.Visible = false;
@@ -530,7 +583,7 @@ internal static class EtherRecyclerPanel
     private static void HideNativeFrames(EtherRecyclerPanelState state)
     {
         // 只设 Visible=false 挡不住原版的鼠标命中与"重置位置/锁定位置"右键菜单，所以四件事一起做：
-        // 不可见 + 不可聚焦 + 挪到屏幕外 + 从 GUI 更新列表里摘掉（原版每帧又会注册，所以我每帧摘）
+        // 不可见 + 不可聚焦 + 贴住面板 + 从 GUI 更新列表里摘掉（原版每帧又会注册，所以我每帧摘）
         foreach (var container in state.HiddenContainers)
         {
             if (container?.GuiFrame is GUIComponent frame)
@@ -547,6 +600,11 @@ internal static class EtherRecyclerPanel
 
     private static void HideFrame(EtherRecyclerPanelState state, GUIComponent frame)
     {
+        if (!state.NativeFrames.ContainsKey(frame))
+        {
+            var rect = frame.RectTransform;
+            state.NativeFrames.Add(frame, (frame.Visible, frame.CanBeFocused, rect.Anchor, rect.RelativeSize, rect.RelativeOffset));
+        }
         frame.Visible = false;
         frame.CanBeFocused = false;
         try { GUI.RemoveFromUpdateList(frame, true); } catch { /* 不在列表里也无所谓 */ }
@@ -574,26 +632,38 @@ internal static class EtherRecyclerPanel
 
     private static void RestoreNativeFrames(EtherRecyclerPanelState state)
     {
-        foreach (var container in state.HiddenContainers)
+        foreach (var pair in state.NativeFrames)
         {
-            if (container?.GuiFrame is GUIComponent frame)
+            try
             {
-                RestoreFrame(frame);
+                var frame = pair.Key;
+                var saved = pair.Value;
+                frame.RectTransform.Anchor = saved.Anchor;
+                frame.RectTransform.RelativeSize = saved.Size;
+                frame.RectTransform.RelativeOffset = saved.Offset;
+                frame.Visible = saved.Visible;
+                frame.CanBeFocused = saved.Focused;
+            }
+            catch (Exception ex) { LogError("恢复原生窗格失败：" + ex.Message); }
+        }
+        foreach (var pair in state.NativeInventories)
+        {
+            // 原版已经重建挂接时别把旧窗格塞回去。
+            if (pair.Key.RectTransform == pair.Value.Custom)
+            {
+                pair.Key.RectTransform = pair.Value.Native;
+                try { pair.Key.CreateSlots(); }
+                catch (Exception ex) { LogError("恢复原生槽位失败：" + ex.Message); }
             }
         }
-        if (state.Buttons?.GuiFrame != null)
-        {
-            RestoreFrame(state.Buttons.GuiFrame);
-        }
+        if (state.InputSlots != null) { state.InputSlots.UserData = null; }
+        if (state.CatalystSlots != null) { state.CatalystSlots.UserData = null; }
+        if (state.OutputSlots != null) { state.OutputSlots.UserData = null; }
+        state.NativeFrames.Clear();
+        state.NativeInventories.Clear();
         state.HiddenContainers.Clear();
-    }
-
-    private static void RestoreFrame(GUIComponent frame)
-    {
-        frame.Visible = true;
-        frame.CanBeFocused = true;
-        frame.RectTransform.AbsoluteOffset = Point.Zero;
-        frame.RectTransform.RelativeOffset = Point.Zero.ToVector2();
+        state.Buttons = null;
+        state.Attached = false;
     }
 
     private static void SetArea(GUIComponent component, Vector2 offset, Vector2 size, Vector2 panelSize)
@@ -603,19 +673,31 @@ internal static class EtherRecyclerPanel
         component.RectTransform.RelativeOffset = new Vector2(offset.X / panelSize.X, offset.Y / panelSize.Y);
     }
 
-    private static void AttachInventory(ItemInventory inventory, GUICustomComponent area)
+    private static void AttachInventory(EtherRecyclerPanelState state, ItemInventory inventory, GUICustomComponent area)
     {
+        if (inventory.RectTransform != area.RectTransform)
+        {
+            state.NativeInventories[inventory] = (inventory.RectTransform, area.RectTransform);
+        }
         area.UserData = inventory;
         inventory.RectTransform = area.RectTransform;
         inventory.CreateSlots();
     }
 
-    private static void EnsureAttached(ItemInventory inventory, GUICustomComponent area, ref Point lastSize, Vector2 targetSize)
+    private static void RepairAttachment(EtherRecyclerPanelState state, GUICustomComponent area)
+    {
+        if (area.UserData is ItemInventory inventory && inventory.RectTransform != area.RectTransform)
+        {
+            AttachInventory(state, inventory, area);
+        }
+    }
+
+    private static void EnsureAttached(EtherRecyclerPanelState state, ItemInventory inventory, GUICustomComponent area, ref Point lastSize, Vector2 targetSize)
     {
         var size = targetSize.ToPoint();
         if (inventory.RectTransform != area.RectTransform || lastSize != size)
         {
-            AttachInventory(inventory, area);
+            AttachInventory(state, inventory, area);
             lastSize = size;
         }
     }

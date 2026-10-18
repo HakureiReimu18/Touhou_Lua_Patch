@@ -1,9 +1,11 @@
--- 异常物品系统：8 件收容物 + 铅封收容箱（壳在 Items/AnomalousItems.xml）。
+-- 异常物品系统（当前在跑：TH-01 会回来的货箱 + TH-02 比里面大的柜子 + TH-03「五十米」样本
+-- + TH-08 点名喇叭 + 铅封收容箱）。
 -- 设计核心：一件物品一条规则；think 节拍 1 秒一次统一处理；
--- 进了收容箱（祖先容器带 Touhou_Containment tag）效果全停——音效一起掐：
--- 持续音都挂在 LightComponent 的 StatusEffect OnActive 上，Lua 翻 IsOn 就无声。
--- TH-08 走 StatusEffect LuaHook（车喇叭同款 RangedWeapon 先出声）。
--- 预言/广播这类延迟演出用 Timer.Wait（以太回收机同款计时）。
+-- 装进收容箱（祖先容器带 Touhou_Containment tag）效果全停——持续音挂在
+-- LightComponent 的 StatusEffect OnActive 上，Lua 翻 IsOn 就连声音一起掐。
+-- TH-08 是纯事件驱动（吹响才跑），不进 think 扫描。
+-- 休眠的 4 件在 _Archive/AnomalousItems_v1_全8件.xml，全量旧脚本在
+-- _Archive/Touhou_Anomalous_Items_v1_全8件.lua，放出时搬回去。
 
 -- 服务端权威：联机客户端不执行；单机和开房主机照常执行
 if not SERVER and not Game.IsSingleplayer then return end
@@ -13,13 +15,14 @@ local TT = TouhouTalents
 local SCAN_INTERVAL = 1.0
 local THINK_STEP_FALLBACK = 1.0 / 60.0
 
-local RETURN_AWAY_SECONDS = 90          -- TH-01：离开玩家潜艇且无人看守多久后"回来"
-local RETURN_NEAR_DISTANCE_SQ = 2000 * 2000
-local REPULSE_DISTANCE_SQ = 600 * 600   -- TH-03：排斥场
-local PLANT_DISTANCE_SQ = 1200 * 1200   -- TH-04：盆栽感应
-local RADIO_DISTANCE_SQ = 500 * 500     -- TH-07：信号收听
-local TRUMPET_DISTANCE_SQ = 800 * 800   -- TH-08：失笑范围
+local REPULSE_DISTANCE_SQ = 600 * 600   -- TH-03：排斥场（约 6 米）
+local REPULSE_NEAR_SQ = 300 * 300       -- TH-03：3 米内症状加重
+local REPULSE_WHISPER_SQ = 200 * 200    -- TH-03：2 米内低语
+local CORPSE_REJECT_DISTANCE_SQ = 600 * 600 -- TH-03：死者驳回半径（与排斥场同圈）
+local SWAP_DISTANCE_SQ = 1500 * 1500      -- TH-08：点名半径（约 15 米）
 local NOTICE_DISTANCE_SQ = 800 * 800    -- 通用"附近有人"提示
+local RETURN_AWAY_SECONDS = 90          -- TH-01：离船且无人看守多久后"回来"
+local RETURN_NEAR_DISTANCE_SQ = 2000 * 2000
 
 local DEBUG_LOG = false
 local function log(message)
@@ -28,7 +31,7 @@ local function log(message)
     end
 end
 
--- 各物品的冷却/阶段状态，键是 item 本体；Removed 就丢
+-- 各物品的冷却/状态，键是 item 本体；Removed 就丢
 local state = {}
 
 local function get_state(item)
@@ -64,16 +67,6 @@ local function walk_up(item)
     return nil, false
 end
 
-local function aboard_main_sub(item)
-    local main = Submarine.MainSub
-    if main == nil then return false end
-    local holder = walk_up(item)
-    if holder ~= nil and not holder.Removed then
-        return holder.Submarine == main
-    end
-    return item.Submarine == main
-end
-
 local function set_light(item, on)
     pcall(function()
         local light = item.GetComponentString("LightComponent")
@@ -98,22 +91,28 @@ local function send_to_character(character, sender, text)
     end)
 end
 
-local function send_to_crew(submarine, sender, text)
-    if submarine == nil then return end
-    for character in Character.CharacterList do
-        if character.IsHuman and not character.IsDead and not character.Removed
-                and character.Submarine == submarine then
-            send_to_character(character, sender, text)
-        end
-    end
-end
-
 local function find_item_prefab(identifier)
     local ok, prefab = pcall(function() return ItemPrefab.Prefabs[identifier] end)
     if ok and prefab ~= nil then return prefab end
     ok, prefab = pcall(function() return ItemPrefab.Find("", identifier) end)
     if ok then return prefab end
     return nil
+end
+
+-- 角色→秒 的冷却表：走一秒倒计时，过期/离场/死亡就清
+local function tick_cooldowns(tbl)
+    for character, remaining in pairs(tbl) do
+        if character.Removed or character.IsDead then
+            tbl[character] = nil
+        else
+            local left = remaining - SCAN_INTERVAL
+            if left <= 0 then
+                tbl[character] = nil
+            else
+                tbl[character] = left
+            end
+        end
+    end
 end
 
 -- ============ TH-01 会回来的货箱 ============
@@ -124,6 +123,16 @@ local RETURN_STAGE_MESSAGES = {
     "它不再敲箱壁了。它在敲舱壁。",
     "它回来了。没有人讨论这件事。",
 }
+
+local function aboard_main_sub(item)
+    local main = Submarine.MainSub
+    if main == nil then return false end
+    local holder = walk_up(item)
+    if holder ~= nil and not holder.Removed then
+        return holder.Submarine == main
+    end
+    return item.Submarine == main
+end
 
 local function pick_return_target()
     -- 随机挑玩家潜艇上的一个活人——箱子"回到"他身边
@@ -141,6 +150,12 @@ local function pick_return_target()
 end
 
 local function update_returning_box(item, s)
+    local _, contained = walk_up(item)
+    set_light(item, not contained) -- 箱内轻响：在箱外（哪怕渊洋底）都响
+    if contained then
+        s.away = 0
+        return
+    end
     if aboard_main_sub(item) then
         s.away = 0
         return
@@ -187,9 +202,10 @@ end
 
 -- ============ TH-02 比里面大的柜子 ============
 
+-- 换进来的东西：日常杂物为主，偶尔值钱
 local CABINET_LOOT = {
-    "battery", "oxygentank", "bandage", "flashlight",
-    "iron", "ethanol", "rum", "weldingfuel",
+    "battery", "Byproduct_Alchemical", "flashlight", "Kappa_Miningdrill",
+    "ethanol", "rum", "titanium", "Touhou_Magic_Potion_Candy", "Plant_Essential_Oil", "Touhou_Apple",
 }
 
 local function update_bigger_cabinet(item, s)
@@ -210,258 +226,180 @@ local function update_bigger_cabinet(item, s)
     end
     if #contents == 0 then return end
 
-    local swapped = false
-    for _, old in ipairs(contents) do
-        if math.random() < 0.10 and not old.Removed then
-            local prefab = find_item_prefab(CABINET_LOOT[math.random(#CABINET_LOOT)])
-            if prefab ~= nil then
-                Entity.Spawner.AddItemToSpawnQueue(prefab, inv)
-                Entity.Spawner.AddItemToRemoveQueue(old)
-                swapped = true
-                log("TH-02 换走 " .. old.Prefab.Identifier.Value)
-            end
-        end
-    end
-    if swapped then
-        local pos = item.WorldPosition
-        for character in Character.CharacterList do
-            if character.IsHuman and not character.IsDead and not character.Removed
-                    and dist_sq(pos, character.WorldPosition) < NOTICE_DISTANCE_SQ then
-                send_to_character(character, "???", "柜子里有些东西不太一样了。")
-            end
+    -- 每 3 分钟必换走一件（随机挑），让玩家切实感到"这柜子不对劲"
+    local old = contents[math.random(#contents)]
+    if old.Removed then return end
+    local prefab = find_item_prefab(CABINET_LOOT[math.random(#CABINET_LOOT)])
+    if prefab == nil then return end
+    Entity.Spawner.AddItemToSpawnQueue(prefab, inv)
+    Entity.Spawner.AddItemToRemoveQueue(old)
+    log("TH-02 换走 " .. old.Prefab.Identifier.Value)
+
+    local pos = item.WorldPosition
+    for character in Character.CharacterList do
+        if character.IsHuman and not character.IsDead and not character.Removed
+                and dist_sq(pos, character.WorldPosition) < NOTICE_DISTANCE_SQ then
+            send_to_character(character, "???", "柜子里有些东西不太一样了。")
         end
     end
 end
 
--- ============ TH-03 「五十米」样本 ============
+-- ============ TH-03「五十米」样本：生死禁区 ============
+-- 规则：活物越靠近越难受（分层）；死者会被送出圈外——样本不收藏死者。
+
+local REPULSE_FIRST_HIT = "你的胃拧了起来，太阳穴突突地跳。这里有什么东西不希望任何人靠近。"
+
+local CORPSE_REJECT_MESSAGES = {
+    "死亡被婉拒了。",
+    "尸体不在登记范围内。样本不收。",
+    "它把死者送了出去。它说它不是墓地。",
+}
+
+local REPULSE_WHISPERS = {
+    "你在它的记忆里。它记得每一个走到五十米的人。",
+    "再靠近一步。它想再看看你。——别听它的。",
+    "五十米不是它撑开的距离。是它剩下的。",
+}
 
 local function update_repulse_stone(item, s)
     local _, contained = walk_up(item)
     set_light(item, not contained)
     if contained then return end
-    -- 敌我不分：靠近的一切活物都恶心、眩晕、战栗
+
+    if s.notified == nil then s.notified = {} end
+    if s.whispered == nil then s.whispered = {} end
+
     local pos = item.WorldPosition
     for character in Character.CharacterList do
-        if not character.IsDead and not character.Removed
-                and dist_sq(pos, character.WorldPosition) < REPULSE_DISTANCE_SQ then
-            TT.apply_affliction(character, "Touhou_Anomaly_Repulse", 30)
-        end
-    end
-end
-
--- ============ TH-04 基列木盆栽 ============
-
-local PLANT_ALERTS = {
-    "盆栽的叶片竖了起来。",
-    "盆栽的叶片齐齐转向某个方向。",
-}
-
-local function update_gilead_sprout(item, s)
-    local _, contained = walk_up(item)
-    if contained then
-        set_light(item, false)
-        return
-    end
-    -- 感应最近的敌意生物：叶片发亮（活体怪物雷达）
-    local pos = item.WorldPosition
-    local sensed = false
-    for other in Character.CharacterList do
-        if not other.IsDead and not other.Removed
-                and not other.IsHuman and not other.IsPet
-                and dist_sq(pos, other.WorldPosition) < PLANT_DISTANCE_SQ then
-            sensed = true
-            break
-        end
-    end
-    set_light(item, sensed)
-
-    s.alertCool = (s.alertCool or 0) - SCAN_INTERVAL
-    if sensed and s.alertCool <= 0 then
-        s.alertCool = 45
-        local holder = walk_up(item)
-        if holder ~= nil then
-            send_to_character(holder, "???", PLANT_ALERTS[math.random(#PLANT_ALERTS)])
-        end
-    end
-end
-
--- ============ TH-05 假月球碎片 ============
-
-local SHARD_SIGHTINGS = {
-    "余光里有个轮廓从你身后走过去了。数量对不上。",
-    "光膜的影子比你们多一个。多出来的那个站着没动。",
-    "你确定刚才的剪影不属于任何人。",
-    "影子在你们停下之后，又走了一步。",
-}
-
-local function update_fake_moon_shard(item, s)
-    local holder, contained = walk_up(item)
-    set_light(item, not contained)
-    if contained or holder == nil or holder.IsDead then return end
-    -- 照明越强，看得越多
-    TT.apply_affliction(holder, "psychosis", 1)
-    s.sightCool = (s.sightCool or 0) - SCAN_INTERVAL
-    if s.sightCool <= 0 then
-        s.sightCool = 240 + math.random(120)
-        send_to_character(holder, "???", SHARD_SIGHTINGS[math.random(#SHARD_SIGHTINGS)])
-        -- TODO:「举着时怪物侦测距离加倍」要核实 EnemyAIController 仇恨接口，下版本再做
-    end
-end
-
--- ============ TH-06 灵异珠残响 ============
-
-local ECHO_WHISPERS = {
-    "你听见自己的声音在描述接下来的一分钟。",
-    "『水会从你左边进来。』——左边没有水管。",
-    "『别回头。』描述到此为止。",
-    "它描述了你的死法。用词很礼貌。",
-    "『有人数错了人数。』你不确定数错的是哪一边。",
-    "这段描述用的是你从没学过的语言，但你听懂了。",
-    "『它知道你带着它。』",
-}
-
-local PROPHECIES = {
-    { text = "『你会在黑暗里待一小会儿。』", kind = "lights" },
-    { text = "『有一扇门会替谁打开。』", kind = "door" },
-    { text = "『什么都不会发生。』", kind = "none" },
-}
-
-local function flicker_lights(submarine, seconds)
-    local touched = {}
-    for it in Item.ItemList do
-        if it.Submarine == submarine then
-            pcall(function()
-                local light = it.GetComponentString("LightComponent")
-                if light ~= nil and light.IsOn then
-                    light.IsOn = false
-                    table.insert(touched, light)
-                end
-            end)
-        end
-    end
-    Timer.Wait(function()
-        for _, light in ipairs(touched) do
-            pcall(function()
-                if light ~= nil then light.IsOn = true end
-            end)
-        end
-    end, seconds * 1000)
-end
-
-local function open_random_door(submarine)
-    local doors = {}
-    for it in Item.ItemList do
-        if it.Submarine == submarine then
-            local okDoor, isDoor = pcall(function() return it.HasTag("door") end)
-            if okDoor and isDoor then
-                table.insert(doors, it)
-            end
-        end
-    end
-    if #doors == 0 then return false end
-    local target = doors[math.random(#doors)]
-    local ok = pcall(function()
-        target.GetComponentString("Door").OpenState = 1
-    end)
-    return ok
-end
-
-local function update_orb_echo(item, s)
-    local holder, contained = walk_up(item)
-    set_light(item, not contained)
-    if contained or holder == nil or holder.IsDead then return end
-
-    TT.apply_affliction(holder, "psychosis", 1)
-
-    s.whisperCool = (s.whisperCool or 0) - SCAN_INTERVAL
-    if s.whisperCool <= 0 then
-        s.whisperCool = 60 + math.random(60)
-        send_to_character(holder, "???", ECHO_WHISPERS[math.random(#ECHO_WHISPERS)])
-    end
-
-    s.prophecyCool = (s.prophecyCool or 0) - SCAN_INTERVAL
-    if s.prophecyCool <= 0 then
-        s.prophecyCool = 360 + math.random(240)
-        local prophecy = PROPHECIES[math.random(#PROPHECIES)]
-        send_to_character(holder, "???", prophecy.text)
-        Timer.Wait(function()
-            if item.Removed then return end
-            local _, stillContained = walk_up(item)
-            if stillContained then
-                send_to_character(holder, "???", "预言没有实现。箱子里的它似乎叹了口气。")
-                return
-            end
-            if prophecy.kind == "lights" then
-                flicker_lights(holder.Submarine, 8)
-                send_to_character(holder, "???", "预言实现了。灯灭的那八秒里，敲击声没有停。")
-            elseif prophecy.kind == "door" then
-                if open_random_door(holder.Submarine) then
-                    send_to_character(holder, "???", "你听见某处的舱门自己开了。")
+        if character.Removed then
+            s.notified[character] = nil
+            s.whispered[character] = nil
+        elseif character.IsDead then
+            -- 死者驳回：尸体被送回圈外（约 15 米，方向随机；跨墙它也送得到）
+            if dist_sq(pos, character.WorldPosition) < CORPSE_REJECT_DISTANCE_SQ then
+                local angle = math.random() * math.pi * 2
+                local okTp = pcall(function()
+                    character.TeleportTo(pos + Vector2(math.cos(angle) * 1500, math.sin(angle) * 1500), true)
+                end)
+                if okTp then
+                    log("TH-03 驳回了一具尸体")
+                    if (s.corpseMsgCool or 0) <= 0 then
+                        s.corpseMsgCool = 120
+                        for viewer in Character.CharacterList do
+                            if viewer.IsHuman and not viewer.IsDead and not viewer.Removed
+                                    and dist_sq(pos, viewer.WorldPosition) < NOTICE_DISTANCE_SQ then
+                                send_to_character(viewer, "???", CORPSE_REJECT_MESSAGES[math.random(#CORPSE_REJECT_MESSAGES)])
+                            end
+                        end
+                    end
                 end
             end
-            -- kind == "none" 就什么都不做。这才是最糟的。
-        end, (60 + math.random(60)) * 1000)
-    end
-end
-
--- ============ TH-07 深渊信号收音机 ============
-
-local RADIO_BROADCASTS = {
-    "【信号·摘录】内容描述了一艘潜艇的沉没。未记录舷号。艇员名单与你们完全一致。",
-    "【信号·摘录】本次内容为菜谱。步骤完整。最后一行的配料是你们的名字。",
-    "【信号·摘录】它以七种语言重复同一段话。第八种语言没人认得，但船上有人听懂了。",
-    "【信号·摘录】『……不要回答这个信号。』本条信号编号与当前信号相同。",
-    "【信号·摘录】『……左舷压力壳的裂缝出现在第四次巡逻之后。』批注：谁。",
-}
-
-local function update_abyss_radio(item, s)
-    local _, contained = walk_up(item)
-    set_light(item, not contained)
-    if contained then return end
-    -- 收听者：小幅提速，缓慢疯
-    local pos = item.WorldPosition
-    for character in Character.CharacterList do
-        if character.IsHuman and not character.IsDead and not character.Removed
-                and dist_sq(pos, character.WorldPosition) < RADIO_DISTANCE_SQ then
-            TT.apply_affliction(character, "Touhou_Anomaly_Signal_Listener", 10)
-            TT.apply_affliction(character, "psychosis", 1)
+        else
+            local d2 = dist_sq(pos, character.WorldPosition)
+            if d2 < REPULSE_DISTANCE_SQ then
+                -- 分层压迫：3 米内强度 80（接近全速衰减+色差拉满），圈边 30
+                local amount = 30
+                if d2 < REPULSE_NEAR_SQ then
+                    amount = 80
+                end
+                TT.apply_affliction(character, "Touhou_Anomaly_Repulse", amount)
+                -- 进场提示每人一条，冷却 90 秒，别刷屏
+                if (s.notified[character] or 0) <= 0 then
+                    s.notified[character] = 90
+                    send_to_character(character, "???", REPULSE_FIRST_HIT)
+                end
+                -- 贴脸低语（2 米内才听得到）
+                if d2 < REPULSE_WHISPER_SQ and (s.whispered[character] or 0) <= 0 then
+                    s.whispered[character] = 60
+                    send_to_character(character, "???", REPULSE_WHISPERS[math.random(#REPULSE_WHISPERS)])
+                end
+            end
         end
     end
 
-    s.broadcastCool = (s.broadcastCool or 0) - SCAN_INTERVAL
-    if s.broadcastCool <= 0 then
-        s.broadcastCool = 120 + math.random(120)
-        local holder = walk_up(item)
-        local submarine = (holder ~= nil) and holder.Submarine or item.Submarine
-        send_to_crew(submarine, "深渊信号", RADIO_BROADCASTS[math.random(#RADIO_BROADCASTS)])
-    end
+    s.corpseMsgCool = math.max(0, (s.corpseMsgCool or 0) - SCAN_INTERVAL)
+    tick_cooldowns(s.notified)
+    tick_cooldowns(s.whispered)
 end
 
--- ============ TH-08 喇叭圣母的呼唤 ============
-
-local function update_trumpet(item, s)
-    -- 本体没有持续效果，只在这里给吹奏冷却倒计时
-    s.blowCool = math.max(0, (s.blowCool or 0) - SCAN_INTERVAL)
+-- ============ TH-08 可编辑配置：点名名单（白名单） ============
+-- 只有名单内的角色能被点名换位（默认拒绝，防把大体型生物卡进船舱）。
+-- 填角色 prefab identifier（不是显示名），想加谁就加一行。
+local TH08_SWAP_WHITELIST = {
+    "human",      -- 人类：船员、站点 NPC、海盗都算这个 prefab
+    "crawler",    -- 藻鬃爬行者
+    "mudraptor",  -- 泥沼猛龙（迅猛龙）
+    "humanhusk",  -- 画皮感染者
+    -- "Touhou_TheConverted",  -- 易者（未实装，实装后取消注释，identifier 以实际为准）
+}
+local TH08_SWAP_SET = {}
+for _, id in ipairs(TH08_SWAP_WHITELIST) do
+    TH08_SWAP_SET[id] = true
 end
+
+local function is_swappable(character)
+    local ok, identifier = pcall(function() return character.Prefab.Identifier.Value end)
+    return ok and identifier ~= nil and TH08_SWAP_SET[identifier] == true
+end
+
+-- ============ TH-08 喇叭圣母的呼唤：点名换位 ============
+-- 规则：吹响时，圣母从 15 米内随机点名一位活物，与吹响者交换位置。
+-- 纯事件驱动（只在吹响时跑一趟），think 节拍扫不到它，零持续开销。
+-- 曾考虑"感染笑连锁"（全局每秒人×人扫描 + 人声音频适配），性能与管线成本双高，弃。
+
+local SWAP_USER_LINES = {
+    "圣母点名了。上台吧。",
+    "你换了个位置。这不是你选的。",
+    "喇叭声停下的时候，你已经在别处了。",
+}
+
+local SWAP_OTHER_LINES = {
+    "你和别人换了位置。",
+    "你听见喇叭声从你原来的位置传来。",
+    "圣母今晚点了你的名。",
+}
 
 Hook.Add("Touhou.AnomalyTrumpet.blow", "Touhou.AnomalyTrumpet.blow",
     function(effect, deltaTime, item, targets, worldPosition)
         local ok, err = pcall(function()
             local user = targets ~= nil and targets[1] or nil
             if user == nil or user.IsDead or user.Removed then return end
-            local s = state[item]
-            if s ~= nil and (s.blowCool or 0) > 0 then return end
-            if s == nil then s = get_state(item) end
-            s.blowCool = 3
-            -- 失笑：不分敌我（吹奏者自己是圣母点名的人，免疫）
-            local pos = user.WorldPosition
+
+            -- 半径内先数活物，再按名单过滤（名单外不点名，防大体型卡进船舱）
+            local candidates = {}
+            local anyLiving = false
             for character in Character.CharacterList do
-                if character ~= user and character.IsHuman and not character.IsDead and not character.Removed
-                        and dist_sq(pos, character.WorldPosition) < TRUMPET_DISTANCE_SQ then
-                    TT.apply_affliction(character, "Touhou_Anomaly_Forced_Laugh", 5)
+                if character ~= user and not character.IsDead and not character.Removed
+                        and dist_sq(user.WorldPosition, character.WorldPosition) < SWAP_DISTANCE_SQ then
+                    anyLiving = true
+                    if is_swappable(character) then
+                        table.insert(candidates, character)
+                    end
                 end
             end
-            log("TH-08 吹奏，失笑半径内生效")
+            if #candidates == 0 then
+                if anyLiving then
+                    send_to_character(user, "喇叭", "圣母对那些名字不感兴趣。")
+                else
+                    send_to_character(user, "喇叭", "圣母今晚没有点名任何人。")
+                end
+                return
+            end
+            local chosen = candidates[math.random(#candidates)]
+
+            local userPos = user.WorldPosition
+            local chosenPos = chosen.WorldPosition
+            -- 互换坐标（引擎传送行为未实测，各自 pcall 兜底；失败一侧原地不动）
+            pcall(function() user.TeleportTo(chosenPos, true) end)
+            pcall(function() chosen.TeleportTo(userPos, true) end)
+            -- 晕场 1.5 秒（vanilla stun），防止落地即战
+            TT.apply_affliction(user, "stun", 1.5)
+            TT.apply_affliction(chosen, "stun", 1.5)
+            send_to_character(user, "喇叭", SWAP_USER_LINES[math.random(#SWAP_USER_LINES)])
+            if chosen.IsHuman then
+                send_to_character(chosen, "喇叭", SWAP_OTHER_LINES[math.random(#SWAP_OTHER_LINES)])
+            end
+            log("TH-08 点名交换：" .. tostring(user.Name) .. " <-> " .. tostring(chosen.Name))
         end)
         if not ok then
             print("AnomalyTrumpet 错误: " .. tostring(err))
@@ -471,20 +409,20 @@ Hook.Add("Touhou.AnomalyTrumpet.blow", "Touhou.AnomalyTrumpet.blow",
 -- ============ 收容箱本体 ============
 
 local function update_containment_crate(item, s)
-    -- 紫色密封灯：里面装着收容物就亮
-    local hasAnomaly = false
+    -- 紫色密封灯：里面装着收容物或异星遗物就亮
+    local hasPayload = false
     pcall(function()
         local inv = item.OwnInventory
         if inv ~= nil then
             for containedItem in inv.FindAllItems(nil, true) do
-                if containedItem.HasTag("Touhou_Anomalous") then
-                    hasAnomaly = true
+                if containedItem.HasTag("Touhou_Anomalous") or containedItem.HasTag("alienartifact") then
+                    hasPayload = true
                     break
                 end
             end
         end
     end)
-    set_light(item, hasAnomaly)
+    set_light(item, hasPayload)
 end
 
 -- ============ 主循环 ============
@@ -494,11 +432,6 @@ local UPDATERS = {
     Touhou_Anomaly_Returning_Box = update_returning_box,
     Touhou_Anomaly_Bigger_Cabinet = update_bigger_cabinet,
     Touhou_Anomaly_Repulse_Stone = update_repulse_stone,
-    Touhou_Anomaly_Gilead_Sprout = update_gilead_sprout,
-    Touhou_Anomaly_Fake_Moon_Shard = update_fake_moon_shard,
-    Touhou_Anomaly_Orb_Echo = update_orb_echo,
-    Touhou_Anomaly_Abyss_Radio = update_abyss_radio,
-    Touhou_Anomaly_Laugh_Trumpet = update_trumpet,
 }
 
 local scan_elapsed = 0
@@ -535,4 +468,5 @@ Hook.Add("think", "Touhou.AnomalousItems.Update", function(delta_time)
             state[k] = nil
         end
     end
+
 end)

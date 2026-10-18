@@ -312,12 +312,7 @@
       <InventoryIcon texture="%ModDir%/Images/Touhou_Monorail.png" sourcerect="467,0,207,117" origin="0.5,0.5" />
       <Sprite texture="%ModDir%/Images/Touhou_Monorail.png" depth="0.4" sourcerect="0,0,467,80" />
       <Body width="190" height="50" density="10" />
-      <Holdable slots="Any,RightHand+LeftHand" controlpose="true" holdpos="40,-10" aimpos="55,5" handle1="-95,-16" handle2="0,0" holdangle="-40" msg="ItemMsgPickUpSelect">
-        <!-- 每帧驱动蓄力状态机（服务端权威），逻辑见 Lua/Scripts/Server/Touhou_Monorail.lua -->
-        <StatusEffect type="Always" target="This">
-          <LuaHook name="Touhou_Monorail_charge" />
-        </StatusEffect>
-      </Holdable>
+      <Holdable slots="Any,RightHand+LeftHand" controlpose="true" holdpos="40,-10" aimpos="55,5" handle1="-95,-16" handle2="0,0" holdangle="-40" msg="ItemMsgPickUpSelect" />
       <Fabricate suitablefabricators="Magic_Altar" requiredtime="10">
         <RequiredSkill identifier="Touhou_Magic" level="50" />
         <RequiredItem identifier="titaniumaluminiumalloy" amount="6" />
@@ -351,7 +346,7 @@
             </Button>
         </CustomInterface>
 
-      <!-- maxchargetime 仅用于驱动原生蓄力音效/粒子（音调随蓄力上扬）；实际蓄力进度、松手发射与过蓄自爆由 Lua 控制（Lua/Scripts/Server/Touhou_Monorail.lua），Lua 会在 6 秒强制发射，原生 8 秒自动开火永远不会触发 -->
+      <!-- maxchargetime 仅用于驱动原生蓄力音效/粒子（音调随蓄力上扬）；实际蓄力进度、松手发射与过蓄自爆由插件控制（CSharp/Shared/ReleaseFire.cs，参数见下面的 <ReleaseFire>）——插件会挡掉原生"蓄满自动开火"，所以原生 8 秒自动开火永远不会触发 -->
       <RangedWeapon barrelpos="80,0" reload="2" drawhudwhenequipped="true" crosshairscale="0.15" maxchargetime="8" chargesoundwinduppitchslide="0.5,2.0">
         <Crosshair texture="Content/Items/Weapons/Crosshairs.png" sourcerect="0,256,256,256" />
         <CrosshairPointer texture="Content/Items/Weapons/Crosshairs.png" sourcerect="256,256,256,256" />
@@ -362,8 +357,8 @@
         <StatusEffect type="OnUse" target="This">
           <Explosion range="150.0" force="2.0" shockwave="false" smoke="false" flash="true" sparks="false" flames="false" underwaterbubble="false" camerashake="30.0" />
         </StatusEffect>
-        <!-- 注意：不要再用 isshootable=false 禁用原生射击路径——蓄力音效/粒子由原生蓄力状态机驱动（联机时各客户端通过同步的按键状态本地预测），原生命名路径必须保持可用；maxchargetime=8 的蓄力门槛保证左键不会直接开火 -->
-        <!-- 过蓄自爆：Lua 将 Condition 置 0 触发本效果，1 秒后自动修复；武器被摧毁时同样会殉爆 -->
+        <!-- 注意：不要再用 isshootable=false 禁用原生射击路径——蓄力音效/粒子由原生蓄力状态机驱动（联机时各客户端通过同步的按键状态本地预测），原生命名路径必须保持可用；原生开火本身由 ReleaseFire 插件挡住，不会"按住左键直接开火" -->
+        <!-- 过蓄自爆：插件把 Condition 置 0 触发本效果，1 秒后自动修复；武器被摧毁时同样会殉爆 -->
         <StatusEffect type="OnBroken" target="This">
           <Explosion range="200" force="5.0" camerashake="50.0">
             <Affliction identifier="internaldamage" strength="400" penetration="1.0" />
@@ -371,6 +366,39 @@
             <Affliction identifier="stun" strength="5" />
           </Explosion>
         </StatusEffect>
+
+        <!-- ========== 松手开火（通用机制，插件 CSharp/Shared/ReleaseFire.cs 读取） ==========
+             按住左键蓄力（蓄力音/粒子/音调上扬仍由原生的 maxchargetime 驱动），松手（仍在瞄准）时按蓄力
+             比例打出去。原版 RangedWeapon 只认自己认识的名字，这个子元素会被直接忽略；
+             插件靠它判断"这把枪是松手开火武器"并取参数。别的武器想用同一套机制，把这一整段抄进它的
+             <RangedWeapon> 里即可（必须放在 <RangedWeapon> 里面；放到 <Item> 下面会被当成组件名去找类型，报红字）。
+             另：maxchargetime 必须 > 0（它同时驱动组件更新，为 0 组件会在首次装填后停更，蓄力不会开始）。
+
+             chargetime        蓄到满的秒数：到这一刻伤害/穿甲拉到上限，之后继续蓄不再涨
+             hardcap           按住不放的硬上限（秒）：到点强制按满蓄力打出去；0 = 不限制
+             damagemultiplier  蓄力比例 → 伤害倍率的映射 "min,max"（单值 = 固定倍率）
+             penetration       同上，映射武器穿甲（命中时和弹药穿甲相加，封顶 1）
+             crittime          过蓄临界（秒）：超过之后每帧掷自爆（Condition 清零 → 触发上面的 OnBroken）；
+                               0 = 安全武器，不掷
+             explodechance     过蓄后每秒的基础自爆概率
+             explodegrowth     每多超 1 秒，每秒概率加这么多
+             explodechancemax  每秒概率的封顶
+             requireammo       没找到弹药就不开火、不放空炮（默认 true）
+
+             <ReleaseFireModifier tag="..."> 按物品 tag 覆盖上面任意参数（改装件/按钮运行时挂的 tag 都认）：
+                   monorail_overclock  把临界压到 2 秒
+                   monorail_stabilizer 自爆概率 ×0.25
+
+             其它行为：松手（松开左键但还在瞄准）那一刻开火，蓄多少打多少；没瞄准就直接松开 = 取消本次蓄力；
+                      装填期间不蓄力；蓄力/音效/枪口闪光/弹药消耗/装填/联机同步全走原版路径；
+                      只有过蓄自爆的掷骰在服务端/单人端做，Condition 变化自动同步（联机能看到爆炸画面和伤害）。
+             调试：CSharp/Shared/ReleaseFire.cs 里把 ReleaseFireLog.Verbose 改成 true，
+                   开始蓄力 / 每次开火（蓄力百分比、实际伤害倍率、穿甲）/ 过蓄自爆都会打一行日志。 -->
+        <ReleaseFire chargetime="3" hardcap="6" damagemultiplier="1,10" penetration="0,1"
+                     crittime="3" explodechance="0.10" explodegrowth="0.30" explodechancemax="0.95">
+          <ReleaseFireModifier tag="monorail_overclock" crittime="2" />
+          <ReleaseFireModifier tag="monorail_stabilizer" explodechancemultiplier="0.25" />
+        </ReleaseFire>
         <RequiredItems items="Touhou_Monorail_Ammo,Touhou_Monorail_Bullet" type="Contained" msg="ItemMsgAmmoRequired" />
         <!--                <StatusEffect type="OnUse" target="Contained">
                     <Use />
@@ -402,7 +430,7 @@
       </Fabricate>
       <Projectile characterusable="false" hitscan="true" removeonhit="true" sticktocharacters="true" sticktoitems="true" maxtargetstohit="3" sticktostructures="true" sticktodoors="false">
         <ParticleEmitter particle="UFO_Danmu_Laser" particleamount="1" velocitymin="0" velocitymax="0" scalemultiplier="1,0.35" colormultiplier="255,130,170,255" />
-        <!-- 基础穿甲为 0：命中时的总穿甲 = 弹药穿甲 + 武器穿甲，蓄力时 Lua 会将武器穿甲从 0 提升至 1（见 Touhou_Monorail.lua） -->
+        <!-- 基础穿甲为 0：命中时的总穿甲 = 弹药穿甲 + 武器穿甲，蓄力时插件会将武器穿甲从 0 提升至 1（见 <ReleaseFire> 的 penetration） -->
         <Attack itemdamage="100" targetforce="5" targetimpulse="5" severlimbsprobability="5.0" penetration="0.0">
           <Affliction identifier="lacerations" strength="10" />
           <Affliction identifier="explosiondamage" strength="10" />

@@ -21,7 +21,7 @@
     -->
     <Item name="以太回收机" identifier="Touhou_Ether_Recycler" tags="Touhou_Ether_Recycler,donttakeitems,dontsellitems" subcategory="Touhou"
           category="Machine" linkable="true" allowedlinks="fabricator,deconstructor,locker,toxcontainer" scale="0.3"
-          description="" indestructible="true" damagedbyexplosions="false" GrabWhenSelected="true" explosiondamagemultiplier="0.2" isshootable="true">
+          description="" indestructible="true" GrabWhenSelected="true" isshootable="true">
       <Price baseprice="200">
         <Price storeidentifier="merchantoutpost" multiplier="1.1" sold="true" maxavailable="1" />
         <Price storeidentifier="merchantcity" multiplier="1" sold="true" maxavailable="1" />
@@ -38,7 +38,7 @@
         <RequiredItem identifier="fpgacircuit" />
       </Fabricate>
       <Body width="160" height="160" density="30" />
-      <Holdable selectkey="Select" pickkey="Use" slots="RightHand+LeftHand" PickingTime="10.0" aimpos="65,-10" handle1="0,0" attachable="true"
+      <Holdable selectkey="Select" pickkey="Use" slots="RightHand+LeftHand" PickingTime="8.0" aimpos="65,-10" handle1="0,0" attachable="true"
                 aimable="false">
         <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.75" setvalue="true" />
       </Holdable>

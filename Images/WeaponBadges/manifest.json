@@ -1,0 +1,138 @@
+{
+  "license": "CC0-1.0",
+  "generator": "tools/generate_badges.py; Pillow; original geometric I/V/X glyphs",
+  "frame_size": [
+    128,
+    128
+  ],
+  "frame_count": 16,
+  "fps": 10,
+  "frame_duration_ms": 100,
+  "loop_duration_ms": 1600,
+  "layout": "horizontal; left to right; no spacing or padding; zero-based frame index",
+  "strip_size": [
+    2048,
+    128
+  ],
+  "source_rectangle": "[frame_index * 128, 0, 128, 128]",
+  "png_alpha": "straight RGBA, smooth 8-bit transparency",
+  "gif_alpha": "binary transparency (alpha threshold 96); disposal 2; infinite loop",
+  "verified_dependency": {
+    "patch": "3578631758",
+    "main": "2941124988"
+  },
+  "verified_item_tag_max": 5,
+  "tag_format": "Touhou_Weapon_Level{level:02d}",
+  "levels": [
+    {
+      "level": 1,
+      "roman": "I",
+      "color_name": "Silver",
+      "color": "#B7C9DF",
+      "tag": "Touhou_Weapon_Level01",
+      "observed_in_loaded_item_definitions": true,
+      "static_png": "level_01.png",
+      "gif": "level_01.gif",
+      "strip_png": "level_01_strip.png"
+    },
+    {
+      "level": 2,
+      "roman": "II",
+      "color_name": "Jade",
+      "color": "#61DF9B",
+      "tag": "Touhou_Weapon_Level02",
+      "observed_in_loaded_item_definitions": true,
+      "static_png": "level_02.png",
+      "gif": "level_02.gif",
+      "strip_png": "level_02_strip.png"
+    },
+    {
+      "level": 3,
+      "roman": "III",
+      "color_name": "Cyan",
+      "color": "#48DCE7",
+      "tag": "Touhou_Weapon_Level03",
+      "observed_in_loaded_item_definitions": true,
+      "static_png": "level_03.png",
+      "gif": "level_03.gif",
+      "strip_png": "level_03_strip.png"
+    },
+    {
+      "level": 4,
+      "roman": "IV",
+      "color_name": "Azure",
+      "color": "#559FFF",
+      "tag": "Touhou_Weapon_Level04",
+      "observed_in_loaded_item_definitions": true,
+      "static_png": "level_04.png",
+      "gif": "level_04.gif",
+      "strip_png": "level_04_strip.png"
+    },
+    {
+      "level": 5,
+      "roman": "V",
+      "color_name": "Iris",
+      "color": "#9483FF",
+      "tag": "Touhou_Weapon_Level05",
+      "observed_in_loaded_item_definitions": true,
+      "static_png": "level_05.png",
+      "gif": "level_05.gif",
+      "strip_png": "level_05_strip.png"
+    },
+    {
+      "level": 6,
+      "roman": "VI",
+      "color_name": "Violet",
+      "color": "#C77BFA",
+      "tag": "Touhou_Weapon_Level06",
+      "observed_in_loaded_item_definitions": false,
+      "static_png": "level_06.png",
+      "gif": "level_06.gif",
+      "strip_png": "level_06_strip.png"
+    },
+    {
+      "level": 7,
+      "roman": "VII",
+      "color_name": "Rose",
+      "color": "#F078C6",
+      "tag": "Touhou_Weapon_Level07",
+      "observed_in_loaded_item_definitions": false,
+      "static_png": "level_07.png",
+      "gif": "level_07.gif",
+      "strip_png": "level_07_strip.png"
+    },
+    {
+      "level": 8,
+      "roman": "VIII",
+      "color_name": "Crimson",
+      "color": "#FF6D77",
+      "tag": "Touhou_Weapon_Level08",
+      "observed_in_loaded_item_definitions": false,
+      "static_png": "level_08.png",
+      "gif": "level_08.gif",
+      "strip_png": "level_08_strip.png"
+    },
+    {
+      "level": 9,
+      "roman": "IX",
+      "color_name": "Amber",
+      "color": "#FFAE55",
+      "tag": "Touhou_Weapon_Level09",
+      "observed_in_loaded_item_definitions": false,
+      "static_png": "level_09.png",
+      "gif": "level_09.gif",
+      "strip_png": "level_09_strip.png"
+    },
+    {
+      "level": 10,
+      "roman": "X",
+      "color_name": "Gold",
+      "color": "#FFE178",
+      "tag": "Touhou_Weapon_Level10",
+      "observed_in_loaded_item_definitions": false,
+      "static_png": "level_10.png",
+      "gif": "level_10.gif",
+      "strip_png": "level_10_strip.png"
+    }
+  ]
+}

@@ -117,6 +117,44 @@ function TT.is_turret_attack(attack)
     return weapon.GetComponentString("Turret") ~= nil
 end
 
+-- 是否手持远程/近战武器的攻击（对应 XML 的 weapontype="HandheldRanged,Melee"）：
+-- 远程要求子弹的发射器带 Holdable（炮塔没有），近战要求物品本身有 MeleeWeapon
+function TT.is_handheld_or_melee_attack(attack)
+    if attack == nil then
+        return false
+    end
+
+    local source_item = attack.SourceItem
+    if source_item == nil or source_item.Removed then
+        return false
+    end
+
+    local projectile = source_item.GetComponentString("Projectile")
+    if projectile ~= nil then
+        local launcher = projectile.Launcher
+        return launcher ~= nil and launcher.GetComponentString("Holdable") ~= nil
+    end
+
+    return source_item.GetComponentString("MeleeWeapon") ~= nil
+end
+
+-- 「同一帧内同一次攻击只判定一次」的去重器：
+-- 爆炸类伤害会按每个受波及肢体各构造一次 AbilityAttackData，多段伤害武器同理；
+-- 用法：local roll_once = TT.new_frame_dedupe("Xxx.Talent.Tick")
+--       if roll_once(attack) then return end   -- 这一帧这把攻击已经判定过了
+function TT.new_frame_dedupe(think_hook_id)
+    local seen = {}
+    Hook.Add("think", think_hook_id, function()
+        seen = {}
+    end)
+
+    return function(attack)
+        local already = seen[attack]
+        seen[attack] = true
+        return already == true
+    end
+end
+
 -- 暂停检测：think 钩子在暂停时仍会触发，周期性天赋必须跳过（读不到状态时按未暂停处理）
 local function read_game_paused()
     if GameMain ~= nil and GameMain.Instance ~= nil then

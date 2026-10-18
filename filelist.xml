@@ -1,12 +1,16 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<contentpackage name="东方潜渊行动组Lua补丁" modversion="1.1.1" corepackage="False" steamworkshopid="3578631758" gameversion="1.13.4.0">
+<?xml version="1.0" encoding="utf-8"?>
+<contentpackage name="东方潜渊行动组Lua补丁" modversion="1.1.0" corepackage="False" steamworkshopid="3578631758" gameversion="1.12.7.0">
   <Item file="%ModDir%/Items/Item.xml" />
   <Item file="%ModDir%/Items/Tools.xml" />
   <Item file="%ModDir%/Items/Cooktop.xml" />
   <Item file="%ModDir%/Items/EtherRecycler.xml" />
+  <Item file="%ModDir%/Items/AnomalousItems.xml" />
   <Item file="%ModDir%/Items/EnchantingStation.xml" />
   <Item file="%ModDir%/Items/BondCharm.xml" />
   <Item file="%ModDir%/Items/MartialArts.xml" />
+  <!--⚠ 封存（2026-10）：弹药袋体系整体暂停，物品不再加载；恢复时把下面这行反注释即可
+      （同时恢复 Lua/Autorun/init.lua 里那三个 dofile 与 CSharp/Shared/AmmoStorage.cs 的 SEALED 常量）-->
+  <!-- <Item file="%ModDir%/Items/AmmoStorage.xml" /> -->
   <Text file="%ModDir%/Text/Text.xml" />
   <Text file="%ModDir%/Text/Affixes_SChinese.xml" />
   <Text file="%ModDir%/Text/Affixes_English.xml" />

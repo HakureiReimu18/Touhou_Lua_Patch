@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  独立客户端扫光配置；效果 tag 无需配置徽章映射。
+  开关默认 enabled/inventory/previews/world=true；worldIntensity=.65（0..1），
+  cacheMegabytes=32（1..256 MiB）。Match 在 enabled=false 时返回 null；
+  inventory/previews/world 与 worldIntensity 由对应绘制入口使用。
+  文件缺失会禁用效果并输出一条 Warning，不会自动生成文件。
+
+  AffixGlow 是附魔格子背景光，只在 Inventory.DrawSlot 的格子底图之后绘制，不进入世界/拖拽/预览：
+    enabled=true；intensity=.30（0..1，整体透明度）；inset=1（0..8 个 UI 缩放像素，向格子内缩）。
+    这一节缺失时背景光保持关闭。颜色直接取生效词缀定义的 DisplayColor，不按词缀 ID 另配：
+    Broken 灰、Normal 白、Rare 蓝、Epic 紫、Legendary 金橙、Special 红；多词缀沿用合成定义的最高稀有度颜色。
+    修改本节需重启或重载插件；K 菜单另有 affixGlow 独立即时开关，enabled/inventory 也会同时控制背景光。
+
+  Profile 缺省值及范围：
+    color=#ffffff（不透明 RGB）；intensity=.22（0..1，扫光强度）；
+    period=5（.5..60 秒，每轮扫光周期）；width=.14（.02.. .5，图片宽度比例）；
+    slant=.35（-2..2，水平偏移/垂直距离）；
+    glow=.03（0.. .25，低强度常驻内轮廓染色，0 关闭）；
+    pulse=.08（0..1，染色呼吸幅度，0 恒定）；
+    rainbow=0（0..1，基础色与动态彩虹混色比例，0 使用基础色）；
+    bands=1（1..2，扫光带数）；sparkles=0（0..8，碎光数）。
+  Glow、Pulse、Rainbow 可与任意 Bands/Sparkles 组合，由效果绘制器实现。
+  数值使用小数点；非数值、NaN、Infinity 使用缺省值，有限越界值截断到范围。
+  非法颜色、空 id/tag/profile、重复 Profile id、引用不存在的 Profile 会抛出异常。
+
+  Rule priority 默认 0，支持 int 范围；从大到小匹配，同优先级保持 XML 顺序。
+  tag 经游戏 Identifier 精确匹配完整 tag，不是包含、前缀或通配符匹配；
+  支持物品动态 tag，无实体时用 Prefab.Tags，无匹配返回 null。
+  Profile id 区分大小写；共享同一 Profile 的规则共用其参数。
+  实际已有的 I..V 五级依次为淡银、绿、青、蓝双扫、紫金彩虹碎光。
+  强度逐级增加、周期逐级缩短，低 Glow 和有限碎光保留原图可读性。
+-->
+<ItemVisualEffects enabled="true" inventory="true" previews="true" world="true" worldIntensity="0.65" cacheMegabytes="32">
+  <AffixGlow enabled="true" intensity="0.30" inset="1" />
+  <Profiles>
+    <Profile id="level01" color="#dce3ee" intensity="0.16" period="5.8" width="0.12" slant="0.35" glow="0.005" pulse="0.01" rainbow="0" bands="1" sparkles="0" />
+    <Profile id="level02" color="#78e3a3" intensity="0.27" period="4.6" width="0.15" slant="0.35" glow="0.015" pulse="0.02" rainbow="0" bands="1" sparkles="0" />
+    <Profile id="level03" color="#65dce5" intensity="0.40" period="3.7" width="0.18" slant="0.35" glow="0.025" pulse="0.035" rainbow="0" bands="1" sparkles="0" />
+    <Profile id="level04" color="#7d9ff5" intensity="0.52" period="3.1" width="0.20" slant="0.40" glow="0.035" pulse="0.05" rainbow="0" bands="2" sparkles="1" />
+    <Profile id="level05" color="#c49af5" intensity="0.70" period="2.6" width="0.22" slant="0.40" glow="0.05" pulse="0.06" rainbow="0.36" bands="2" sparkles="3" />
+    <Profile id="level06" color="#bc81f5" intensity="0.74" period="2.4" width="0.22" slant="0.40" glow="0.055" pulse="0.07" rainbow="0.40" bands="2" sparkles="3" />
+    <Profile id="level07" color="#f58dbb" intensity="0.78" period="2.2" width="0.22" slant="0.40" glow="0.06" pulse="0.08" rainbow="0.48" bands="2" sparkles="4" />
+    <Profile id="level08" color="#f58289" intensity="0.82" period="2.0" width="0.24" slant="0.40" glow="0.07" pulse="0.09" rainbow="0.55" bands="2" sparkles="5" />
+    <Profile id="level09" color="#efad61" intensity="0.86" period="1.8" width="0.24" slant="0.40" glow="0.075" pulse="0.10" rainbow="0.65" bands="2" sparkles="5" />
+    <Profile id="level10" color="#f1cf87" intensity="0.90" period="1.6" width="0.26" slant="0.40" glow="0.08" pulse="0.12" rainbow="0.70" bands="2" sparkles="6" />
+    <!-- 自定义例子：取消下行与 Rules 中示例的注释后生效，可单独调节三个染色参数。
+    <Profile id="customMoon" color="#c7d8ff" intensity="0.26" period="4.5" width="0.12" slant="-0.25" glow="0.04" pulse="0.10" rainbow="0.15" bands="1" sparkles="2" />
+    -->
+  </Profiles>
+  <Rules>
+    <Rule tag="Touhou_Weapon_Level01" profile="level01" priority="1" />
+    <Rule tag="Touhou_Weapon_Level02" profile="level02" priority="2" />
+    <Rule tag="Touhou_Weapon_Level03" profile="level03" priority="3" />
+    <Rule tag="Touhou_Weapon_Level04" profile="level04" priority="4" />
+    <Rule tag="Touhou_Weapon_Level05" profile="level05" priority="5" />
+    <Rule tag="Touhou_Weapon_Level06" profile="level06" priority="6" />
+    <Rule tag="Touhou_Weapon_Level07" profile="level07" priority="7" />
+    <Rule tag="Touhou_Weapon_Level08" profile="level08" priority="8" />
+    <Rule tag="Touhou_Weapon_Level09" profile="level09" priority="9" />
+    <Rule tag="Touhou_Weapon_Level10" profile="level10" priority="10" />
+    <!-- 自定义 tag 不默认启用；无需与徽章映射关联。优先级 100 可覆盖默认等级。
+    <Rule tag="MyMod_MoonWeapon" profile="customMoon" priority="100" />
+    -->
+  </Rules>
+</ItemVisualEffects>

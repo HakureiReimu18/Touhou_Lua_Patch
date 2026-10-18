@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ⚠ 封存参考（2026-10-13）：异常物品 v1 全 8 件 + 收容箱的完整定义。
+  当前在跑的是 Items/AnomalousItems.xml（TH-03 + TH-08 + 收容箱精简版）；
+  这里休眠的 6 件要放出时，把对应 <Item> 段搬回去并配 Lua 处理。
+  本文件不在 filelist.xml，不会被加载。
+-->
+<Override>
+  <!--
+    异常物品系统：8 件收容物 + 铅封收容箱（Control 式"一件物品一条规则"）。
+    逻辑全在 Lua/Scripts/Server/Systems/Touhou_Anomalous_Items.lua，这里只管壳。
+
+    组件契约（Lua 依赖，改动需同步）：
+      - 所有收容物带 Touhou_Anomalous tag；收容箱带 Touhou_Containment tag
+      - 持续音效走 LightComponent 的 StatusEffect OnActive：Lua 翻 IsOn 同时控制"出声/静音"，
+        所以每件会响的东西都必须有一个 LightComponent（哪怕不要光）
+      - TH-01 的回归次数存 MemoryComponent.Value（Lua 读写）
+      - TH-08 的吹奏走 RangedWeapon 出声（vanilla 车喇叭同款写法）+ OnUse 挂 LuaHook 锥形失笑
+      - 收容判定：Lua 沿 ParentInventory 往上找，祖先带 Touhou_Containment 就全部失效
+
+    贴图说明：植物/残响/假月/冰箱复用主模组（%ModDir:2941124988%）现成图，箱子类用原版容器图调色，
+    收音机是占位图（Images/General_Items/Touhou_Anomaly_Radio.png，程序生成，后续换正式美术）。
+  -->
+  <Items>
+
+    <!-- ========== 铅封收容箱：异常物品的"安全状态" ========== -->
+    <Item name="铅封收容箱" identifier="Touhou_Containment_Crate" tags="crate,Touhou_Containment" subcategory="Touhou"
+          category="Misc" scale="0.5" linkable="true" pickdistance="150" impactsoundtag="impact_metal_heavy"
+          description="【异常物品收容容器·丙型】内衬铅层与静音棉。把异常物品放进去——敲击声、笑声和广播都会停下。至少对外人而言是这样。">
+      <Price baseprice="400">
+        <Price storeidentifier="merchantresearch" multiplier="1" sold="true" maxavailable="2" />
+        <Price storeidentifier="merchantmilitary" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantoutpost" sold="false" />
+        <Price storeidentifier="merchantcity" sold="false" />
+        <Price storeidentifier="merchantmine" sold="false" />
+      </Price>
+      <Deconstruct time="10">
+        <Item identifier="steel" />
+        <Item identifier="lead" />
+      </Deconstruct>
+      <Fabricate suitablefabricators="fabricator" requiredtime="20">
+        <RequiredSkill identifier="mechanical" level="25" />
+        <RequiredItem identifier="steel" />
+        <RequiredItem identifier="lead" />
+        <RequiredItem identifier="plastic" />
+      </Fabricate>
+      <Sprite texture="Content/Items/Containers/containers.png" depth="0.54" sourcerect="561,377,151,86" origin="0.5,0.5"
+              color="190,150,235,255" />
+      <InventoryIcon texture="Content/Items/Containers/containers.png" sourcerect="561,377,151,86" origin="0.5,0.5" />
+      <Body width="150" height="75" density="30" />
+      <Holdable slots="RightHand+LeftHand" holdpos="0,-80" handle1="-30,14" handle2="30,14" aimable="false" msg="ItemMsgPickUpSelect">
+        <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.6" setvalue="true" />
+      </Holdable>
+      <!-- 只收收容物；密封指示灯（紫色=有货在位，Lua 翻 IsOn） -->
+      <ItemContainer capacity="4" maxstacksize="1" canbeselected="true" hideitems="true" keepopenwhenequipped="true" movableframe="true">
+        <Containable items="Touhou_Anomalous" />
+      </ItemContainer>
+      <LightComponent range="90" lightcolor="170,90,255,255" powerconsumption="0" IsOn="false" castshadows="false"
+                      allowingameediting="false" canbeselected="false">
+        <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
+      </LightComponent>
+    </Item>
+
+    <!-- ========== TH-01 会回来的货箱 ========== -->
+    <Item name="「会回来的货箱」" identifier="Touhou_Anomaly_Returning_Box" tags="Touhou_Anomalous,crate" subcategory="Touhou"
+          category="Misc" scale="0.5" linkable="true" pickdistance="150" impactsoundtag="impact_metal_heavy" maxstacksize="1"
+          description="【证物登记 TH-01｜流拍】来源：鸟船遗迹打捞队。外观：标准密封货箱，焊缝无工具开启痕迹，内部持续发出轻微敲击声。备注：本证物已被投放至渊洋。它上周回来了。我们不再记录去向。">
+      <Price baseprice="3000" canbespecial="false">
+        <Price storeidentifier="merchantresearch" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantoutpost" sold="false" />
+        <Price storeidentifier="merchantcity" sold="false" />
+        <Price storeidentifier="merchantmilitary" sold="false" />
+        <Price storeidentifier="merchantmine" sold="false" />
+      </Price>
+      <Sprite texture="Content/Items/Containers/containers.png" depth="0.54" sourcerect="407,376,152,89" origin="0.5,0.5"
+              color="115,105,120,255" />
+      <InventoryIcon texture="Content/Items/Containers/containers.png" sourcerect="407,376,152,89" origin="0.5,0.5" />
+      <Body width="150" height="75" density="40" />
+      <Holdable slots="RightHand+LeftHand" holdpos="0,-80" handle1="-30,14" handle2="30,14" aimable="false" msg="ItemMsgPickUpSelect">
+        <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.7" setvalue="true" />
+      </Holdable>
+      <!-- 回归次数（Lua 读写） -->
+      <MemoryComponent canbeselected="false" allowingameediting="false" />
+    </Item>
+
+    <!-- ========== TH-02 比里面大的柜子 ========== -->
+    <Item name="「比里面大的柜子」" identifier="Touhou_Anomaly_Bigger_Cabinet" tags="Touhou_Anomalous" subcategory="Touhou"
+          category="Misc" scale="0.28" maxstacksize="1"
+          description="【证物登记 TH-02｜流拍】外观：双门铁柜，外尺寸 0.9×1.8m。内容积测量记录：第 4 次评估申请被驳回。驳回理由：评估员拒绝再次打开柜门。备注：柜门从内侧反锁过三次。">
+      <Price baseprice="2500" canbespecial="false">
+        <Price storeidentifier="merchantresearch" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantoutpost" sold="false" />
+        <Price storeidentifier="merchantcity" sold="false" />
+        <Price storeidentifier="merchantmilitary" sold="false" />
+        <Price storeidentifier="merchantmine" sold="false" />
+      </Price>
+      <Deconstruct time="10">
+        <Item identifier="steel" />
+      </Deconstruct>
+      <Sprite texture="%ModDir:2941124988%/Images/General_Items/Touhou_Ingredient_Refrigerator.png" depth="0.55"
+              sourcerect="0,0,200,360" origin="0.5,0.5" />
+      <InventoryIcon texture="%ModDir:2941124988%/Images/General_Items/Touhou_Ingredient_Refrigerator.png"
+                     sourcerect="0,0,200,360" origin="0.5,0.5" />
+      <Body width="60" height="100" density="45" />
+      <Holdable slots="RightHand+LeftHand" holdpos="0,-100" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect">
+        <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.5" setvalue="true" />
+      </Holdable>
+      <!-- 15 格，比外形离谱地能装；内容物置换由 Lua 抽签 -->
+      <ItemContainer capacity="15" maxstacksize="1" canbeselected="true" hideitems="true" keepopenwhenequipped="true" movableframe="true" />
+    </Item>
+
+    <!-- ========== TH-03 「五十米」样本 ========== -->
+    <Item name="「五十米」样本" identifier="Touhou_Anomaly_Repulse_Stone" tags="Touhou_Anomalous" subcategory="Touhou"
+          category="Misc" scale="0.2" maxstacksize="1"
+          description="【证物登记 TH-03】来源：鸟船遗迹核心舱段外缘，采集距离 50.2m（再靠近一米都没有人愿意试）。效应：样本周围约十米内，一切生物出现恶心、眩晕与战栗，不分敌我。建议用途栏被尹研究员填写为：别让它知道我们能用它。">
+      <Price baseprice="4500" canbespecial="false">
+        <Price storeidentifier="merchantresearch" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantoutpost" sold="false" />
+        <Price storeidentifier="merchantcity" sold="false" />
+        <Price storeidentifier="merchantmilitary" sold="false" />
+        <Price storeidentifier="merchantmine" sold="false" />
+      </Price>
+      <Sprite texture="%ModDir:2941124988%/Images/Alchemical/Touhou_Magic_Crystal_Environment.png" depth="0.55"
+              sourcerect="0,0,256,288" origin="0.5,0.5" color="150,140,170,255" />
+      <InventoryIcon texture="%ModDir:2941124988%/Images/Alchemical/Touhou_Magic_Crystal_Environment.png"
+                     sourcerect="0,0,256,288" origin="0.5,0.5" />
+      <Body width="50" height="55" density="60" />
+      <Holdable slots="RightHand+LeftHand" holdpos="0,-60" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect">
+        <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.85" setvalue="true" />
+      </Holdable>
+      <!-- 心跳声：IsOn=在箱外才响（Lua 控制） -->
+      <LightComponent range="45" lightcolor="120,30,30,255" powerconsumption="0" IsOn="false" castshadows="false"
+                      allowingameediting="false" canbeselected="false">
+        <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
+        <StatusEffect type="OnActive" target="This" stackable="false" forcePlaySounds="true">
+          <sound file="Content/Sounds/HeartbeatSystole1.ogg" range="600" volume="1.6" loop="true" />
+        </StatusEffect>
+      </LightComponent>
+    </Item>
+
+    <!-- ========== TH-04 基列木盆栽 ========== -->
+    <Item name="基列木盆栽" identifier="Touhou_Anomaly_Gilead_Sprout" tags="Touhou_Anomalous" subcategory="Touhou"
+          category="Misc" scale="1.2" maxstacksize="1"
+          description="【种植站夜班记录摘录】它夜里不在盆里。白天在。老莫说它像在听，像在等。叶片朝向最近的那个东西。别问是哪个东西。">
+      <Price baseprice="2000" canbespecial="false">
+        <Price storeidentifier="merchantresearch" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantoutpost" sold="false" />
+        <Price storeidentifier="merchantcity" sold="false" />
+        <Price storeidentifier="merchantmilitary" sold="false" />
+        <Price storeidentifier="merchantmine" sold="false" />
+      </Price>
+      <Sprite texture="%ModDir:2941124988%/Images/Decoration/Touhou_Decoration_Plant03.png" depth="0.55"
+              sourcerect="0,0,32,32" origin="0.5,0.5" />
+      <InventoryIcon texture="%ModDir:2941124988%/Images/Decoration/Touhou_Decoration_Plant03.png"
+                     sourcerect="0,0,32,32" origin="0.5,0.5" />
+      <Body width="26" height="30" density="8" />
+      <Holdable slots="Any,RightHand,LeftHand" holdpos="0,-40" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect" />
+      <!-- 微光叶片：有敌意生物靠近时变亮（Lua 翻 IsOn） -->
+      <LightComponent range="55" lightcolor="90,200,110,255" powerconsumption="0" IsOn="false" castshadows="false"
+                      allowingameediting="false" canbeselected="false">
+        <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
+      </LightComponent>
+    </Item>
+
+    <!-- ========== TH-05 假月球碎片 ========== -->
+    <Item name="假月球碎片" identifier="Touhou_Anomaly_Fake_Moon_Shard" tags="Touhou_Anomalous" subcategory="Touhou"
+          category="Misc" scale="0.7" maxstacksize="1"
+          description="【证物登记 TH-05】来源：喇叭圣殿光膜边缘剥落的碎片。厚度：无法测量（所有量具读数为 0）。照明效果极好。举着它的时候，地上的影子比你队伍的人数多一个。捕捉到的杂音经分析为某种极慢的心跳。">
+      <Price baseprice="3800" canbespecial="false">
+        <Price storeidentifier="merchantresearch" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantoutpost" sold="false" />
+        <Price storeidentifier="merchantcity" sold="false" />
+        <Price storeidentifier="merchantmilitary" sold="false" />
+        <Price storeidentifier="merchantmine" sold="false" />
+      </Price>
+      <Sprite texture="%ModDir:2941124988%/Images/Alchemical/Seven_Elements_Alchemical_Fake.png" depth="0.55"
+              sourcerect="0,0,72,84" origin="0.5,0.5" />
+      <InventoryIcon texture="%ModDir:2941124988%/Images/Alchemical/Seven_Elements_Alchemical_Fake.png"
+                     sourcerect="0,0,72,84" origin="0.5,0.5" />
+      <Body width="50" height="58" density="15" />
+      <Holdable slots="Any,RightHand,LeftHand" holdpos="0,-50" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect" />
+      <!-- 冷白强光源；杂音心跳（IsOn=在箱外，Lua 控制） -->
+      <LightComponent range="250" lightcolor="215,225,255,255" powerconsumption="0" IsOn="false" castshadows="false"
+                      allowingameediting="false" canbeselected="false">
+        <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
+        <StatusEffect type="OnActive" target="This" stackable="false" forcePlaySounds="true">
+          <sound file="Content/Items/Alien/AlienArtifactLoop1.ogg" range="400" volume="0.7" loop="true" />
+        </StatusEffect>
+      </LightComponent>
+    </Item>
+
+    <!-- ========== TH-06 灵异珠残响 ========== -->
+    <Item name="灵异珠残响" identifier="Touhou_Anomaly_Orb_Echo" tags="Touhou_Anomalous" subcategory="Touhou"
+          category="Misc" scale="1.6" maxstacksize="1"
+          description="【证物登记 TH-06】灵异珠回收后于原洞穴内壁刮下的一小片。携带者报告持续听到『描述』——关于他们自己的、尚未发生的事。多数没有发生。发生的那些，没法解释。">
+      <Price baseprice="5000" canbespecial="false">
+        <Price storeidentifier="merchantresearch" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantoutpost" sold="false" />
+        <Price storeidentifier="merchantcity" sold="false" />
+        <Price storeidentifier="merchantmilitary" sold="false" />
+        <Price storeidentifier="merchantmine" sold="false" />
+      </Price>
+      <Sprite texture="%ModDir:2941124988%/Images/Divinggear/Yin_Yang_Orb.png" depth="0.55"
+              sourcerect="0,0,32,32" origin="0.5,0.5" color="190,150,220,255" />
+      <InventoryIcon texture="%ModDir:2941124988%/Images/Divinggear/Yin_Yang_Orb.png"
+                     sourcerect="0,0,32,32" origin="0.5,0.5" />
+      <Body width="30" height="30" density="20" />
+      <Holdable slots="Any,RightHand,LeftHand" holdpos="0,-40" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect" />
+      <!-- 暗紫微光 + 低语环境音（IsOn=在箱外，Lua 控制） -->
+      <LightComponent range="80" lightcolor="150,90,200,255" powerconsumption="0" IsOn="false" castshadows="false"
+                      allowingameediting="false" canbeselected="false">
+        <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
+        <StatusEffect type="OnActive" target="This" stackable="false" forcePlaySounds="true">
+          <sound file="Content/Items/Alien/ALIEN_ruinsLoop.ogg" range="350" volume="0.55" loop="true" />
+        </StatusEffect>
+      </LightComponent>
+    </Item>
+
+    <!-- ========== TH-07 深渊信号收音机 ========== -->
+    <Item name="深渊信号收音机" identifier="Touhou_Anomaly_Abyss_Radio" tags="Touhou_Anomalous" subcategory="Touhou"
+          category="Misc" scale="0.55" maxstacksize="1"
+          description="【监听记录摘录】每月总有几天，所有频道同时收到同一个信号：多种语言，重复同一段内容，内容每次不同，均为对未来的描述。这台改装机可以收到它。船员爱听。听完的人干活更快，也更频繁地回头看。">
+      <Price baseprice="3200" canbespecial="false">
+        <Price storeidentifier="merchantresearch" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantoutpost" sold="false" />
+        <Price storeidentifier="merchantcity" sold="false" />
+        <Price storeidentifier="merchantmilitary" sold="false" />
+        <Price storeidentifier="merchantmine" sold="false" />
+      </Price>
+      <Sprite texture="%ModDir%/Images/General_Items/Touhou_Anomaly_Radio.png" depth="0.55"
+              sourcerect="0,0,96,96" origin="0.5,0.5" />
+      <InventoryIcon texture="%ModDir%/Images/General_Items/Touhou_Anomaly_Radio.png"
+                     sourcerect="0,0,96,96" origin="0.5,0.5" />
+      <Body width="52" height="52" density="18" />
+      <Holdable slots="Any,RightHand,LeftHand" holdpos="0,-45" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect" />
+      <!-- 信号灯 + 电台静电（IsOn=在箱外，Lua 控制） -->
+      <LightComponent range="60" lightcolor="230,180,90,255" powerconsumption="0" IsOn="false" castshadows="false"
+                      allowingameediting="false" canbeselected="false">
+        <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
+        <StatusEffect type="OnActive" target="This" stackable="false" forcePlaySounds="true">
+          <sound file="Content/Sounds/RadioStatic.ogg" range="450" volume="0.8" loop="true" />
+        </StatusEffect>
+      </LightComponent>
+    </Item>
+
+    <!-- ========== TH-08 喇叭圣母的呼唤 ========== -->
+    <Item name="喇叭圣母的呼唤" identifier="Touhou_Anomaly_Laugh_Trumpet" tags="Touhou_Anomalous" subcategory="Touhou"
+          category="Misc" scale="1" maxstacksize="1"
+          description="【证物登记 TH-08】来源：小丑教派集会现场。黄铜喇叭，吹不响——除了在某些时刻。受影响的个体将大笑、丢下手头的一切，持续数秒。小丑教徒免疫。他们管这个叫『圣母在点名』。">
+      <Price baseprice="2800" canbespecial="false">
+        <Price storeidentifier="merchantresearch" multiplier="1" sold="true" maxavailable="1" />
+        <Price storeidentifier="merchantoutpost" sold="false" />
+        <Price storeidentifier="merchantcity" sold="false" />
+        <Price storeidentifier="merchantmilitary" sold="false" />
+        <Price storeidentifier="merchantmine" sold="false" />
+      </Price>
+      <Sprite texture="Content/Items/Misc/Misc.png" depth="0.55" sourcerect="101,45,53,22" origin="0.5,0.5"
+              color="220,190,90,255" />
+      <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="769,385,64,64" origin="0.5,0.5" />
+      <Body width="50" height="20" density="15" />
+      <!-- 车喇叭同款：RangedWeapon 只为触发 OnUse 出声，无射弹 -->
+      <RangedWeapon reload="4">
+        <Sound file="Content/Items/Weapons/honk.ogg" type="OnUse" range="1200" volume="2.0" />
+      </RangedWeapon>
+      <Holdable slots="Any,RightHand,LeftHand" aimpos="100,0" handle1="-15,-3" aimable="true" msg="ItemMsgPickUpSelect">
+        <StatusEffect type="OnUse" target="This">
+          <LuaHook name="Touhou.AnomalyTrumpet.blow" />
+        </StatusEffect>
+      </Holdable>
+      <!-- 声音大得离谱，AI 听得见 -->
+      <aitarget soundrange="1200" fadeouttime="5" />
+    </Item>
+
+  </Items>
+</Override>

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Barotrauma;
 using Barotrauma.Abilities;
 using Barotrauma.LuaCs;
+using FarseerPhysics;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 
@@ -30,6 +32,18 @@ namespace Touhou.HitAffliction
           creditattacker                附加物不产生伤害时是否补记归属，默认 true
           fallback                      拿不到命中肢体时：vanilla（默认）/ none / nearest
           cooldown                      两次触发之间的最短间隔（秒），默认 0 表示不限速
+          onceperattack                 同一攻击事件只结算一次。爆炸对范围内每根肢体各触发一次天赋，
+                                        这个开关把这些触发合并成一次（默认 false，保持旧行为）。
+                                        对 <StatusEffects> 复合写法同样去重
+          dividebylimbcount             爆炸多肢体命中时把总额均分到每根命中的肢体（隐含
+                                        onceperattack），只对简化写法有效，默认 false。只写
+                                        onceperattack 不写它时，爆炸只给离爆心最近的肢体一份满额
+
+      爆炸路径（1.13.4 核实）：爆炸不走 ApplyAttack，引擎在 Explosion.DamageCharacters 里对范围内
+      每根肢体各自构造一次 AbilityAttackData（天赋在这里逐肢体触发）再 AddDamage。本插件补了一个
+      补丁把爆炸事件（爆心/范围/攻击者）也压进 HitContext，所以爆炸期间天赋拿不到命中肢体（本来就没有
+      单根"命中肢体"），但能认出"这是同一次爆炸"。没写上面两个开关时，爆炸路径行为与旧版一致
+      （cooldown 挡住多次触发、fallback 决定打哪儿）。
 
       复合写法按 StatusEffect 自己声明的 target 分派：Limb 打命中肢体（推荐）、AllLimbs 打目标全部
       健全肢体、This 打自己、Character / UseTarget 打被攻击者、NearbyCharacters 按 range 打附近角色。
@@ -59,17 +73,27 @@ namespace Touhou.HitAffliction
             public readonly Attack Attack;
             public readonly Vector2 WorldPosition;
 
-            public Frame(Character attacker, Character victim, Limb hitLimb, Attack attack, Vector2 worldPosition)
+            /// <summary>爆炸事件帧：大于 0 时表示爆炸（WorldPosition=爆心，Victim/HitLimb 为 null）。</summary>
+            public readonly float ExplosionRange;
+
+            /// <summary>每次 Push 递增的事件 id，爆炸逐肢体触发的 N 次天赋共享同一个 id。</summary>
+            public readonly long EventId;
+
+            public Frame(Character attacker, Character victim, Limb hitLimb, Attack attack, Vector2 worldPosition,
+                         float explosionRange, long eventId)
             {
                 Attacker = attacker;
                 Victim = victim;
                 HitLimb = hitLimb;
                 Attack = attack;
                 WorldPosition = worldPosition;
+                ExplosionRange = explosionRange;
+                EventId = eventId;
             }
         }
 
         [ThreadStatic] private static List<Frame> stack;
+        [ThreadStatic] private static long nextEventId;
 
         // 场上没有本能力的实例时，整套补丁一个操作都不做。
         private static int liveInstanceCount;
@@ -86,7 +110,13 @@ namespace Touhou.HitAffliction
 
         public static int Push(Character attacker, Character victim, Limb hitLimb, Attack attack, Vector2 worldPosition)
         {
-            Stack.Add(new Frame(attacker, victim, hitLimb, attack, worldPosition));
+            Stack.Add(new Frame(attacker, victim, hitLimb, attack, worldPosition, 0f, nextEventId++));
+            return Stack.Count;
+        }
+
+        public static int PushExplosion(Character attacker, Attack attack, Vector2 worldPosition, float range)
+        {
+            Stack.Add(new Frame(attacker, null, null, attack, worldPosition, range, nextEventId++));
             return Stack.Count;
         }
 
@@ -112,6 +142,17 @@ namespace Touhou.HitAffliction
             frame = f;
             return true;
         }
+
+        public static bool TryGetExplosionFrame(out Frame frame)
+        {
+            frame = default;
+            Frame? current = Current;
+            if (current == null) return false;
+            Frame f = current.Value;
+            if (f.ExplosionRange <= 0f) return false;
+            frame = f;
+            return true;
+        }
     }
 
     public sealed class HitAfflictionPlugin : IAssemblyPlugin
@@ -131,6 +172,7 @@ namespace Touhou.HitAffliction
             harmony.UnpatchSelf();
             harmony.PatchAll(typeof(AbilityLoadPatch));
             harmony.PatchAll(typeof(ApplyAttackPatch));
+            ExplosionDamageCharactersPatch.Patch(harmony);
         }
 
         public void PreInitPatching() { }
@@ -181,6 +223,44 @@ namespace Touhou.HitAffliction
         }
     }
 
+    // 爆炸不经过 Character.ApplyAttack：引擎在 Explosion.DamageCharacters 里对范围内每根肢体各自
+    // 构造 AbilityAttackData（天赋在这里逐肢体触发）再 AddDamage。Explosion 是 internal 类型没法
+    // 直接引用，按名字找方法补丁，把爆炸事件（爆心/范围/攻击者）压进同一个上下文栈，天赋才能把
+    // 同一次爆炸的 N 次触发认成一个事件。方法签名对不上（游戏更新）时优雅降级：开关不生效但旧行为不变。
+    internal static class ExplosionDamageCharactersPatch
+    {
+        private static readonly MethodBase TargetMethod =
+            AccessTools.Method(AccessTools.TypeByName("Barotrauma.Explosion"), "DamageCharacters");
+
+        private static void Prefix(Vector2 worldPosition, Attack attack, float force, Entity damageSource,
+                                   Character attacker, float range, ref int __state)
+        {
+            if (!HitContext.Enabled) { __state = -1; return; }
+            __state = HitContext.PushExplosion(attacker, attack, worldPosition, range);
+        }
+
+        private static void Finalizer(int __state)
+        {
+            if (__state > 0) HitContext.Truncate(__state - 1);
+        }
+
+        public static void Patch(Harmony harmony)
+        {
+            if (TargetMethod == null)
+            {
+                DebugConsole.ThrowError("touhou.hitaffliction: 找不到 Barotrauma.Explosion.DamageCharacters，" +
+                                        "onceperattack / dividebylimbcount 将不生效（其余功能不受影响）。");
+                return;
+            }
+            harmony.Patch(TargetMethod,
+                new HarmonyMethod(typeof(ExplosionDamageCharactersPatch), nameof(Prefix)),
+                null,
+                null,
+                new HarmonyMethod(typeof(ExplosionDamageCharactersPatch), nameof(Finalizer)),
+                null);
+        }
+    }
+
     internal sealed class CharacterAbilityHitAffliction : CharacterAbility
     {
         private enum TargetKind { HitLimb, Attacker }
@@ -190,6 +270,8 @@ namespace Touhou.HitAffliction
         private enum FallbackMode { Vanilla, None, Nearest }
 
         private enum ArmorMode { Apply, Ignore }
+
+        private enum MultiLimbMode { Each, Once, Divide }
 
         private const string DebugName = "CharacterAbilityHitAffliction";
 
@@ -203,10 +285,18 @@ namespace Touhou.HitAffliction
         private readonly bool creditAttacker;
         private readonly ArmorMode armorMode;
         private readonly float cooldown;
+        private readonly MultiLimbMode multiLimbMode;
 
         private readonly List<StatusEffect> statusEffects;
 
         private double nextAllowedTime;
+
+        // 事件去重状态：爆炸逐肢体触发 N 次天赋，且多个受害者会交错触发（A→B→A），
+        // 单记"上一次"挡不住交错，得按 (事件, 受害者) 记。事件换了就清空受害者列表。
+        private long lastEventId;
+        private double lastEventTick;
+        private Attack lastEventAttack;
+        private readonly List<Character> handledVictims = new List<Character>();
 
         // 原版每次触发都要在 AfflictionPrefab.Prefabs 里线性扫一遍，这里首次解析成功后就缓存住。
         private AfflictionPrefab cachedAfflictionPrefab;
@@ -227,6 +317,7 @@ namespace Touhou.HitAffliction
             armorMode = ParseArmorMode(abilityElement);
             multiplierMode = ParseMultiplierMode(abilityElement);
             fallbackMode = ParseFallbackMode(abilityElement);
+            multiLimbMode = ParseMultiLimbMode(abilityElement);
 
             ContentXElement statusEffectElement = abilityElement.GetChildElement("statuseffects");
             if (statusEffectElement != null)
@@ -312,6 +403,23 @@ namespace Touhou.HitAffliction
             return FallbackMode.Vanilla;
         }
 
+        private MultiLimbMode ParseMultiLimbMode(ContentXElement element)
+        {
+            bool oncePerAttack = element.GetAttributeBool("onceperattack", false);
+            bool divideByLimbCount = element.GetAttributeBool("dividebylimbcount", false);
+            if (divideByLimbCount)
+            {
+                if (element.GetChildElement("statuseffects") != null)
+                {
+                    DebugConsole.ThrowError($"Error in {DebugName} - dividebylimbcount 只对简化写法（affliction=…）生效，" +
+                                            $"{CharacterTalent.DebugIdentifier} 的 <StatusEffects> 复合写法会忽略它。",
+                                            null, element.ContentPackage);
+                }
+                return MultiLimbMode.Divide;
+            }
+            return oncePerAttack ? MultiLimbMode.Once : MultiLimbMode.Each;
+        }
+
         public override void ApplyEffect()
         {
             Apply(null, null, null);
@@ -334,6 +442,10 @@ namespace Touhou.HitAffliction
             bool hasFrame = HitContext.TryGetFor(targetKind == TargetKind.Attacker ? attacker : victim, out frame)
                             || HitContext.TryGetFor(victim, out frame);
 
+            // 爆炸路径没有 ApplyAttack 帧，单独找爆炸事件帧（爆心/范围）。
+            bool inExplosion = !hasFrame && HitContext.TryGetExplosionFrame(out frame);
+            if (inExplosion) hasFrame = true;
+
             Limb hitLimb = hasFrame ? frame.HitLimb : null;
             if (hasFrame && attacker == null) attacker = frame.Attacker;
 
@@ -341,7 +453,11 @@ namespace Touhou.HitAffliction
                 ? (attacker ?? Character)
                 : victim;
 
-            if (targetKind == TargetKind.HitLimb)
+            // 爆炸多肢体命中时由 once/divide 自己挑目标，fallback 只在非爆炸场景兜底。
+            bool useMultiLimbTarget = inExplosion && targetKind == TargetKind.HitLimb
+                                      && multiLimbMode != MultiLimbMode.Each;
+
+            if (targetKind == TargetKind.HitLimb && !useMultiLimbTarget)
             {
                 switch (fallbackMode)
                 {
@@ -357,6 +473,13 @@ namespace Touhou.HitAffliction
                 }
             }
 
+            if (multiLimbMode != MultiLimbMode.Each && attackData != null && attacker != null
+                && IsRepeatOfLastEvent(victim, attacker, attackData, hasFrame ? (long?)frame.EventId : null))
+            {
+                // 同一次攻击事件（爆炸逐肢体触发）已经结算过了，后面的触发跳过。
+                return;
+            }
+
             if (cooldown > 0f)
             {
                 double now = Timing.TotalTime;
@@ -364,9 +487,21 @@ namespace Touhou.HitAffliction
                 nextAllowedTime = now + cooldown;
             }
 
+            List<Limb> explosionLimbs = null;
+            if (useMultiLimbTarget)
+            {
+                explosionLimbs = CollectLimbsInRange(targetCharacter, frame.WorldPosition, frame.ExplosionRange);
+                if (explosionLimbs.Count == 0) return;
+            }
+
             if (statusEffects != null)
             {
-                ApplyStatusEffects(hitLimb, victim, targetCharacter, attacker, hasFrame ? frame.WorldPosition : (Vector2?)null);
+                // 复合写法不认 dividebylimbcount（加载时报过错），once 时把 Limb 类效果打到最近肢体上。
+                Limb statusEffectLimb = useMultiLimbTarget && multiLimbMode == MultiLimbMode.Once
+                    ? explosionLimbs[0]
+                    : hitLimb;
+                ApplyStatusEffects(statusEffectLimb, victim, targetCharacter, attacker,
+                                   hasFrame ? frame.WorldPosition : (Vector2?)null);
                 return;
             }
 
@@ -379,7 +514,67 @@ namespace Touhou.HitAffliction
                 amount *= Character.GetSkillLevel(multiplyStrengthBySkill);
             }
 
+            if (useMultiLimbTarget)
+            {
+                if (multiLimbMode == MultiLimbMode.Divide)
+                {
+                    float perLimb = amount / explosionLimbs.Count;
+                    foreach (Limb limb in explosionLimbs)
+                    {
+                        ApplyOne(prefab.Instantiate(perLimb), limb, targetCharacter, attacker, attackData);
+                    }
+                }
+                else
+                {
+                    ApplyOne(prefab.Instantiate(amount), explosionLimbs[0], targetCharacter, attacker, attackData);
+                }
+                return;
+            }
+
             ApplyOne(prefab.Instantiate(amount), hitLimb, targetCharacter, attacker, attackData);
+        }
+
+        // 同一次攻击事件 = 同 attack 实例＋同事件 id；栈里没有帧（比如爆炸补丁没找到方法）时
+        // 退化成同一帧 Timing.TotalTime 判定，至少还能挡住同帧内的爆炸多肢体重复触发。
+        // 事件里已经结算过的受害者不再结算；target=attacker 的天赋按攻击者去重（自我增益一次爆炸只吃一份）。
+        private bool IsRepeatOfLastEvent(Character victim, Character attacker, AbilityAttackData attackData, long? eventId)
+        {
+            Attack sourceAttack = attackData.SourceAttack;
+            double tick = Timing.TotalTime;
+
+            bool sameEvent = ReferenceEquals(sourceAttack, lastEventAttack)
+                             && (eventId.HasValue ? eventId.Value == lastEventId : tick == lastEventTick);
+            if (!sameEvent)
+            {
+                lastEventAttack = sourceAttack;
+                lastEventId = eventId ?? 0L;
+                lastEventTick = tick;
+                handledVictims.Clear();
+            }
+
+            Character dedupeKey = targetKind == TargetKind.Attacker ? attacker : victim;
+            if (dedupeKey != null && handledVictims.Contains(dedupeKey)) return true;
+            handledVictims.Add(dedupeKey);
+            return false;
+        }
+
+        // 爆炸命中的肢体集合：与引擎 Explosion.DamageCharacters 同款过滤（未断肢/未忽略碰撞/碰撞体启用/
+        // 肢体边缘进入爆炸范围），按离爆心距离排序，once 取 [0] 就是引擎自己会当"主命中"的那根。
+        private static List<Limb> CollectLimbsInRange(Character character, Vector2 center, float range)
+        {
+            List<Limb> result = new List<Limb>();
+            if (character?.AnimController == null) return result;
+            foreach (Limb limb in character.AnimController.Limbs)
+            {
+                if (limb == null || limb.IsSevered || limb.IgnoreCollisions || limb.body == null || !limb.body.Enabled) continue;
+                float distance = Math.Max(0f, Vector2.Distance(limb.WorldPosition, center)
+                                             - ConvertUnits.ToDisplayUnits(limb.body.GetMaxExtent()));
+                if (distance > range) continue;
+                result.Add(limb);
+            }
+            result.Sort((a, b) => Vector2.DistanceSquared(a.WorldPosition, center)
+                .CompareTo(Vector2.DistanceSquared(b.WorldPosition, center)));
+            return result;
         }
 
         private void ApplyStatusEffects(Limb hitLimb, Character victim, Character targetCharacter,

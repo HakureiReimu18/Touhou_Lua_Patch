@@ -34,6 +34,8 @@ namespace Touhou.MartialArts
             harmony.PatchAll(typeof(StrikeUsePatch));
             harmony.PatchAll(typeof(StrikeMeleePosePatch));
             harmony.PatchAll(typeof(StrikeItemRemovedPatch));
+            harmony.PatchAll(typeof(MartialWearableEquipPatch));
+            harmony.PatchAll(typeof(MartialWearableDropPatch));
             LuaCsSetup.Instance.Hook.Add("roundEnd", "Touhou.MartialArts.RoundEnd", OnRoundEnd);
         }
 
@@ -47,6 +49,7 @@ namespace Touhou.MartialArts
             // 顺序要紧：先把注入的原版攻击还原回去，再清表——ClearAll 会连注入记录一起清掉
             StrikeManager.RestoreInjections();
             StrikeManager.ClearAll();
+            MartialWearableManager.ClearAll();
         }
 
         object OnRoundEnd(object[] args)
@@ -55,6 +58,7 @@ namespace Touhou.MartialArts
             // 反过来做的话，若某根 Limb 跨巡回还活着，下次 BindAttack 会把"注入的踢腿攻击"当成原版记下来
             StrikeManager.RestoreInjections();
             StrikeManager.ClearAll();
+            MartialWearableManager.ClearAll();
             return null;
         }
     }

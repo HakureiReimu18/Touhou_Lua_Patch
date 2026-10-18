@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- size is in UI pixels before GUI.Scale. Highest matching level wins. -->
+<Badges size="46" previewBadges="true">
+  <Badge tag="Touhou_Weapon_Level01" level="1" file="Images/WeaponBadges/level_01.png" />
+  <Badge tag="Touhou_Weapon_Level02" level="2" file="Images/WeaponBadges/level_02_strip.png" frameWidth="128" frameHeight="128" frames="16" fps="10" />
+  <Badge tag="Touhou_Weapon_Level03" level="3" file="Images/WeaponBadges/level_03_strip.png" frameWidth="128" frameHeight="128" frames="16" fps="10" />
+  <Badge tag="Touhou_Weapon_Level04" level="4" file="Images/WeaponBadges/level_04_strip.png" frameWidth="128" frameHeight="128" frames="16" fps="10" />
+  <Badge tag="Touhou_Weapon_Level05" level="5" file="Images/WeaponBadges/level_05.gif" />
+  <Badge tag="Touhou_Weapon_Level06" level="6" file="Images/WeaponBadges/level_06_strip.png" frameWidth="128" frameHeight="128" frames="16" fps="10" />
+  <Badge tag="Touhou_Weapon_Level07" level="7" file="Images/WeaponBadges/level_07_strip.png" frameWidth="128" frameHeight="128" frames="16" fps="10" />
+  <Badge tag="Touhou_Weapon_Level08" level="8" file="Images/WeaponBadges/level_08_strip.png" frameWidth="128" frameHeight="128" frames="16" fps="10" />
+  <Badge tag="Touhou_Weapon_Level09" level="9" file="Images/WeaponBadges/level_09_strip.png" frameWidth="128" frameHeight="128" frames="16" fps="10" />
+  <Badge tag="Touhou_Weapon_Level10" level="10" file="Images/WeaponBadges/level_10_strip.png" frameWidth="128" frameHeight="128" frames="16" fps="10" />
+</Badges>

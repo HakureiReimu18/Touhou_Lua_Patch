@@ -4,7 +4,8 @@
     <!-- ============================================================
          武术武器制作说明
          ============================================================
-         一件武术武器 = 普通近战武器结构（MeleeWeapon 数据）+ 动作组件（MartialArtsWeapon）。
+         一件武术武器 = 普通近战武器结构（MeleeWeapon 数据）+ 动作组件（MartialArtsWeapon）
+         + 可选的握持贴图层（MartialArtsWearable，纯贴图数据，见下）。
 
          操作（玩家）：右键按住 = 架势（拳架/持握），瞄准中左键 = 出招。
          连击：上一招结束 1 秒内再出招——双持自动换另一件武器的手，踢腿自动换脚。
@@ -41,27 +42,39 @@
          伤害结算公式（自动执行）：(1+MeleeAttackMultiplier) × (1+品质威力)，
          词缀系统的近战词缀同样生效（就走这个入口）。
 
-         其余注意：
-         - slots 建议 "Any,RightHand,LeftHand"（单手，可双持换手）
-         - swing="false" 必写（关闭原版挥舞）
-         - requireaimtouse 默认 true 即可（右键瞄准本来就是操作的一部分）
-         - <Body> 只影响物品物理存在感，与命中范围无关（命中体是出招肢体，
-           命中半径 0.4m 在代码里）
+         ── 握持贴图（可选，穿戴层）────────────────────────────────
+         物品末尾加一个 <MartialArtsWearable>（注意：不是 <Wearable>——
+         原版 Wearable 组件挂在武器上会干扰出招，实测加入就出不了拳）。
+         它是纯数据组件：内部用分离的 Wearable 实例复用原版 sprite 解析，
+         与槽位/输入/装备系统零交互。里面的 <sprite>
+         用原版穿戴贴图的完整格式——和做一件潜水服一模一样：
+           <sprite name="..." texture="贴图路径" limb="LeftHand"
+                   inheritlimbdepth="false" inheritscale="true" scale="0.5"
+                   hidelimb="false" sourcerect="x,y,w,h" origin="0.5,0.5" />
+         limb 决定贴图挂在哪根肢体上：LeftHand/RightHand（拳套/护手）、
+         LeftLeg/RightLeg/LeftFoot/RightFoot（护腿）、Torso、Head 等，
+         原版 LimbType 枚举都能用。sourcerect/origin/scale/depth 等属性
+         与原版穿戴完全一致。手持时贴图自动挂到肢体上（跟随出招动作），
+         放下自动摘除。
          ============================================================ -->
 
     <!--测试拳套：直拳（快而轻）-->
-    <Item name="测试拳套" identifier="ma_glove_test" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.5" impactsoundtag="impact_metal_light">
-      <Sprite texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" depth="0.55" origin="0.5,0.5"/>
-      <InventoryIcon name="" texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" origin="0.5,0.5"/>
+    <Item name="铁莲拳" identifier="Touhou_Iron_Lotus_Fist" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.2" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Iron_Lotus_Fist.png" sourcerect="0,0,96,166" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Iron_Lotus_Fist.png" depth="0.4" sourcerect="0,0,96,166" />
       <Body width="24" height="16" density="5"/>
-      <MeleeWeapon slots="Any,RightHand,LeftHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.1" swing="false" msg="ItemMsgPickUpSelect">
+      <MeleeWeapon slots="Any,RightHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.2" swing="false" msg="ItemMsgPickUpSelect">
         <attack targetimpulseworld="4,1">
           <Affliction identifier="blunttrauma" strength="9" />
           <Affliction identifier="internaldamage" strength="3"  />
           <Affliction identifier="stun" strength="0.2" probability="0.1" />
         </attack>
       </MeleeWeapon>
-      <MartialArtsWeapon strike="punch" force="4" torque="2.5" duration="0.3" reach="0.95" height="0"/>
+      <MartialArtsWeapon strike="punch" force="16" torque="2.5" duration="0.2" reach="1.6" height="0.1"/>
+      <MartialArtsWearable>
+        <sprite name="Touhou_Iron_Lotus_Fist" texture="%ModDir%/Images/Touhou_Iron_Lotus_Fist.png" limb="RightHand" inheritlimbdepth="true" inheritscale="false" scale="0.2"
+                hidelimb="false" sourcerect="0,0,166,96" origin="0.5,0.5"/>
+      </MartialArtsWearable>
     </Item>
 
     <!--测试护手：重拳（慢而重，直拳机制的数值变体）-->
@@ -76,13 +89,17 @@
           <Affliction identifier="stun" strength="0.3" probability="0.3" />
         </attack>
       </MeleeWeapon>
-      <MartialArtsWeapon strike="punch" force="4" torque="2.5" duration="0.3" reach="0.9" height="0"/>
+      <MartialArtsWeapon strike="punch" force="7" torque="2.5" duration="0.4" reach="1.9" height="0"/>
+      <MartialArtsWearable>
+        <sprite name="ma_gauntlet_l" texture="Content/Items/Weapons/weapons.png" limb="LeftHand" inheritlimbdepth="false" inheritscale="true" scale="0.5" hidelimb="false" sourcerect="0,0,32,32" origin="0.5,0.5"/>
+        <sprite name="ma_gauntlet_r" texture="Content/Items/Weapons/weapons.png" limb="RightHand" inheritlimbdepth="false" inheritscale="true" scale="0.5" hidelimb="false" sourcerect="0,0,32,32" origin="0.5,0.5"/>
+      </MartialArtsWearable>
     </Item>
 
     <!--测试护腿：正蹬腿-->
-    <Item name="测试护腿" identifier="ma_legguard_test" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.5" impactsoundtag="impact_metal_light">
-      <Sprite texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" depth="0.55" origin="0.5,0.5"/>
-      <InventoryIcon name="" texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" origin="0.5,0.5"/>
+    <Item name="断流护腿" identifier="Touhou_Torrent_Cutting_Greaves" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.25" impactsoundtag="impact_metal_light">
+      <Sprite texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" sourcerect="0,0,184,352" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon name="" texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" sourcerect="0,0,184,352" origin="0.5,0.5"/>
       <Body width="30" height="20" density="5"/>
       <MeleeWeapon slots="Any,RightHand,LeftHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.9" swing="false" msg="ItemMsgPickUpSelect">
         <attack targetimpulseworld="12,4">
@@ -92,6 +109,12 @@
         </attack>
       </MeleeWeapon>
       <MartialArtsWeapon strike="kick" force="14" torque="0" duration="0.3" reach="1.0" height="-0.35"/>
+      <MartialArtsWearable>
+        <sprite name="ma_legguard_l" texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" limb="LeftLeg" inheritlimbdepth="false" inheritscale="true" scale="0.5"
+                hidelimb="false" sourcerect="0,0,184,352" origin="0.5,0.5"/>
+        <sprite name="ma_legguard_r" texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" limb="RightLeg" inheritlimbdepth="false" inheritscale="true" scale="0.5"
+                hidelimb="false" sourcerect="0,0,184,352" origin="0.5,0.5"/>
+      </MartialArtsWearable>
     </Item>
 
   </Items>

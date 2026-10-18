@@ -140,9 +140,14 @@ namespace Touhou.Affixes
                 }
             }
             if (ids == null || ids.Count == 0) return false;
-            // 奇迹必须是主词缀（第一个）：SetAffixes 之后的判定都以 [0] 为准
-            int mi = ids.IndexOf(MIRACLE_AFFIX_ID);
-            if (mi > 0) { ids.RemoveAt(mi); ids.Insert(0, MIRACLE_AFFIX_ID); }
+            // 额外槽宿主（奇迹/回收）必须是主词缀（第一个）：SetAffixes 之后的判定都以 [0] 为准
+            int host = ids.FindIndex(IsExtraSlotHost);
+            if (host > 0)
+            {
+                var hostId = ids[host];
+                ids.RemoveAt(host);
+                ids.Insert(0, hostId);
+            }
             return true;
         }
 
@@ -186,9 +191,10 @@ namespace Touhou.Affixes
         }
 
         // 材料档位权重：数字越小越贵（1=核心 500 / 2=棱镜 100 / 3=合金 25），权重也越好。键是 tag 不是 identifier
+        // 核心的权重凑成 100，直接就是百分比：普通 4% / 稀有 18% / 史诗 48% / 传说 20% / 特殊 10%
         public static Dictionary<string, TierWeights> MaterialTiers = new()
         {
-            ["affixes_material_1"] = new TierWeights { Normal = 5, Rare = 20, Epic = 55, Legendary = 20, Special = 8 },
+            ["affixes_material_1"] = new TierWeights { Normal = 4, Rare = 18, Epic = 48, Legendary = 20, Special = 10 },
             ["affixes_material_2"] = new TierWeights { Broken = 10, Normal = 30, Rare = 35, Epic = 15, Legendary = 10, Special = 1 },
             ["affixes_material_3"] = new TierWeights { Broken = 35, Normal = 40, Rare = 20, Epic = 5, Legendary = 1, Special = 0 },
         };
@@ -234,6 +240,12 @@ namespace Touhou.Affixes
         public const string STONE_TAG = "affixes_stone";
         // 奇迹词缀 id：解锁两个额外槽，只能经附魔石转移附上
         public const string MIRACLE_AFFIX_ID = "miracle";
+        // 回收词缀 id：解锁一个额外槽；带它的武器可在附魔台用空白附魔石把额外词缀取下来（见 EnchantingStationPatch）
+        public const string SALVAGE_AFFIX_ID = "salvage";
+
+        // 额外槽宿主：这两种词缀放在 [0] 位时，后面的词缀算"额外词缀"
+        public static bool IsExtraSlotHost(string id) =>
+            id == MIRACLE_AFFIX_ID || id == SALVAGE_AFFIX_ID;
         // 服务端→客户端的同步消息 id：附魔台在服务端跑，客户端要本地镜像一份才有显示
         public const string NET_APPLY_AFFIX = "itemaffixes_apply";
 
@@ -257,8 +269,10 @@ namespace Touhou.Affixes
         public static bool AnyDamageTakenAffixes;
         public static bool AnyFuelMultAffixes;
         public static bool AnyAmmoSaveAffixes;
+        public static bool AnySelfWearSaveAffixes; // 持恒：使用不消耗自身耐久
         public static bool AnyDurabilitySaveAffixes;
         public static bool AnyDeviceRepairAffixes;
+        public static bool AnyRepairRampAffixes; // 匠人节奏：连续修理提速
         public static bool AnyCooldownDamageAffixes;
         public static bool AnyLastShotAffixes;
         public static bool AnySlotOneAffixes;
@@ -385,14 +399,15 @@ namespace Touhou.Affixes
             "identifier", "tier", "nameprefix", "applicable", "desc", "descarmor",
             "damagemult", "fireratemult", "damagetakenmult", "fuelconsumemult",
             "repairbonuspercent", "spreadmult", "skillreqmult",
-            "ammosavechance", "durabilitysavechance", "structurefixmult", "devicerepairmult",
+            "ammosavechance", "durabilitysavechance", "selfwearsavechance", "lowconditiondamagemult", "structurefixmult", "devicerepairmult",
+            "repairramp", "repairrampdevice", "repairrampmax",
             "cooldowndamagemult", "cooldowndamageinterval", "lastshotdamagemult", "forcetwohanded",
             "slot1damagemult", "slot1fireratemult", "noisemult",
             "noaimwobble", "nomovepenalty",
             "thornsbleeding", "thornslacerations", "thornsstun", "thornsstunchance", "thornsinterval",
             "forcetwohandedranged", "massbonusmult", "massthreshold",
             "chargetimemult", "firstshotdamagemult", "lonewolfdamagemult",
-            "stonerollonly"
+            "stonerollonly", "requiredtags"
         };
 
         private void LoadAffixDefs()
@@ -438,9 +453,14 @@ namespace Touhou.Affixes
                     def.SpreadMult = ParseInvariantFloat(element.Attribute("spreadmult")?.Value, 1f);
                     def.SkillReqMult = ParseInvariantFloat(element.Attribute("skillreqmult")?.Value, 1f);
                     def.AmmoSaveChance = ParseInvariantFloat(element.Attribute("ammosavechance")?.Value, 0f);
+                    def.SelfWearSaveChance = ParseInvariantFloat(element.Attribute("selfwearsavechance")?.Value, 0f);
+                    def.LowConditionDamageMult = ParseInvariantFloat(element.Attribute("lowconditiondamagemult")?.Value, 1f);
                     def.DurabilitySaveChance = ParseInvariantFloat(element.Attribute("durabilitysavechance")?.Value, 0f);
                     def.StructureFixMult = ParseInvariantFloat(element.Attribute("structurefixmult")?.Value, 1f);
                     def.DeviceRepairMult = ParseInvariantFloat(element.Attribute("devicerepairmult")?.Value, 1f);
+                    def.RepairRamp = ParseInvariantFloat(element.Attribute("repairramp")?.Value, 0f);
+                    def.RepairRampDevice = ParseInvariantFloat(element.Attribute("repairrampdevice")?.Value, 0f);
+                    def.RepairRampMax = ParseInvariantFloat(element.Attribute("repairrampmax")?.Value, 0f);
                     def.CooldownDamageMult = ParseInvariantFloat(element.Attribute("cooldowndamagemult")?.Value, 1f);
                     def.CooldownDamageInterval = ParseInvariantFloat(element.Attribute("cooldowndamageinterval")?.Value, 30f);
                     def.LastShotDamageMult = ParseInvariantFloat(element.Attribute("lastshotdamagemult")?.Value, 1f);
@@ -462,6 +482,7 @@ namespace Touhou.Affixes
                     def.FirstShotDamageMult = ParseInvariantFloat(element.Attribute("firstshotdamagemult")?.Value, 1f);
                     def.LoneWolfDamageMult = ParseInvariantFloat(element.Attribute("lonewolfdamagemult")?.Value, 1f);
                     def.StoneRollOnly = bool.TryParse(element.Attribute("stonerollonly")?.Value, out bool sro) && sro;
+                    def.RequiredTags = element.Attribute("requiredtags")?.Value ?? "";
 
                     // 没见过的属性原样收进 CustomProps，以后加新词缀参数不用改解析代码
                     foreach (var attr in element.Attributes())
@@ -506,8 +527,10 @@ namespace Touhou.Affixes
                 AnyDamageTakenAffixes = AffixDefs.Values.Any(a => Math.Abs(a.DamageTakenMult - 1f) > 0.0001f);
                 AnyFuelMultAffixes = AffixDefs.Values.Any(a => Math.Abs(a.FuelConsumeMult - 1f) > 0.0001f);
                 AnyAmmoSaveAffixes = AffixDefs.Values.Any(a => a.AmmoSaveChance > 0f);
+                AnySelfWearSaveAffixes = AffixDefs.Values.Any(a => a.SelfWearSaveChance > 0f);
                 AnyDurabilitySaveAffixes = AffixDefs.Values.Any(a => a.DurabilitySaveChance > 0f);
                 AnyDeviceRepairAffixes = AffixDefs.Values.Any(a => Math.Abs(a.DeviceRepairMult - 1f) > 0.0001f);
+                AnyRepairRampAffixes = AffixDefs.Values.Any(a => a.RepairRamp > 0f || a.RepairRampDevice > 0f);
                 AnyCooldownDamageAffixes = AffixDefs.Values.Any(a => a.CooldownDamageMult > 1f);
                 AnyLastShotAffixes = AffixDefs.Values.Any(a => a.LastShotDamageMult > 1f);
                 AnySlotOneAffixes = AffixDefs.Values.Any(a =>
@@ -1086,43 +1109,50 @@ namespace Touhou.Affixes
                 }
                 kept.Add(id);
             }
-            // 奇迹结构：额外词缀只能依附奇迹存在。
+            // 额外槽结构：额外词缀只能依附宿主（奇迹/回收）存在。
             // 关键：标签走 HashSet 枚举、顺序不保证（实测读出过 steadfast,miracle,abyssal 这类乱序），
-            // 因此必须"按是否含奇迹"判断、再强制归位到 [0]，绝不能假设奇迹已经在 [0] 位——
+            // 因此必须"按是否含宿主"判断、再强制归位到 [0]，绝不能假设宿主已经在 [0] 位——
             // 旧逻辑用 kept[0] 判断，乱序时把整组额外词缀误判成"无主词的非法词缀"剔除，
             // 多词缀组被拆散并写回共享标签，连带污染另一上下文与存档（单词缀无此问题）
+            string hostId = null;
             if (kept.Count > 1)
             {
-                int mi = kept.IndexOf(MIRACLE_AFFIX_ID);
-                if (mi < 0)
+                int host = kept.FindIndex(IsExtraSlotHost);
+                if (host < 0)
                 {
-                    Warning($"Restore: {item.Name} (ID={item.ID}) has extra affixes without '{MIRACLE_AFFIX_ID}', extras dropped");
+                    Warning($"Restore: {item.Name} (ID={item.ID}) has extra affixes without an extra-slot host, extras dropped");
                     kept.RemoveRange(1, kept.Count - 1);
                 }
-                else if (mi > 0)
+                else
                 {
-                    var miracleId = kept[mi];
-                    kept.RemoveAt(mi);
-                    kept.Insert(0, miracleId);
+                    hostId = kept[host];
+                    if (host > 0)
+                    {
+                        kept.RemoveAt(host);
+                        kept.Insert(0, hostId);
+                    }
                 }
             }
-            // 槽位规则复核（规则收窄时剔除违规额外词缀）
-            if (kept.Count > 1)
+            // 槽位规则复核（规则收窄时剔除违规额外词缀）；奇迹两槽、回收一槽
+            if (hostId != null && kept.Count > 1)
             {
+                bool miracleHost = hostId == MIRACLE_AFFIX_ID;
                 bool aboveEpicSeen = false;
                 for (int i = kept.Count - 1; i >= 1; i--)
                 {
                     string reason = null;
                     if (kept.IndexOf(kept[i]) < i) reason = "duplicate affix";
-                    else if (i > 2) reason = "extra slots full (max 2)";
-                    else if (IsAboveEpic(AffixDefs[kept[i]].Tier) && aboveEpicSeen) reason = "only one Legendary/Special extra allowed";
+                    else if (IsExtraSlotHost(kept[i])) reason = "an extra-slot host cannot be an extra affix";
+                    else if (miracleHost && i > 2) reason = "extra slots full (max 2)";
+                    else if (!miracleHost && i > 1) reason = "extra slots full (max 1)";
+                    else if (miracleHost && IsAboveEpic(AffixDefs[kept[i]].Tier) && aboveEpicSeen) reason = "only one Legendary/Special extra allowed";
                     if (reason != null)
                     {
                         Warning($"Restore: extra affix '{kept[i]}' on {item.Name} (ID={item.ID}) violates slot rule ({reason}), dropped");
                         kept.RemoveAt(i);
                         continue;
                     }
-                    if (IsAboveEpic(AffixDefs[kept[i]].Tier)) aboveEpicSeen = true;
+                    if (miracleHost && IsAboveEpic(AffixDefs[kept[i]].Tier)) aboveEpicSeen = true;
                 }
             }
             return kept;
@@ -1326,6 +1356,18 @@ namespace Touhou.Affixes
             }
             // 只对东方模组物品生效；恢复/显示不走这条路不受影响，enchant 指令仍可强制绕过
             if (!IsTouhouModItem(item)) return false;
+            // 限定 tag 的词缀（回收）：只给带指定 tag 的物品，逗号分隔任一命中即可。
+            // 没加 tag 的武器不参与，防止拿它给普通武器刷词缀
+            if (!string.IsNullOrEmpty(affix.RequiredTags))
+            {
+                bool tagHit = false;
+                foreach (var raw in affix.RequiredTags.Split(','))
+                {
+                    var tag = raw.Trim();
+                    if (tag.Length > 0 && item.HasTag(tag)) { tagHit = true; break; }
+                }
+                if (!tagHit) return false;
+            }
             if (affix.Applicable == "all") return true;
             // 吗啡这类也带 MeleeWeapon 组件能敲人，但本质是药：只给 medical 词缀
             bool isMedical = IsMedicalItem(item);
@@ -1346,6 +1388,9 @@ namespace Touhou.Affixes
                         break;
                     case "tool":
                         if (IsTool(item)) return true;
+                        break;
+                    case "repairtool":
+                        if (IsRepairCapableTool(item)) return true;
                         break;
                     case "medical":
                         if (isMedical) return true;
@@ -1456,6 +1501,32 @@ namespace Touhou.Affixes
         public static bool IsTool(Item item) =>
             HasComponentNamed(item, "RepairTool")
             || (item.HasTag("tool") && !item.HasTag("backpack"));
+
+        // 真有修复能力的工具：StructureFixAmount/LevelWallFixAmount 为正，或自带设备修理加速（addedrepairspeedmultiplier），
+        // 或扳手/螺丝刀这类有设备修理 tag 的简单工具。
+        // 采矿机/切割器修复量是负数（拆墙），修复手枪是 0（只治人），只挂 RepairTool 组件不算，
+        // 否则"修复速度"词缀对它们不是没用就是反作用
+        public static bool IsRepairCapableTool(Item item)
+        {
+            if (item == null) return false;
+            if (item.Prefab != null && item.Prefab.AddedRepairSpeedMultiplier > 0f) return true;
+            if (item.Components != null && ReflectionCache.RepairToolType != null)
+            {
+                foreach (var c in item.Components)
+                {
+                    if (c == null || !ReflectionCache.RepairToolType.IsInstanceOfType(c)) continue;
+                    if (IsPositiveFloat(ReflectionCache.RepairToolStructureFixProp, c)) return true;
+                    if (IsPositiveFloat(ReflectionCache.RepairToolLevelWallFixProp, c)) return true;
+                }
+            }
+            return item.HasTag("mechanicalrepairtool") || item.HasTag("electricalrepairtool");
+        }
+
+        static bool IsPositiveFloat(PropertyInfo prop, object target)
+        {
+            try { return prop?.GetValue(target) is float f && f > 0f; }
+            catch { return false; }
+        }
 
         // 有 Wearable 且带 damagemodifier = 有减伤的护甲（潜水服/防弹衣/角色服装）
         public static bool IsArmor(Item item) => TryGetWearableDamageModifierCount(item, out int n) && n > 0;
@@ -1605,16 +1676,16 @@ namespace Touhou.Affixes
                 return;
             }
 
-            // 奇迹必须归位到主词缀 [0]：标签是 HashSet、枚举顺序不保证，恢复路径可能传入乱序列表
+            // 额外槽宿主（奇迹/回收）必须归位到主词缀 [0]：标签是 HashSet、枚举顺序不保证，恢复路径可能传入乱序列表
             // （如 steadfast,miracle,abyssal）。不归位的话主词缀记录、额外槽校验、存档顺序全乱套
             if (defs.Count > 1)
             {
-                int mi = defs.FindIndex(d => d.Identifier == MIRACLE_AFFIX_ID);
-                if (mi > 0)
+                int host = defs.FindIndex(d => IsExtraSlotHost(d.Identifier));
+                if (host > 0)
                 {
-                    var m = defs[mi];
-                    defs.RemoveAt(mi);
-                    defs.Insert(0, m);
+                    var h = defs[host];
+                    defs.RemoveAt(host);
+                    defs.Insert(0, h);
                 }
             }
 
@@ -1704,24 +1775,26 @@ namespace Touhou.Affixes
 
         public static bool IsAboveEpic(string tier) => tier == "Legendary" || tier == "Special";
 
-        // 奇迹额外槽校验（基于三级兜底读到的词缀列表，[0] 必须是奇迹）：
-        // 最多 2 个、不重复、不能再加奇迹、传说/特殊档最多 1 个
+        // 额外槽校验（基于三级兜底读到的词缀列表，[0] 必须是宿主）：
+        // 奇迹 = 最多 2 个、不重复、不能再加宿主、传说/特殊档最多 1 个；
+        // 回收 = 最多 1 个、不重复、不能是宿主、不限稀有度
         public static bool CanAddExtraAffix(List<string> currentIds, AffixDef def, out string reason)
         {
             reason = null;
-            if (currentIds == null || currentIds.Count == 0 || currentIds[0] != MIRACLE_AFFIX_ID)
+            if (currentIds == null || currentIds.Count == 0 || !IsExtraSlotHost(currentIds[0]))
             {
-                reason = "物品没有奇迹词缀";
+                reason = "物品没有额外槽词缀";
                 return false;
             }
-            if (def.Identifier == MIRACLE_AFFIX_ID)
+            if (IsExtraSlotHost(def.Identifier))
             {
-                reason = "奇迹不能再作为额外词缀";
+                reason = "回收/奇迹不能再作为额外词缀";
                 return false;
             }
-            if (currentIds.Count - 1 >= 2)
+            bool miracleHost = currentIds[0] == MIRACLE_AFFIX_ID;
+            if (currentIds.Count - 1 >= (miracleHost ? 2 : 1))
             {
-                reason = "两个额外词缀槽已满";
+                reason = miracleHost ? "两个额外词缀槽已满" : "额外词缀槽已满";
                 return false;
             }
             if (currentIds.Contains(def.Identifier))
@@ -1729,7 +1802,7 @@ namespace Touhou.Affixes
                 reason = "物品已有相同词缀";
                 return false;
             }
-            if (IsAboveEpic(def.Tier))
+            if (miracleHost && IsAboveEpic(def.Tier))
             {
                 for (int i = 1; i < currentIds.Count; i++)
                 {
@@ -1758,7 +1831,7 @@ namespace Touhou.Affixes
                 Applicable = parts[0].Applicable,
                 Effects = new List<StatusEffect>()
             };
-            float noAmmoSave = 1f, noDurabilitySave = 1f;
+            float noAmmoSave = 1f, noDurabilitySave = 1f, noSelfWearSave = 1f;
             float cooldownMult = 1f, cooldownInterval = 0f;
             float massMult = 1f, massThreshold = float.MaxValue;
             float thornsStunMiss = 1f;
@@ -1776,8 +1849,13 @@ namespace Touhou.Affixes
                 c.SkillReqMult *= p.SkillReqMult;
                 noAmmoSave *= 1f - p.AmmoSaveChance;
                 noDurabilitySave *= 1f - p.DurabilitySaveChance;
+                noSelfWearSave *= 1f - p.SelfWearSaveChance;
+                c.LowConditionDamageMult *= p.LowConditionDamageMult;
                 c.StructureFixMult *= p.StructureFixMult;
                 c.DeviceRepairMult *= p.DeviceRepairMult;
+                c.RepairRamp = Math.Max(c.RepairRamp, p.RepairRamp);
+                c.RepairRampDevice = Math.Max(c.RepairRampDevice, p.RepairRampDevice);
+                c.RepairRampMax = Math.Max(c.RepairRampMax, p.RepairRampMax);
                 if (p.CooldownDamageMult > 1f)
                 {
                     cooldownMult *= p.CooldownDamageMult;
@@ -1814,6 +1892,7 @@ namespace Touhou.Affixes
             }
             c.AmmoSaveChance = 1f - noAmmoSave;
             c.DurabilitySaveChance = 1f - noDurabilitySave;
+            c.SelfWearSaveChance = 1f - noSelfWearSave;
             c.ThornsStunChance = 1f - thornsStunMiss; // 无眩晕部件时为 0，ThornsStun=0 时本就不触发
             c.CooldownDamageMult = cooldownMult;
             if (cooldownInterval > 0f) c.CooldownDamageInterval = cooldownInterval;
@@ -2400,11 +2479,11 @@ namespace Touhou.Affixes
             var items = SnapshotItems();
             if (items == null) return; // 快照失败（加载线程正在改动物品列表），放弃本轮
 
-            // 先按 ID 归组一次：同 ID 的多实例都要补，逐条词缀扫全表太伤
+            // 只归组有词缀的 ID：同 ID 多实例都要补，普通物品不用分配列表
             var byId = new Dictionary<ushort, List<Item>>();
             foreach (var item in items)
             {
-                if (item == null || item.Removed) continue;
+                if (item == null || item.Removed || !ItemAffixes.ContainsKey(item.ID)) continue;
                 if (!byId.TryGetValue(item.ID, out var list)) byId[item.ID] = list = new List<Item>();
                 list.Add(item);
             }
@@ -2689,6 +2768,49 @@ namespace Touhou.Affixes
             return null;
         }
 
+        // 附魔台"取词缀"：目标 = 主词缀为回收、带一个额外词缀的物品 + 一块空白附魔石。
+        // 石头必须没有词缀（带词缀的石头走正常转移路径）；成功时输出要取下的词缀 id
+        public static bool TryGetSalvageExtraction(IEnumerable<Item> inputItems, out Item weapon, out Item stone, out string extraId)
+        {
+            weapon = null;
+            stone = null;
+            extraId = null;
+            Item blankStone = null;
+            bool hasMaterial = false;
+            foreach (var item in inputItems)
+            {
+                if (item == null) continue;
+                if (item.HasTag(STONE_TAG))
+                {
+                    if (blankStone == null && !HasAnyAffix(item)) blankStone = item;
+                    continue;
+                }
+                // 放了普通附魔材料就按正常附魔走，别把材料晾在输入栏里
+                if (MaterialTiers.Keys.Any(k => item.HasTag(k))) { hasMaterial = true; continue; }
+                if (weapon != null) continue;
+                if (TryGetCurrentAffixIds(item, out var ids) && ids.Count == 2
+                    && ids[0] == SALVAGE_AFFIX_ID)
+                {
+                    weapon = item;
+                    extraId = ids[1];
+                }
+            }
+            if (hasMaterial || weapon == null || blankStone == null) { extraId = null; return false; }
+            stone = blankStone;
+            return true;
+        }
+
+        static bool HasAnyAffix(Item item)
+        {
+            if (TryGetAffixData(item, out _)) return true;
+            if (TryGetRememberedAffix(item, out var rem) && rem.AffixId != null) return true;
+            foreach (var t in item.GetTags())
+            {
+                if (t.Value.StartsWith(AFFIX_TAG_PREFIX, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
+
         // 可附魔：武器/工具/医疗/外套槽穿戴/附魔石。纯装饰摆件不给，词缀只上有用的物品
         static bool IsEnchantableItem(Item item)
         {
@@ -2714,13 +2836,14 @@ namespace Touhou.Affixes
                 // 石头转移：词缀由石头指定，必须适用目标；不适用返回 null 让调用方取消（石头不消耗）
                 if (!AffixDefs.TryGetValue(weights.FixedAffix, out var fixedDef) || !IsAffixApplicable(fixedDef, item))
                     return null;
-                // 目标是奇迹物品（石头除外，转石头永远整组替换）且转的不是奇迹本身 → 过额外槽校验，违规就取消。
-                // 词缀列表走三级兜底读取：内存恢复前的窗口里若只读内存表会把"加额外词缀"误判成"替换"
-                if (fixedDef.Identifier != MIRACLE_AFFIX_ID && !item.HasTag(STONE_TAG)
-                    && TryGetCurrentAffixIds(item, out var curIds) && curIds[0] == MIRACLE_AFFIX_ID
+                // 目标是额外槽宿主物品（奇迹/回收；石头除外，转石头永远整组替换）且转的不是宿主本身
+                // → 过额外槽校验，违规就取消。词缀列表走三级兜底读取：内存恢复前的窗口里若只读内存表
+                // 会把"加额外词缀"误判成"替换"
+                if (!IsExtraSlotHost(fixedDef.Identifier) && !item.HasTag(STONE_TAG)
+                    && TryGetCurrentAffixIds(item, out var curIds) && curIds.Count > 0 && IsExtraSlotHost(curIds[0])
                     && !CanAddExtraAffix(curIds, fixedDef, out var slotReason))
                 {
-                    LogThrottled("miracle_slot_" + item.ID, 5.0,
+                    LogThrottled("extra_slot_" + item.ID, 5.0,
                         $"EnchantingStation: cannot add [{fixedDef.Identifier}] to {item.Name}: {slotReason}, transfer cancelled (stone not consumed)");
                     return null;
                 }
@@ -2785,7 +2908,12 @@ namespace Touhou.Affixes
 
         static bool IsToolAffix(AffixDef a) =>
             a.Applicable != null &&
-            a.Applicable.Split(',').Any(t => t.Trim().Equals("tool", StringComparison.OrdinalIgnoreCase));
+            a.Applicable.Split(',').Any(t =>
+            {
+                var k = t.Trim();
+                return k.Equals("tool", StringComparison.OrdinalIgnoreCase)
+                    || k.Equals("repairtool", StringComparison.OrdinalIgnoreCase);
+            });
     }
 
     public class AffixData
@@ -2858,12 +2986,20 @@ namespace Touhou.Affixes
         public float FuelConsumeMult = 1f;
         // 开火不耗弹药的概率（返还本次弹匣/电池耐久）
         public float AmmoSaveChance = 0f;
+        // 使用不消耗自身耐久的概率（持恒）
+        public float SelfWearSaveChance = 0f;
+        // 耐久越低伤害越高的满档倍率（余烬；耐久 25% 及以下吃满）
+        public float LowConditionDamageMult = 1f;
         // 用药不耗耐久的概率（一次性药物除外）
         public float DurabilitySaveChance = 0f;
         // 修船壳速度倍率（StructureFixAmount/LevelWallFixAmount 实例级乘算）
         public float StructureFixMult = 1f;
         // 设备修理速度倍率（GetStatValue(RepairSpeed) 加算）
         public float DeviceRepairMult = 1f;
+        // 匠人节奏：连续修理时每秒递增的修理加成（船体/设备分开，上限共用）
+        public float RepairRamp = 0f;
+        public float RepairRampDevice = 0f;
+        public float RepairRampMax = 0f;
         // 冷却就绪那一下的伤害倍率（金冠）
         public float CooldownDamageMult = 1f;
         public float CooldownDamageInterval = 30f;
@@ -2908,6 +3044,8 @@ namespace Touhou.Affixes
         public float LoneWolfDamageMult = 1f;
         // 只能 roll 到附魔石上（奇迹），再经石头转移
         public bool StoneRollOnly;
+        // 限定 tag：非空时只有带这些 tag（逗号分隔、任一命中）的物品才能附上（回收）
+        public string RequiredTags;
         // ComposeAffixDef 的合成标记：蓄力门槛已在合成时烘焙，补丁见到就跳过 ChargeGatedDamageApplies
         public bool IsComposite;
         // 没识别的自定义 XML 属性收这里，给后续拓展用

@@ -23,6 +23,8 @@ if CLIENT and not Game.IsSingleplayer then return end -- 服务端权威
 local Config = {
 	-- 提示日志：默认关闭；桩验证里由 __TLE_EtherRecyclerVerbose = true 打开
 	VerboseLogs = (__TLE_EtherRecyclerVerbose == true),
+	-- 临时诊断（排查"单件回收卡住"）：结算链路断点日志，排查完改回 false
+	DebugTimer = false,
 	CatalystCostPerItem = 1.0,              -- 每件武器消耗催化耐久（元素瓶满耐久 100 → 100 件/瓶）
 	SecondsPerItem = 0.5,                   -- 每件处理时间（秒）
 	MinSeconds = 0.5,                       -- 处理时间下限
@@ -42,6 +44,7 @@ local FixedRecipes = {
 local recipes = {}     -- 等级 tag（小写）→ { tag = 原始大小写, output = 产出 identifier, amount = 每件产出数 }
 local levelTagOrder = {} -- 按等级从低到高排序的 tag 列表（取件时从高往低查）
 local pendingTimers = {} -- 机器 → 计时令牌（取消/重开时自增，作废旧的 Timer 回调）
+local pendingDeadlines = {} -- 机器 → { token, deadline(ms) }；Timer.Wait 万一不回调，由看门狗补结算
 
 local function FindLastUser(machine)
 	local minDistance
@@ -522,13 +525,21 @@ Hook.Add("Touhou.Recycler.start", function(effect, deltaTime, item, targets, wor
 
 	local token = (pendingTimers[item] or 0) + 1
 	pendingTimers[item] = token
+	-- 看门狗兜底：按帧累加"剩余仿真秒数"（think 的 delta 是固定 1/60，见 skill 案例库 §10），
+	-- 多给 1.5 秒宽限；Timer.Wait 万一不回调/回调里出错，看门狗会补一次结算（end 幂等）
+	pendingDeadlines[item] = {
+		token = token,
+		remaining = seconds + 1.5,
+	}
 	Timer.Wait(function()
 		if pendingTimers[item] ~= token then
 			return -- 已取消或被新批次顶掉
 		end
 		pendingTimers[item] = nil
 		Hook.Call("Touhou.Recycler.end", nil, 0, item, nil, nil)
-	end, math.max(1, math.floor(seconds * 1000)))
+	-- 下限 1 秒：单件是 0.5 秒，实测这种亚秒延迟会不回调（多件 >=1 秒正常）——
+	-- 宁可单件多等半秒，也不要卡住
+	end, math.max(1000, math.floor(seconds * 1000)))
 
 	Notify(GetMachineName(), string.format(TextManager.Get("touhou.recycler.started").Value, BuildYieldText(yields), seconds), user)
 end)
@@ -541,6 +552,7 @@ Hook.Add("Touhou.Recycler.cancel", function(parameters)
 
 	-- 作废本次计时，之后把一切恢复原状（不产生消耗）
 	pendingTimers[machine] = (pendingTimers[machine] or 0) + 1
+	pendingDeadlines[machine] = nil
 
 	machine.GetComponentString("MemoryComponent").Value = ""
 	machine.GetComponentString("PowerContainer").Charge = 0
@@ -558,15 +570,24 @@ Hook.Add("Touhou.Recycler.cancel", function(parameters)
 end)
 
 Hook.Add("Touhou.Recycler.end", function(effect, deltaTime, item, targets, worldPosition)
+	if Config.DebugTimer then
+		local memory = item.GetComponentString("MemoryComponent")
+		print("[Touhou.Recycler] end 入口，结算表=" .. tostring(memory and memory.Value or "nil"))
+	end
 	-- 先把状态复位（灯灭=不再是"运行中"，面板据此把按钮文字切回"开始回收"）
 	item.GetComponentString("LightComponent").IsOn = false
 	pendingTimers[item] = (pendingTimers[item] or 0) + 1
+	pendingDeadlines[item] = nil
 	item.GetComponentString("CustomInterface").Labels = TextManager.Get("touhou.recycler.start").Value
 
 	local inputInventory, catalystInventory, outputInventory = GetMachineInventories(item)
 	if inputInventory == nil then
 		return
 	end
+
+	-- 先解锁：后面任何早退（比如催化不足）都不能把玩家的容器留在锁定状态
+	inputInventory.Locked = false
+	catalystInventory.Locked = false
 
 	local memory = item.GetComponentString("MemoryComponent")
 	local batch = memory.Value
@@ -690,3 +711,54 @@ end)
 if not initOk then
 	print("[Touhou.Recycler] 错误：回收表装载失败：" .. tostring(initErr))
 end
+
+-- ==================== 计时看门狗（兜底，防"一直回收中"） ====================
+-- 规则一条：**只要灯亮着**，就一定有批次该被结算 —— 于是
+--   ① 有计时条目 → 每帧扣仿真时间（think 的 delta 固定 1/60），扣到 <= 0 补跑一次 end；
+--   ② 没有计时条目（Timer.Wait 丢了 / 被清掉）→ 直接补跑一次 end；
+--   ③ 每 60 帧扫一次带本机 tag 的物品，把"灯亮但不在计时表里"的漏网机器也捞出来补结算。
+-- end 是幂等的（先清结算表，重复触发直接返回并复位），所以补跑不会双倍产出。
+-- 之所以不用 Timer.GetTime() 做基准：它的单位随 LuaCs 实现变（秒/毫秒），一旦判错超时就永不触发。
+local watchdogFrame = 0
+Hook.Add("think", "Touhou.Recycler.watchdog", function(deltaTime)
+	if CLIENT and not Game.IsSingleplayer then
+		return -- 服务端权威
+	end
+
+	-- think 的 delta 固定 1/60（案例库 §10）；但有的实现会传 0 或不传（§1 的坑）——
+	-- 只认"正数"，否则一律按一帧算，否则累加永远不动、兜底也不触发
+	local delta = (type(deltaTime) == "number" and deltaTime > 0) and deltaTime or (1 / 60)
+
+	-- ① / ② 计时表里的机器
+	for machine, entry in pairs(pendingDeadlines) do
+		if machine == nil or machine.Removed then
+			pendingDeadlines[machine] = nil
+		else
+			entry.remaining = entry.remaining - delta
+			if entry.remaining <= 0 then
+				pendingDeadlines[machine] = nil
+				if machine.GetComponentString("LightComponent").IsOn then
+					print("[Touhou.Recycler] 看门狗：计时超时未结算，补跑一次结算")
+					Hook.Call("Touhou.Recycler.end", nil, 0, machine, nil, nil)
+				end
+			end
+		end
+	end
+
+	-- ③ 低频扫描：捞漏网的（灯亮但不在计时表里 = 计时条目丢了）
+	watchdogFrame = watchdogFrame + 1
+	if watchdogFrame < 60 then
+		return
+	end
+	watchdogFrame = 0
+
+	for machine in Item.ItemList do
+		if machine ~= nil and not machine.Removed and machine.HasTag("Touhou_Ether_Recycler") then
+			local light = machine.GetComponentString("LightComponent")
+			if light ~= nil and light.IsOn and pendingDeadlines[machine] == nil then
+				print("[Touhou.Recycler] 看门狗：计时条目丢失，补跑一次结算")
+				Hook.Call("Touhou.Recycler.end", nil, 0, machine, nil, nil)
+			end
+		end
+	end
+end)
