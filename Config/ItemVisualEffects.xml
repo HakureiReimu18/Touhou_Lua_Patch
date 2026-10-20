@@ -2,7 +2,7 @@
 <!--
   独立客户端扫光配置；效果 tag 无需配置徽章映射。
   开关默认 enabled/inventory/previews/world=true；worldIntensity=.65（0..1），
-  cacheMegabytes=32（1..256 MiB）。Match 在 enabled=false 时返回 null；
+  cacheMegabytes=32（默认，1..256 MiB）；当前 64，给不死之烟的 aura 留缓存。Match 在 enabled=false 时返回 null；
   inventory/previews/world 与 worldIntensity 由对应绘制入口使用。
   文件缺失会禁用效果并输出一条 Warning，不会自动生成文件。
 
@@ -31,7 +31,7 @@
   实际已有的 I..V 五级依次为淡银、绿、青、蓝双扫、紫金彩虹碎光。
   强度逐级增加、周期逐级缩短，低 Glow 和有限碎光保留原图可读性。
 -->
-<ItemVisualEffects enabled="true" inventory="true" previews="true" world="true" worldIntensity="0.65" cacheMegabytes="32">
+<ItemVisualEffects enabled="true" inventory="true" previews="true" world="true" worldIntensity="0.65" cacheMegabytes="64">
   <AffixGlow enabled="true" intensity="0.30" inset="1" />
   <Profiles>
     <Profile id="level01" color="#dce3ee" intensity="0.16" period="5.8" width="0.12" slant="0.35" glow="0.005" pulse="0.01" rainbow="0" bands="1" sparkles="0" />
@@ -47,6 +47,39 @@
     <!-- 自定义例子：取消下行与 Rules 中示例的注释后生效，可单独调节三个染色参数。
     <Profile id="customMoon" color="#c7d8ff" intensity="0.26" period="4.5" width="0.12" slant="-0.25" glow="0.04" pulse="0.10" rainbow="0.15" bands="1" sparkles="2" />
     -->
+    <!-- 艺术样式预设：默认无物品绑定；用下方 identifier Rule 手动应用。 -->
+    <Profile id="artFlameEmber" effect="flame" color="#ff7138" intensity="1.00" accentColor="#ff4024" coreColor="#ffd68a" amplitude="0.36" speed="0.85" density="14" size="1.70" opacity="0.95" />
+    <Profile id="artFlameAzure" effect="flame" color="#47b8ff" intensity="0.95" accentColor="#2878ff" coreColor="#e9fdff" amplitude="0.48" speed="1.20" density="16" size="1.55" opacity="0.90" />
+    <Profile id="artFlameVerdant" effect="flame" color="#64ffb5" intensity="0.90" accentColor="#1edb8a" coreColor="#f5ffc9" amplitude="0.26" speed="0.65" density="12" size="1.30" opacity="0.85" />
+    <Profile id="artSolarGold" effect="solar" color="#ffd36a" intensity="0.90" accentColor="#ffb52e" coreColor="#fff5c8" amplitude="0.12" speed="0.55" density="20" size="1.40" opacity="0.78" />
+    <Profile id="artSolarCyan" effect="solar" color="#91f7ff" intensity="0.84" accentColor="#37ddff" coreColor="#fffbe8" amplitude="0.09" speed="0.42" density="16" size="1.20" opacity="0.74" />
+    <Profile id="artSolarViolet" effect="solar" color="#d7a8ff" intensity="0.88" accentColor="#a36bff" coreColor="#fff0d0" amplitude="0.15" speed="0.70" density="18" size="1.30" opacity="0.76" />
+    <Profile id="artEchoCyanRose" effect="echo" color="#5deaff" intensity="0.80" accentColor="#4ce8ff" coreColor="#ff78da" amplitude="0.26" speed="0.65" density="5" size="1.00" opacity="0.70" />
+    <Profile id="artEchoGoldBlue" effect="echo" color="#ffd67a" intensity="0.82" accentColor="#ffc25c" coreColor="#7bd8ff" amplitude="0.20" speed="0.45" density="4" size="0.95" opacity="0.68" />
+    <Profile id="artEchoRose" effect="echo" color="#ff86b8" intensity="0.74" accentColor="#ff6fa8" coreColor="#ffe3f0" amplitude="0.30" speed="0.80" density="6" size="1.00" opacity="0.66" />
+    <Profile id="artPhantomMoon" effect="phantom" color="#c9efff" intensity="0.72" accentColor="#d3f3ff" coreColor="#ffffff" amplitude="0.14" speed="0.28" density="4" size="1.10" opacity="0.58" />
+    <Profile id="artPhantomMint" effect="phantom" color="#bdffe9" intensity="0.70" accentColor="#baffea" coreColor="#f7ffff" amplitude="0.10" speed="0.20" density="3" size="1.00" opacity="0.52" />
+    <Profile id="artCyberMagentaCyan" effect="cyber" color="#ff4aa8" intensity="0.95" accentColor="#ff2c9b" coreColor="#32f6ff" amplitude="0.075" speed="6.00" density="8" size="1.00" opacity="0.88" />
+    <Profile id="artCyberLimeViolet" effect="cyber" color="#c4ff62" intensity="0.90" accentColor="#b7ff2d" coreColor="#a975ff" amplitude="0.065" speed="4.20" density="7" size="1.00" opacity="0.84" />
+    <Profile id="artBlocksVioletCyan" effect="blocks" color="#f4f2ff" intensity="1.00" accentColor="#b56dff" coreColor="#58f4ff" amplitude="0.24" speed="0.50" density="72" size="1.00" opacity="1.00" />
+    <Profile id="artBlocksRedGold" effect="blocks" color="#fff6ed" intensity="0.98" accentColor="#ff5e45" coreColor="#ffe181" amplitude="0.20" speed="0.38" density="64" size="1.00" opacity="1.00" />
+    <Profile id="artFrostBlue" effect="frost" color="#9ce5ff" intensity="0.80" accentColor="#89dcff" coreColor="#ffffff" amplitude="0.08" speed="0.35" density="12" size="1.25" opacity="0.72" />
+    <Profile id="artFrostMint" effect="frost" color="#b7ffe4" intensity="0.76" accentColor="#9affd4" coreColor="#f0fff9" amplitude="0.06" speed="0.24" density="10" size="1.05" opacity="0.68" />
+    <Profile id="artLightningViolet" effect="lightning" color="#c4a6ff" intensity="0.92" accentColor="#b489ff" coreColor="#fff6ad" amplitude="0.10" speed="5.00" density="9" size="1.20" opacity="0.86" />
+    <Profile id="artLightningCyan" effect="lightning" color="#83edff" intensity="0.88" accentColor="#45d7ff" coreColor="#ffffff" amplitude="0.07" speed="3.80" density="8" size="1.10" opacity="0.82" />
+    <Profile id="artRuneJade" effect="rune" color="#79ffdb" intensity="0.84" accentColor="#43f0c4" coreColor="#ffe093" amplitude="0.05" speed="0.30" density="22" size="1.30" opacity="0.76" />
+    <Profile id="artRuneCrimson" effect="rune" color="#ff91a4" intensity="0.80" accentColor="#ff5976" coreColor="#ffd98f" amplitude="0.03" speed="0.20" density="18" size="1.15" opacity="0.72" />
+    <!-- 分场景艺术样式：aura 为 UI 背景，contour 为真实轮廓能量晕；不更改等级 tag 扫光。 -->
+    <Profile id="artFlameAura" effect="flame" color="#ff7138" intensity="1.00" accentColor="#ff4024" coreColor="#ffd68a" amplitude="0.36" speed="0.85" density="14" size="1.05" opacity="0.78" presentation="aura" />
+    <Profile id="artFlameContour" effect="flame" color="#ff7138" intensity="1.00" accentColor="#ff4024" coreColor="#ffd68a" amplitude="0.36" speed="0.85" density="14" size="1.05" opacity="0.86" presentation="contour" />
+    <Profile id="artSolarAura" effect="solar" color="#ffd36a" intensity="0.90" accentColor="#ffb52e" coreColor="#fff5c8" amplitude="0.12" speed="0.55" density="20" size="1.05" opacity="0.78" presentation="aura" />
+    <Profile id="artSolarContour" effect="solar" color="#ffd36a" intensity="0.90" accentColor="#ffb52e" coreColor="#fff5c8" amplitude="0.12" speed="0.55" density="20" size="1.05" opacity="0.86" presentation="contour" />
+    <Profile id="artFrostAura" effect="frost" color="#9ce5ff" intensity="0.80" accentColor="#89dcff" coreColor="#ffffff" amplitude="0.08" speed="0.35" density="12" size="1.05" opacity="0.78" presentation="aura" />
+    <Profile id="artFrostContour" effect="frost" color="#9ce5ff" intensity="0.80" accentColor="#89dcff" coreColor="#ffffff" amplitude="0.08" speed="0.35" density="12" size="1.05" opacity="0.86" presentation="contour" />
+    <Profile id="artLightningAura" effect="lightning" color="#c4a6ff" intensity="0.92" accentColor="#b489ff" coreColor="#fff6ad" amplitude="0.10" speed="5.00" density="9" size="1.05" opacity="0.78" presentation="aura" />
+    <Profile id="artLightningContour" effect="lightning" color="#c4a6ff" intensity="0.92" accentColor="#b489ff" coreColor="#fff6ad" amplitude="0.10" speed="5.00" density="9" size="1.05" opacity="0.86" presentation="contour" />
+    <Profile id="artRuneAura" effect="rune" color="#79ffdb" intensity="0.84" accentColor="#43f0c4" coreColor="#ffe093" amplitude="0.05" speed="0.30" density="22" size="1.05" opacity="0.78" presentation="aura" />
+    <Profile id="artRuneContour" effect="rune" color="#79ffdb" intensity="0.84" accentColor="#43f0c4" coreColor="#ffe093" amplitude="0.05" speed="0.30" density="22" size="1.05" opacity="0.86" presentation="contour" />
   </Profiles>
   <Rules>
     <Rule tag="Touhou_Weapon_Level01" profile="level01" priority="1" />
@@ -59,8 +92,70 @@
     <Rule tag="Touhou_Weapon_Level08" profile="level08" priority="8" />
     <Rule tag="Touhou_Weapon_Level09" profile="level09" priority="9" />
     <Rule tag="Touhou_Weapon_Level10" profile="level10" priority="10" />
+    <!-- 只留不死之烟和弑星者的艺术特效；其余先注释，取消下面外层注释即可恢复。
+         五级其余武器会回落到上面的 Touhou_Weapon_Level05 等级扫光。 -->
+    <Rule identifier="Immortal_Moon_Smoke" priority="100" profile="artFlameAura" />
+    <Rule identifier="Touhou_Starkiller" priority="100" profile="artEchoCyanRose" />
+    <!--
+    <Rule identifier="Hisou_Sword" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Three_Fairies_Triple_Heavy_Crossbows" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Aphelion" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Bloom_Herald" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Blue_Rose" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Bustling_World" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Calamity_Torrent" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Calamity_Wither_Bloom" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Corrupted_Aphelion" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Corrupted_Deceit" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Corrupted_Savior" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Cyclone_Electromagnetic_Gun" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Deceit" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Dream_Luna_Sword" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Instant_Blue" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Leaves_Thorns" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Mercy" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Monorail" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Onmyo_Ball" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Pellen_Gun" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Rippling" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Savior" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Sparkfire_Shotgun" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Tengu_Special_Task_Assault_Rifle" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_TidalInk_Rail_Caster" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Tide" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_TSM_Corrupted_AA12" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_TSM_Corrupted_AWM" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_TSM_Corrupted_Twilight" priority="50" profile="artSolarViolet" />
+    <Rule identifier="youmuceremonialsword2" priority="50" profile="artSolarViolet" />
+    <Rule identifier="Touhou_Hellfire_Torch" priority="100" profile="artFlameAura" />
+    <Rule identifier="Touhou_Laevatein" priority="100" profile="artFlameAura" />
+    <Rule identifier="Pollution_Magician_Clothes02" profile="artEchoCyanRose" priority="100"/>
+    <Rule identifier="Touhou_Saigyou_Ayakashi_Branch_Gun" profile="artLightningAura" priority="100"/>
+    <Rule identifier="Touhou_Superconducting_Electromagnetic_Gun" profile="artCyberMagentaCyan" priority="100"/>
+    <Rule identifier="Touhou_Chimeric_Dreamer" profile="artSolarCyan" priority="100"/>
+    <Rule identifier="Touhou_Lunar_Phantasm" profile="artEchoRose" priority="100"/>
+    <Rule identifier="Touhou_Hourai_Bullet_Branches" profile="artRuneJade" priority="100"/>
+    <Rule identifier="Touhou_Unidentified_Phenomena_Emitter" profile="artSolarCyan" priority="100"/>
+    <Rule identifier="Touhou_Rose_Wand" profile="artSolarCyan" priority="100"/>
+    <Rule identifier="Touhou_Royal_Diamond_Ring" profile="artSolarCyan" priority="100"/>
+    <Rule identifier="Touhou_Baka_Sword" profile="artFrostContour" priority="100"/>
+    <Rule identifier="Touhou_Gungnier" profile="artSolarGold" priority="100"/>
+    <Rule identifier="Touhou_Alpha_Omega" profile="artSolarViolet" priority="100"/>
+    <Rule identifier="Touhou_Sentient_Greatcleaver" profile="artRuneContour" priority="100"/>
+    -->
     <!-- 自定义 tag 不默认启用；无需与徽章映射关联。优先级 100 可覆盖默认等级。
     <Rule tag="MyMod_MoonWeapon" profile="customMoon" priority="100" />
+    -->
+    <!-- 艺术样式绑定示例（全部默认停用；每个 identifier 换成你自己的物品 ID）。
+    <Rule identifier="your_flame_item_id" profile="artFlameEmber" priority="100" />
+    <Rule identifier="your_solar_item_id" profile="artSolarGold" priority="100" />
+    <Rule identifier="your_echo_item_id" profile="artEchoCyanRose" priority="100" />
+    <Rule identifier="your_phantom_item_id" profile="artPhantomMoon" priority="100" />
+    <Rule identifier="your_cyber_item_id" profile="artCyberMagentaCyan" priority="100" />
+    <Rule identifier="your_blocks_item_id" profile="artBlocksVioletCyan" priority="100" />
+    <Rule identifier="your_frost_item_id" profile="artFrostBlue" priority="100" />
+    <Rule identifier="your_lightning_item_id" profile="artLightningViolet" priority="100" />
+    <Rule identifier="your_rune_item_id" profile="artRuneJade" priority="100" />
     -->
   </Rules>
 </ItemVisualEffects>

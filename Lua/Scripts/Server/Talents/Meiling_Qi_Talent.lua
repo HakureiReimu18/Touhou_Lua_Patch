@@ -169,6 +169,11 @@ end
 -- （它 Before 备份、After 还原原始倍率；init.lua 中本脚本须排在它之后 dofile）。
 local allout_proc_state = setmetatable({}, { __mode = "k" }) -- attack -> { proc = bool }
 
+-- 武术武器整件共用一个 Attack，每次起招清一次；同一招打到多个目标仍只掷一次。
+Hook.Add("touhouMartialStrikeStart", "Meiling.QiTalent.StrikeStart", function(attacker, attack)
+    if attack ~= nil then allout_proc_state[attack] = nil end
+end)
+
 Hook.Patch("Barotrauma.Character", "ApplyAttack", function(instance, ptable)
     local attacker = ptable["attacker"]
     if attacker == nil or attacker.IsDead or attacker.Removed then return end
@@ -272,8 +277,13 @@ end)
 
 -- 暂停检测：think 钩子在暂停时仍会触发，气的增减必须跳过（pcall 包模块级命名函数，避免每帧建闭包）
 local function read_game_paused()
-    if GameMain ~= nil and GameMain.Instance ~= nil then
-        return GameMain.Instance.Paused
+    -- 通道 1：GameMain 实例属性（单机可用，部分上下文取不到）
+    if GameMain ~= nil and GameMain.Instance ~= nil and GameMain.Instance.Paused then
+        return true
+    end
+    -- 通道 2：暂停菜单状态（PerformanceFix 验证过；GameMain 取不到时兜底）
+    if GUI ~= nil and GUI.GUI ~= nil and GUI.GUI.PauseMenuOpen then
+        return true
     end
     return false
 end

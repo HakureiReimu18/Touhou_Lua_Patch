@@ -33,6 +33,7 @@ namespace Touhou.WeaponBadges
             if (PluginService == null || !PluginService.TryGetPackageForPlugin<Plugin>(out var package))
             { throw new InvalidOperationException("Cannot locate the weapon badge content package."); }
             config = BadgeConfig.Load(package.Dir);
+            SoftEffectAtlas.Initialize(package.Dir);
             try
             {
                 SweepConfig sweepConfig = SweepConfig.Load(package.Dir);
@@ -93,6 +94,7 @@ namespace Touhou.WeaponBadges
             EffectSettings.Dispose(visualEffects);
             visualEffects?.Dispose();
             visualEffects = null;
+            SoftEffectAtlas.Dispose();
             foreach (BadgeImage image in images.Values) { image.Dispose(); }
             images.Clear();
             failedImages.Clear();

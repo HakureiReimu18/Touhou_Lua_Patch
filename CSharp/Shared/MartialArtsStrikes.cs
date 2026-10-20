@@ -34,8 +34,13 @@ namespace Touhou.MartialArts
             harmony.PatchAll(typeof(StrikeUsePatch));
             harmony.PatchAll(typeof(StrikeMeleePosePatch));
             harmony.PatchAll(typeof(StrikeItemRemovedPatch));
-            harmony.PatchAll(typeof(MartialWearableEquipPatch));
-            harmony.PatchAll(typeof(MartialWearableDropPatch));
+            harmony.PatchAll(typeof(StrikeBodyPosePatch));
+            harmony.PatchAll(typeof(MartialWearableProtectionPatch));
+#if CLIENT
+            harmony.PatchAll(typeof(MartialWearableDrawPatch));
+            MartialWearableArmDepthPatch.TryInstall(harmony);
+#endif
+            MartialWearableManager.Enabled = true;
             LuaCsSetup.Instance.Hook.Add("roundEnd", "Touhou.MartialArts.RoundEnd", OnRoundEnd);
         }
 
@@ -46,6 +51,7 @@ namespace Touhou.MartialArts
             LuaCsSetup.Instance.Hook.Remove("roundEnd", "Touhou.MartialArts.RoundEnd");
             harmony?.UnpatchSelf();
             oneTimeInitDone = false;
+            MartialWearableManager.Enabled = false;
             // 顺序要紧：先把注入的原版攻击还原回去，再清表——ClearAll 会连注入记录一起清掉
             StrikeManager.RestoreInjections();
             StrikeManager.ClearAll();
@@ -124,6 +130,7 @@ namespace Touhou.MartialArts
             public bool IsKick;
             public float Reach, HeightBias, MaxAimAngleDeg, AimMinDeg, AimMaxDeg, HitWindowStart, Duration;
             public float Force;   // 蹬腿驱动力（拳类不用）
+            public float BodyLean, BodyDip;
         }
 
         // ---------------- 失控防护 ----------------
@@ -203,6 +210,8 @@ namespace Touhou.MartialArts
             def.HeightBias = comp.Height;
             def.Duration = comp.Duration;
             def.Force = comp.Force;
+            def.BodyLean = PunchMotion.SafeValue(comp.BodyLean, 0f, 0f, 12f);
+            def.BodyDip = PunchMotion.SafeValue(comp.BodyDip, 0f, 0f, 0.08f);
             return def;
         }
 
@@ -216,6 +225,8 @@ namespace Touhou.MartialArts
             def.HeightBias = el.GetAttributeFloat("height", def.HeightBias);
             def.Duration = el.GetAttributeFloat("duration", def.Duration);
             def.Force = el.GetAttributeFloat("force", def.Force);
+            def.BodyLean = PunchMotion.SafeValue(el.GetAttributeFloat("bodylean", 0f), 0f, 0f, 12f);
+            def.BodyDip = PunchMotion.SafeValue(el.GetAttributeFloat("bodydip", 0f), 0f, 0f, 0.08f);
             return def;
         }
 
@@ -371,6 +382,8 @@ namespace Touhou.MartialArts
             if (ac.SimplePhysicsEnabled) { Refuse("简化物理中"); return; }
             if (ac.IsClimbing) { Refuse("爬梯子中"); return; }
             if (!c.AllowInput || c.Stun > 0.01f) { Refuse("无法行动"); return; }
+            if (weaponItem != null && !MartialWearableManager.IsHeld(weaponItem, c))
+            { Refuse("武器不在手上"); return; }
 
             // 空手拳类无法摆曲线（没有道具可驱动）——提示持武器
             if (!def.IsKick && weaponItem == null) { Refuse("拳类需要持有武术武器"); return; }
@@ -411,7 +424,7 @@ namespace Touhou.MartialArts
             else
             {
                 Limb lh = ac.GetLimb(LimbType.LeftHand), rh = ac.GetLimb(LimbType.RightHand);
-                Limb weaponHand = NearestLimb(weaponItem.SimPosition, lh, rh);
+                Limb weaponHand = c.Inventory.IsInLimbSlot(weaponItem, InvSlotType.RightHand) ? rh : lh;
                 limb = weaponHand;
                 if (comboIndex == 1)
                 {
@@ -422,13 +435,16 @@ namespace Touhou.MartialArts
                     foreach (var held in c.HeldItems)
                     {
                         if (held == null || held == weaponItem) continue;
-                        if (ReadWeaponConfig(held, out _, out _)) { otherWeapon = held; break; }
+                        if (ReadWeaponConfig(held, out _, out var heldDef) && !heldDef.IsKick)
+                        { otherWeapon = held; break; }
                     }
                     if (otherWeapon != null)
                     {
                         limb = weaponHand == lh ? rh : lh;
                         weaponItem = otherWeapon;
                         mw = weaponItem.GetComponent<MeleeWeapon>();
+                        // 混搭时按真正出拳的武器取动作，不把快拳节奏套到重拳上。
+                        ReadWeaponConfig(weaponItem, out _, out def);
                     }
                 }
             }
@@ -475,6 +491,15 @@ namespace Touhou.MartialArts
 
             active[c] = st;
             ac.LockFlipping(LockFlipTime);
+            if (mw?.Attack != null)
+            {
+                try
+                {
+                    // Attack 是物品上的长寿命对象，“每招一次”不能只靠它的引用去重。
+                    LuaCsSetup.Instance.Hook.Call("touhouMartialStrikeStart", new object[] { c, mw.Attack });
+                }
+                catch (Exception e) { Log($"出招天赋通知异常：{e.Message}", true); }
+            }
         }
 
         /// <summary>备份手部拉力关节状态（收招时还原）</summary>
@@ -491,13 +516,6 @@ namespace Touhou.MartialArts
             if (lb == null) return la;
             bool aIsRear = dir > 0 ? la.SimPosition.X < lb.SimPosition.X : la.SimPosition.X > lb.SimPosition.X;
             return aIsRear ? la : lb;
-        }
-
-        static Limb NearestLimb(Vector2 pos, Limb la, Limb lb)
-        {
-            if (la == null) return lb;
-            if (lb == null) return la;
-            return Vector2.DistanceSquared(la.SimPosition, pos) <= Vector2.DistanceSquared(lb.SimPosition, pos) ? la : lb;
         }
 
         // ---------------- 命中（距离判定 → 武器 Attack 结算） ----------------
@@ -590,7 +608,9 @@ namespace Touhou.MartialArts
             float dt = (float)Timing.Step;
             st.Timer += dt;
 
-            if (c.Removed || c.IsDead || c.IsRagdolled || ac.IsClimbing || st.Limb.IsSevered || !st.Limb.body.Enabled
+            if (c.Removed || c.IsDead || c.IsKnockedDownOrRagdolled || ac.IsClimbing
+                || !c.AllowInput || c.Stun > 0.01f || st.Limb.Removed || st.Limb.IsSevered || !st.Limb.body.Enabled
+                || (st.WeaponItem != null && !MartialWearableManager.IsHeld(st.WeaponItem, c))
                 || st.Timer > AbortTimeout)
             {
                 End(c, st);
@@ -710,6 +730,25 @@ namespace Touhou.MartialArts
         static float EaseOut(float t) { t = MathHelper.Clamp(t, 0f, 1f); return 1f - (1f - t) * (1f - t); }
         static float SmoothStep(float t) { t = MathHelper.Clamp(t, 0f, 1f); return t * t * (3f - 2f * t); }
 
+        internal static bool BodyPose(AnimController ac, out float lean, out float dip)
+        {
+            lean = dip = 0f;
+            var c = ac?.character;
+            if (c == null || c.Removed || c.IsDead || !c.AllowInput || c.Stun > 0.01f
+                || c.IsKnockedDownOrRagdolled || ac.InWater || !ac.OnGround
+                || ac.IsClimbing || ac.SimplePhysicsEnabled
+                || !active.TryGetValue(c, out var st) || st.Def.IsKick
+                || st.Limb.Removed || st.Limb.IsSevered || !st.Limb.body.Enabled
+                || !MartialWearableManager.IsHeld(st.WeaponItem, c)) return false;
+
+            var pose = PunchMotion.Evaluate(st.Timer, st.Def.Duration);
+            float amount = ac.TargetMovement.LengthSquared() > 0.01f ? 0.4f : 1f;
+            // TorsoAngle 的朝向翻转仍交给原版；负角度才是向面前倾。
+            lean = -MathHelper.ToRadians(st.Def.BodyLean) * pose.Lean * amount;
+            dip = st.Def.BodyDip * pose.Dip * amount * ac.RagdollParams.JointScale;
+            return lean != 0f || dip != 0f;
+        }
+
         // ---------------- 武器姿态（出招曲线 + 架势；StrikeMeleePosePatch 调用） ----------------
 
         internal static bool MeleeUpdateOverride(MeleeWeapon w, float deltaTime)
@@ -729,7 +768,8 @@ namespace Touhou.MartialArts
                 var picker0 = w.picker;
                 if (picker0 == null || picker0.IsRagdolled || picker0.IsKnockedDownOrRagdolled
                     || picker0.AnimController == null || picker0.AnimController.IsClimbing
-                    || picker0.AnimController.SimplePhysicsEnabled)
+                    || picker0.AnimController.SimplePhysicsEnabled
+                    || !MartialWearableManager.IsHeld(w.item, picker0))
                 {
                     End(striker, st);
                     return true;
@@ -761,7 +801,9 @@ namespace Touhou.MartialArts
                     // 空手另一只手拉起到戒备位（用固定原点，不用实时躯干——随动会反馈漂移）
                     Limb offHand = st.Limb.type == LimbType.LeftHand
                         ? ac.GetLimb(LimbType.RightHand) : ac.GetLimb(LimbType.LeftHand);
-                    if (offHand != null && !offHand.IsSevered && offHand.body.Enabled)
+                    var offSlot = st.Limb.type == LimbType.LeftHand ? InvSlotType.RightHand : InvSlotType.LeftHand;
+                    if (offHand != null && !offHand.IsSevered && offHand.body.Enabled
+                        && striker.Inventory.GetItemInLimbSlot(offSlot) == null)
                     {
                         offHand.PullJointEnabled = true;
                         offHand.PullJointWorldAnchorA = st.OriginPos + new Vector2(OffHandGuardOffset.X * st.StartDir, OffHandGuardOffset.Y);
@@ -879,7 +921,7 @@ namespace Touhou.MartialArts
                 catch { }
             }
             // 武器显式归位一次（立刻回到持握位，不等 vanilla 下一帧）
-            if (st.Melee != null && c != null && !c.Removed && c.AnimController != null)
+            if (st.Melee != null && MartialWearableManager.IsHeld(st.Melee.item, c))
             {
                 try
                 {
@@ -898,6 +940,7 @@ namespace Touhou.MartialArts
 
         public static void ClearAll()
         {
+            foreach (var kv in active.ToArray()) End(kv.Key, kv.Value);
             active.Clear();
             comboTrack.Clear();
             strikeIdCache.Clear();
@@ -914,6 +957,36 @@ namespace Touhou.MartialArts
                 try { limbAttackField?.SetValue(kv.Key, kv.Value); } catch { }
             }
             originalAttacks.Clear();
+        }
+    }
+
+    [HarmonyPatch]
+    public static class StrikeBodyPosePatch
+    {
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            foreach (string name in new[] { "TorsoAngle", "TorsoPosition", "HeadPosition" })
+            {
+                var getter = AccessTools.PropertyGetter(typeof(AnimController), name);
+                if (getter != null) yield return getter;
+                else StrikeManager.Log($"身体发力停用一项：找不到 {name}", true);
+            }
+        }
+
+        static void Postfix(AnimController __instance, MethodBase __originalMethod, ref float? __result)
+        {
+            if (!__result.HasValue) return;
+            try
+            {
+                if (!StrikeManager.BodyPose(__instance, out float lean, out float dip)) return;
+                switch (__originalMethod.Name)
+                {
+                    case "get_TorsoAngle": __result += lean; break;
+                    case "get_TorsoPosition": __result -= dip; break;
+                    case "get_HeadPosition": __result -= dip * 0.7f; break;
+                }
+            }
+            catch { /* 姿态取不到就保持原版，不在物理更新里抛异常。 */ }
         }
     }
 

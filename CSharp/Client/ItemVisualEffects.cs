@@ -16,10 +16,19 @@ namespace Touhou.WeaponBadges
         private struct DrawContext
         {
             internal SweepProfile Profile;
+            internal SweepProfile[] Profiles;
+            internal EffectSurface Surface;
             internal Sprite Sprite;
             internal float Seed;
             internal bool World;
             internal bool StraightAlpha;
+        }
+
+        private enum DrawStage { Background, Replacement, Overlay }
+        private struct SpriteDrawState
+        {
+            internal bool Counted, Replaced;
+            internal int Submitted, RemainingLayers;
         }
 
         private static ItemVisualEffects instance;
@@ -27,6 +36,7 @@ namespace Touhou.WeaponBadges
         private readonly Plugin plugin;
         private readonly SweepConfig config;
         private readonly SweepRenderer renderer;
+        internal static EffectSurface CurrentSurface => current.Surface;
 
         internal ItemVisualEffects(Plugin plugin, SweepConfig config)
         {
@@ -50,7 +60,8 @@ namespace Touhou.WeaponBadges
             MethodInfo spriteDraw = AccessTools.Method(typeof(Sprite), "Draw", new[] { typeof(ISpriteBatch), typeof(Vector2),
                 typeof(Color), typeof(Vector2), typeof(float), typeof(Vector2), typeof(SpriteEffects), typeof(float?) });
             if (spriteDraw == null) { throw new MissingMethodException("Sprite.Draw(ISpriteBatch,...Vector2 scale)"); }
-            harmony.Patch(spriteDraw, postfix: new HarmonyMethod(typeof(ItemVisualEffects), nameof(AfterSpriteDraw)));
+            harmony.Patch(spriteDraw, prefix: new HarmonyMethod(typeof(ItemVisualEffects), nameof(BeforeSpriteDraw)),
+                postfix: new HarmonyMethod(typeof(ItemVisualEffects), nameof(AfterSpriteDraw)));
             harmony.Patch(AccessTools.Method(typeof(GameMain), "Draw", new[] { typeof(GameTime) }),
                 postfix: new HarmonyMethod(typeof(ItemVisualEffects), nameof(EndFrame)));
             DebugConsole.NewMessage($"[Touhou.WeaponBadges] 扫光已加载：{config.Rules.Count} 条 tag 规则。", Color.LightGreen);
@@ -59,8 +70,8 @@ namespace Touhou.WeaponBadges
             {
                 MethodInfo method = AccessTools.Method(type, name, parameters);
                 if (method == null) { throw new MissingMethodException(type.FullName, name); }
-                harmony.Patch(method, prefix: new HarmonyMethod(typeof(ItemVisualEffects), prefix),
-                    finalizer: new HarmonyMethod(typeof(ItemVisualEffects), finalizer),
+                harmony.Patch(method, prefix: new HarmonyMethod(typeof(ItemVisualEffects), prefix) { priority = Priority.First },
+                    finalizer: new HarmonyMethod(typeof(ItemVisualEffects), finalizer) { priority = Priority.Last },
                     transpiler: transpiler == null ? null : new HarmonyMethod(typeof(ItemVisualEffects), transpiler),
                     ilmanipulator: null);
             }
@@ -79,12 +90,18 @@ namespace Touhou.WeaponBadges
         }
 
         private DrawContext ForItem(Item item, ItemPrefab prefab, Sprite sprite, bool world)
+            => ForSurface(item, prefab, sprite, world ? EffectSurface.World : EffectSurface.Inventory);
+
+        private DrawContext ForSurface(Item item, ItemPrefab prefab, Sprite sprite, EffectSurface surface)
         {
-            if (!config.Enabled || sprite == null || (world && (!config.World || config.WorldIntensity <= 0))) { return default; }
-            SweepProfile profile = config.Match(item, prefab);
-            if (profile == null) { return default; }
+            bool world = surface == EffectSurface.World;
+            DrawContext empty = new DrawContext { Surface = surface };
+            if (!config.Enabled || sprite == null || (world && (!config.World || config.WorldIntensity <= 0))) { return empty; }
+            SweepProfile[] profiles = config.MatchForSurface(item, prefab, surface);
+            if (profiles.Length == 0) { return empty; }
             int hash = prefab?.Identifier.GetHashCode() ?? 0;
-            return new DrawContext { Profile = profile, Sprite = sprite, World = world,
+            return new DrawContext { Profile = profiles[0], Profiles = profiles, Surface = surface,
+                Sprite = sprite, World = world, StraightAlpha = true,
                 Seed = (hash & 1023) / 1024f };
         }
 
@@ -117,35 +134,78 @@ namespace Touhou.WeaponBadges
         private static void BeginPreview(GUIImage __instance, out DrawContext __state)
         {
             __state = current;
-            current = default;
+            current = new DrawContext { Surface = EffectSurface.Preview };
             if (instance == null || !instance.config.Enabled || !instance.config.Previews || !__instance.Visible || __instance.Sprite == null ||
                 !instance.plugin.TryResolveItem(__instance, out Item item, out ItemPrefab prefab)) { return; }
             Sprite sprite = __instance.Sprite;
             // Ignore UI decorations (quality/price icons etc.) under an item row.
             if (sprite != prefab.InventoryIcon && sprite != prefab.Sprite && sprite != item?.OverrideInventorySprite) { return; }
-            current = instance.ForItem(item, prefab, sprite, false);
-            current.StraightAlpha = __instance.BlendState == BlendState.NonPremultiplied || __instance.BlendState == BlendState.Additive;
+            current = instance.ForSurface(item, prefab, sprite, EffectSurface.Preview);
+            // Barotrauma's SpriteBatch default is NonPremultiplied, including null.
+            BlendState blend = __instance.BlendState;
+            current.StraightAlpha = blend == null || blend.ColorSourceBlend != Blend.One ||
+                blend.ColorDestinationBlend != Blend.InverseSourceAlpha;
         }
 
         private static void BeginFabricatorOutput(FabricationRecipe ___fabricatedItem, FabricationRecipe ___selectedItem, out DrawContext __state)
         {
             __state = current;
-            current = default;
+            current = new DrawContext { Surface = EffectSurface.Preview };
             if (instance == null || !instance.config.Enabled || !instance.config.Previews) { return; }
             ItemPrefab prefab = (___fabricatedItem ?? ___selectedItem)?.TargetItem;
             current = prefab != null
-                ? instance.ForItem(null, prefab, prefab.InventoryIcon ?? prefab.Sprite, false) : default;
+                ? instance.ForSurface(null, prefab, prefab.InventoryIcon ?? prefab.Sprite, EffectSurface.Preview)
+                : new DrawContext { Surface = EffectSurface.Preview };
         }
 
         private static void EndScope(DrawContext __state) { current = __state; }
 
-        private static void AfterSpriteDraw(Sprite __instance, ISpriteBatch spriteBatch, Vector2 pos, Color color,
-            Vector2 origin, float rotate, Vector2 scale, SpriteEffects spriteEffect, float? depth)
+        private static bool BeforeSpriteDraw(Sprite __instance, ISpriteBatch spriteBatch, Vector2 pos, Color color,
+            Vector2 origin, float rotate, Vector2 scale, SpriteEffects spriteEffect, float? depth, out SpriteDrawState __state)
         {
-            if (instance == null || !instance.config.Enabled || current.Profile == null || !ReferenceEquals(__instance, current.Sprite)) { return; }
-            instance.renderer.Draw(spriteBatch, __instance, __instance.SourceRect, pos + __instance.offset, origin,
-                __instance.rotation + rotate, scale, spriteEffect, depth ?? __instance.Depth, color,
-                current.Profile, current.Seed, current.World, instance.config.WorldIntensity, current.StraightAlpha);
+            __state = default;
+            if (instance == null || !instance.config.Enabled || current.Profiles == null ||
+                !ReferenceEquals(__instance, current.Sprite)) { return true; }
+            __state.RemainingLayers = current.Profiles.Length;
+            instance.DrawProfiles(spriteBatch, __instance.SourceRect, pos + __instance.offset, origin,
+                __instance.rotation + rotate, scale, spriteEffect, depth ?? __instance.Depth, color, DrawStage.Background, ref __state);
+            __state.Replaced = instance.DrawProfiles(spriteBatch, __instance.SourceRect, pos + __instance.offset, origin,
+                __instance.rotation + rotate, scale, spriteEffect, depth ?? __instance.Depth, color, DrawStage.Replacement, ref __state);
+            // A cold/over-budget/unsupported effect keeps the original item visible.
+            return !__state.Replaced;
+        }
+
+        private static void AfterSpriteDraw(Sprite __instance, ISpriteBatch spriteBatch, Vector2 pos, Color color,
+            Vector2 origin, float rotate, Vector2 scale, SpriteEffects spriteEffect, float? depth, SpriteDrawState __state)
+        {
+            if (instance == null || !instance.config.Enabled || current.Profiles == null || !ReferenceEquals(__instance, current.Sprite)) { return; }
+            instance.DrawProfiles(spriteBatch, __instance.SourceRect, pos + __instance.offset, origin,
+                __instance.rotation + rotate, scale, spriteEffect, depth ?? __instance.Depth, color, DrawStage.Overlay, ref __state);
+        }
+
+        private bool DrawProfiles(ISpriteBatch batch, Rectangle source, Vector2 position, Vector2 origin,
+            float rotation, Vector2 scale, SpriteEffects effects, float depth, Color color,
+            DrawStage stage, ref SpriteDrawState state)
+        {
+            bool drawn = false;
+            foreach (SweepProfile profile in current.Profiles)
+            {
+                DrawStage layer = profile.ArtEffect?.Kind == "blocks" ? DrawStage.Replacement
+                    : !current.World && profile.ArtEffect?.Presentation == "aura" ? DrawStage.Background : DrawStage.Overlay;
+                if (layer != stage) { continue; }
+                int remaining = renderer.SubmissionLimit - state.Submitted;
+                bool legacySweep = current.Profiles.Length == 1 && profile.ArtEffect == null;
+                int allocation = legacySweep ? 0 : remaining / Math.Max(1, state.RemainingLayers);
+                state.RemainingLayers--;
+                if (!legacySweep && allocation < 1) { continue; }
+                bool success = renderer.DrawLayer(batch, current.Sprite, source, position, origin, rotation,
+                    scale, effects, depth, color, profile, current.Seed, current.World,
+                    config.WorldIntensity, current.StraightAlpha, allocation, state.Counted);
+                state.Submitted += renderer.LastSubmissions;
+                state.Counted |= success;
+                drawn |= success;
+            }
+            return drawn;
         }
 
         private static IEnumerable<CodeInstruction> DrawSlotTranspiler(IEnumerable<CodeInstruction> instructions)
@@ -217,11 +277,17 @@ namespace Touhou.WeaponBadges
         private static void DrawPreview(SpriteBatch batch, Texture2D texture, Vector2 position, Rectangle? source,
             Color color, float rotation, Vector2 origin, float scale, SpriteEffects effects, float depth)
         {
-            batch.Draw(texture, position, source, color, rotation, origin, scale, effects, depth);
-            if (instance == null || !instance.config.Enabled || current.Profile == null || current.Sprite == null || texture != current.Sprite.Texture) { return; }
-            instance.renderer.Draw(batch, current.Sprite, source ?? new Rectangle(0, 0, texture.Width, texture.Height),
-                position, origin, rotation, new Vector2(scale), effects, depth, color,
-                current.Profile, current.Seed, false, instance.config.WorldIntensity, current.StraightAlpha);
+            bool active = instance != null && instance.config.Enabled && current.Profiles != null && current.Sprite != null && texture == current.Sprite.Texture;
+            if (!active) { batch.Draw(texture, position, source, color, rotation, origin, scale, effects, depth); return; }
+            var state = new SpriteDrawState { RemainingLayers = current.Profiles.Length };
+            Rectangle rect = source ?? new Rectangle(0, 0, texture.Width, texture.Height);
+            instance.DrawProfiles(batch, rect, position, origin, rotation, new Vector2(scale), effects, depth,
+                color, DrawStage.Background, ref state);
+            bool replaced = instance.DrawProfiles(batch, rect, position, origin, rotation, new Vector2(scale), effects, depth,
+                color, DrawStage.Replacement, ref state);
+            if (!replaced) { batch.Draw(texture, position, source, color, rotation, origin, scale, effects, depth); }
+            instance.DrawProfiles(batch, rect, position, origin, rotation, new Vector2(scale), effects, depth,
+                color, DrawStage.Overlay, ref state);
         }
 
         private static void EndFrame() { instance?.renderer.EndFrame(); }

@@ -24,8 +24,8 @@ namespace Touhou.WearableOrder
     //    装束反而排到帽子之后 = 帽子被装束盖住。
     //
     // 修正：引擎每次增删穿戴贴图（Limb.UpdateWearableTypesToHide）后把该肢体的 WearingItems 稳定重排为
-    //     [其它] → [Head 槽头饰] → [外套槽]，组内沿用原版第一个比较器（原始 depth 降序）。
-    // 头饰排在装束之后 = 绘制在装束上方；外套槽保持原版"最外层"语义不变。稳定排序保证同组内相同键的
+    //     [其它] → [Head 槽头饰] → [外套槽] → [握持护具]，组内沿用原版第一个比较器（原始 depth 降序）。
+    // 头饰和外套的原有顺序不变；握持护具不能被后来换上的装束手部盖住。稳定排序保证同组内相同键的
     // 贴图仍维持原顺序（含穿脱顺序），两个头饰之间的相对关系不受影响。
     //
     // 整个实现只在 CLIENT 编译：服务端程序集（DedicatedServer.dll）的 Limb 里没有
@@ -97,7 +97,7 @@ namespace Touhou.WearableOrder
                     return false;
                 }
                 reflectionReady = true;
-                WOLog.Info("ready: head-slot wearables drawn above other wearables on the same limb");
+                WOLog.Info("ready: head-slot and held-armor ordering on each limb");
             }
             catch (Exception ex)
             {
@@ -106,10 +106,13 @@ namespace Touhou.WearableOrder
             return reflectionReady;
         }
 
-        // 绘制分组：0 = 其它（InnerClothes/背包等，靠列表前段 = 画得靠后），1 = Head 槽头饰，2 = 外套槽（最外层）
+        // 握持护具只抬高当前肢体上的层级，不把后腿画到整个人前面。
         static int GetDrawGroup(object wearableSprite)
         {
             if (wsWearableCompProp?.GetValue(wearableSprite) is not Barotrauma.Items.Components.Pickable comp) return 0;
+            var heldArmor = comp.Item?.GetComponent<Touhou.MartialArts.MartialArtsWearable>();
+            if (heldArmor?.DrawAboveClothes == true && ReferenceEquals(heldArmor.DataHolder, comp))
+                return 3;
             var slots = comp.AllowedSlots;
             if (slots == null) return 0;
             if (slots.Contains(InvSlotType.OuterClothes)) return 2;

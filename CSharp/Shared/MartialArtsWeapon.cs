@@ -5,13 +5,13 @@ namespace Touhou.MartialArts
 {
     /// <summary>
     /// 武术武器组件：只管"动作层"调参（出招方式/力度/时长/攻击点）。
-    /// 伤害在武器 &lt;MeleeWeapon&gt;&lt;attack&gt; 的 affliction 里，命中范围在 &lt;Body&gt; 碰撞体上，
-    /// 攻速走 reload，全是原版机制，不用打补丁。引擎按"元素名=类名"自动实例化，用法：
+    /// 伤害在武器 &lt;MeleeWeapon&gt;&lt;attack&gt;，命中走出招肢体的距离扫描。
+    /// 引擎按"元素名=类名"自动实例化，用法：
     /// &lt;MartialArtsWeapon strike="punch" force="4" torque="2.5" duration="0.2" reach="0.95" height="-0.2"/&gt;
     /// </summary>
     public class MartialArtsWeapon : ItemComponent
     {
-        /// 招式：kick 正蹬腿 / punch 直拳 / uppercut 上勾拳
+        /// 招式：kick 正蹬腿 / punch 直拳
         [Serialize("punch", IsPropertySaveable.No)]
         public string Strike { get; set; }
 
@@ -34,6 +34,13 @@ namespace Touhou.MartialArts
         /// 攻击点高度偏移（米，相对躯干；0≈胸口，负值偏下）
         [Serialize(-0.2f, IsPropertySaveable.No)]
         public float Height { get; set; }
+
+        // 只偏移当前角色的姿态目标，不给布娃娃额外塞冲量。
+        [Serialize(0f, IsPropertySaveable.No)]
+        public float BodyLean { get; set; }
+
+        [Serialize(0f, IsPropertySaveable.No)]
+        public float BodyDip { get; set; }
 
         public MartialArtsWeapon(Item item, ContentXElement element) : base(item, element) { }
     }

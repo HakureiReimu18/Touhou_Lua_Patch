@@ -16,7 +16,7 @@
       structurefixmult    船体修复速度倍率（RepairTool.StructureFixAmount/LevelWallFixAmount 实例级乘算）
       devicerepairmult    设备修理速度倍率（修理者手持工具时 Repairable 修理进度 × 倍率）
       ammosavechance      每次开火不耗弹药的概率（返还本次弹匣/电池耐久消耗；散装弹药枪不适用）
-      selfwearsavechance  使用不消耗自身耐久的概率（持恒：退本次 OnUse 扣掉的武器耐久）
+      selfwearsavechance  使用不消耗自身/弹匣耐久的概率（持恒：退本次 OnUse 扣掉的武器与内容物耐久）
       lowconditiondamagemult 耐久越低伤害越高的满档倍率（余烬：耐久 25% 及以下吃满）
       durabilitysavechance 药物使用不耗耐久的概率（一次性药物除外，受 ≤20% 耐久闸门约束）
       cooldowndamagemult  金冠：命中伤害随距上次命中的间隔线性提升的满档倍率（同一次攻击共享一份）
@@ -203,8 +203,8 @@
   <Affix identifier="tense" tier="Epic" nameprefix="‖color:192,64,255,255‖紧张‖color:end‖‖color:255,255,255,255‖" applicable="rangedweapon" chargetimemult="0.65" desc="蓄力武器的充能时间 -35%" />
   <!-- 余烬：耐久越低伤害越高（100% 无加成，25% 及以下吃满 +15%）。只给带 Touhou_Recycle_Weapon tag 的自耗武器 -->
   <Affix identifier="embers" tier="Epic" nameprefix="‖color:192,64,255,255‖余烬‖color:end‖‖color:255,255,255,255‖" applicable="weapon" requiredtags="Touhou_Recycle_Weapon" lowconditiondamagemult="1.15" desc="耐久越低伤害越高：耐久 25% 及以下时伤害 +15%" />
-  <!-- 持恒：每次使用 30% 概率不消耗本次自身耐久——自耗武器寿命 ×1.43。同样只给自耗武器 tag -->
-  <Affix identifier="endurance" tier="Epic" nameprefix="‖color:192,64,255,255‖持恒‖color:end‖‖color:255,255,255,255‖" applicable="weapon" requiredtags="Touhou_Recycle_Weapon" selfwearsavechance="0.3" desc="使用时 30% 概率不消耗自身耐久" />
+  <!-- 持恒：每次使用 30% 概率不消耗本次自身与弹匣耐久——自耗武器寿命 ×1.43。同样只给自耗武器 tag -->
+  <Affix identifier="endurance" tier="Epic" nameprefix="‖color:192,64,255,255‖持恒‖color:end‖‖color:255,255,255,255‖" applicable="weapon" requiredtags="Touhou_Recycle_Weapon" selfwearsavechance="0.3" desc="使用时 30% 概率不消耗自身与弹匣耐久" />
   <!-- 领先：满弹匣首发增伤。暂时停用——调音台类武器的发射链路（弹药容器 SpawnItem + RangedWeapon）
        与 Projectile.Shoot 补丁的衔接存疑，待发增伤 armed 后未消费；代码保留在 HarmonyPatches.cs，
        待确认发射路径后再启用 -->

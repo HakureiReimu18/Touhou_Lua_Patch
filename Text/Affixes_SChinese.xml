@@ -146,5 +146,5 @@
 	<affix.prefix.embers>‖color:192,64,255,255‖余烬‖color:end‖‖color:255,255,255,255‖</affix.prefix.embers>
 	<affix.desc.embers>耐久越低伤害越高：耐久 25% 及以下时伤害 +15%</affix.desc.embers>
 	<affix.prefix.endurance>‖color:192,64,255,255‖持恒‖color:end‖‖color:255,255,255,255‖</affix.prefix.endurance>
-	<affix.desc.endurance>使用时 30% 概率不消耗自身耐久</affix.desc.endurance>
+	<affix.desc.endurance>使用时 30% 概率不消耗自身与弹匣耐久</affix.desc.endurance>
 </infotexts>

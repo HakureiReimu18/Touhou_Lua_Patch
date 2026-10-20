@@ -9,6 +9,8 @@ using Microsoft.Xna.Framework;
 
 namespace Touhou.WeaponBadges
 {
+    internal enum EffectSurface { Inventory, Preview, World }
+
     internal sealed class SweepProfile
     {
         internal string Id = string.Empty;
@@ -22,13 +24,18 @@ namespace Touhou.WeaponBadges
         internal float Rainbow;
         internal int Bands = 1;
         internal int Sparkles;
+        internal ArtEffectProfile ArtEffect;
     }
 
     internal sealed class SweepRule
     {
         internal string Tag = string.Empty;
+        internal Identifier ItemIdentifier;
+        internal bool HasItemIdentifier;
         internal int Priority;
         internal SweepProfile Profile;
+        internal SweepProfile[] Profiles;
+        internal SweepProfile[] InventoryProfiles, PreviewProfiles, WorldProfiles;
     }
 
     internal sealed class SweepConfig
@@ -37,6 +44,7 @@ namespace Touhou.WeaponBadges
         internal float WorldIntensity = .65f;
         internal int CacheMegabytes = 32;
         internal AffixGlowConfig AffixGlow = new AffixGlowConfig();
+        internal readonly Dictionary<string, SweepProfile> Profiles = new Dictionary<string, SweepProfile>(StringComparer.Ordinal);
         internal readonly List<SweepRule> Rules = new List<SweepRule>();
 
         internal static SweepConfig Load(string packageDir)
@@ -62,7 +70,7 @@ namespace Touhou.WeaponBadges
             result.CacheMegabytes = Int(root, "cacheMegabytes", result.CacheMegabytes, 1, 256);
             result.AffixGlow = AffixGlowConfig.Load(root, path);
 
-            var profiles = new Dictionary<string, SweepProfile>(StringComparer.Ordinal);
+            var profiles = result.Profiles;
             foreach (XElement e in root.Element("Profiles")?.Elements("Profile") ?? Enumerable.Empty<XElement>())
             {
                 var profile = new SweepProfile { Id = Required(e, "id", path) };
@@ -82,20 +90,51 @@ namespace Touhou.WeaponBadges
                 profile.Rainbow = Float(e, "rainbow", profile.Rainbow, 0f, 1f);
                 profile.Bands = Int(e, "bands", profile.Bands, 1, 2);
                 profile.Sparkles = Int(e, "sparkles", profile.Sparkles, 0, 8);
+                profile.ArtEffect = ArtEffectProfile.Load(e, path);
                 profiles.Add(profile.Id, profile);
             }
 
             foreach (XElement e in root.Element("Rules")?.Elements("Rule") ?? Enumerable.Empty<XElement>())
             {
-                string tag = Required(e, "tag", path);
-                string id = Required(e, "profile", path);
-                if (!profiles.TryGetValue(id, out SweepProfile profile))
-                { throw new FormatException($"{path}: Rule tag='{tag}' 引用了不存在的 Profile '{id}'。"); }
+                string tag = ((string)e.Attribute("tag"))?.Trim();
+                string itemIdentifier = ((string)e.Attribute("identifier"))?.Trim();
+                if (string.IsNullOrEmpty(tag) == string.IsNullOrEmpty(itemIdentifier))
+                { throw new FormatException($"{path}: 每个 Rule 必须且只能指定 tag 或 identifier。"); }
+                if (e.Attribute("profile") != null && e.Attribute("profiles") != null)
+                { throw new FormatException($"{path}: Rule 不能同时设置 profile 和 profiles。"); }
+                SweepProfile[] common = ReadProfiles(e, e.Attribute("profile") != null ? "profile" : "profiles");
+                SweepProfile[] inventory = ReadProfiles(e, "inventoryProfiles");
+                SweepProfile[] preview = ReadProfiles(e, "previewProfiles");
+                SweepProfile[] world = ReadProfiles(e, "worldProfiles");
+                if (common == null && inventory == null && preview == null && world == null)
+                { throw new FormatException($"{path}: Rule 必须指定 profile(s) 或分场景特效列表。"); }
                 result.Rules.Add(new SweepRule
                 {
-                    Tag = tag, Profile = profile,
+                    Tag = tag ?? string.Empty, ItemIdentifier = new Identifier(itemIdentifier ?? string.Empty),
+                    HasItemIdentifier = !string.IsNullOrEmpty(itemIdentifier),
+                    Profile = common?.FirstOrDefault(), Profiles = common,
+                    InventoryProfiles = inventory, PreviewProfiles = preview, WorldProfiles = world,
                     Priority = Int(e, "priority", 0, int.MinValue, int.MaxValue)
                 });
+
+                SweepProfile[] ReadProfiles(XElement rule, string attribute)
+                {
+                    XAttribute value = rule.Attribute(attribute);
+                    if (value == null) { return null; }
+                    var list = new List<SweepProfile>();
+                    foreach (string id in value.Value.Split(new[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (!profiles.TryGetValue(id, out SweepProfile selected))
+                        { throw new FormatException($"{path}: Rule '{itemIdentifier ?? tag}' 的 {attribute} 引用了不存在的 Profile '{id}'。"); }
+                        if (list.Contains(selected)) { continue; }
+                        list.Add(selected);
+                    }
+                    if (list.Count(p => p.ArtEffect?.Kind == "blocks") > 1)
+                    { throw new FormatException($"{path}: {attribute} 每组最多使用一个 blocks 底图替换。"); }
+                    if (attribute == "profile" && list.Count != 1)
+                    { throw new FormatException($"{path}: profile 必须引用一个非空 Profile；多个特效使用 profiles。"); }
+                    return list.ToArray();
+                }
             }
             // OrderByDescending is stable: equal priorities retain XML order.
             SweepRule[] sorted = result.Rules.OrderByDescending(r => r.Priority).ToArray();
@@ -105,17 +144,29 @@ namespace Touhou.WeaponBadges
         }
 
         internal SweepProfile Match(Item item, ItemPrefab prefab)
+            => MatchForSurface(item, prefab, EffectSurface.Inventory).FirstOrDefault();
+
+        internal SweepProfile[] MatchForSurface(Item item, ItemPrefab prefab, EffectSurface surface)
         {
-            if (!Enabled) { return null; }
+            if (!Enabled) { return Array.Empty<SweepProfile>(); }
             foreach (SweepRule rule in Rules)
             {
+                SweepProfile[] selected = surface == EffectSurface.World ? rule.WorldProfiles
+                    : surface == EffectSurface.Preview ? rule.PreviewProfiles : rule.InventoryProfiles;
+                selected ??= rule.Profiles;
+                if (selected == null) { continue; }
+                if (rule.HasItemIdentifier)
+                {
+                    if ((item?.Prefab ?? prefab)?.Identifier == rule.ItemIdentifier) { return selected; }
+                    continue;
+                }
                 var tag = new Identifier(rule.Tag);
                 // Read live tags on every match, including tags added/removed by Lua/C#.
                 // Only use prefab tags when no live item exists (e.g. recipe previews).
                 if (item != null ? item.HasTag(tag) : prefab != null && prefab.Tags.Contains(tag))
-                { return rule.Profile; }
+                { return selected; }
             }
-            return null;
+            return Array.Empty<SweepProfile>();
         }
 
         private static string Required(XElement e, string key, string path)

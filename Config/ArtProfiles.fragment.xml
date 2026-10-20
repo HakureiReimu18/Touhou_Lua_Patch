@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  合并到 Config/ItemVisualEffects.xml 的 <Profiles> 内。本文件可单独解析，
+  但不会被游戏直接加载。这里只有 Profile，没有 Rule、tag 或 identifier。
+  effect 省略或写 sweep 时沿用原有扫光；art Profile 建议 intensity 0.7..1。
+-->
+<Profiles>
+  <!-- 火焰：三组冷暖色层 -->
+  <Profile id="artFlameEmber" effect="flame" color="#ff7138" intensity="1.00"
+           accentColor="#ff4024" coreColor="#ffd68a"
+           amplitude="0.36" speed="0.85" density="14" size="1.70" opacity="0.95" />
+  <Profile id="artFlameAzure" effect="flame" color="#47b8ff" intensity="0.95"
+           accentColor="#2878ff" coreColor="#e9fdff"
+           amplitude="0.48" speed="1.20" density="16" size="1.55" opacity="0.90" />
+  <Profile id="artFlameVerdant" effect="flame" color="#64ffb5" intensity="0.90"
+           accentColor="#1edb8a" coreColor="#f5ffc9"
+           amplitude="0.26" speed="0.65" density="12" size="1.30" opacity="0.85" />
+
+  <!-- 日冕：长短光束、轮廓晕与呼吸节拍 -->
+  <Profile id="artSolarGold" effect="solar" color="#ffd36a" intensity="0.90"
+           accentColor="#ffb52e" coreColor="#fff5c8"
+           amplitude="0.12" speed="0.55" density="20" size="1.40" opacity="0.78" />
+  <Profile id="artSolarCyan" effect="solar" color="#91f7ff" intensity="0.84"
+           accentColor="#37ddff" coreColor="#fffbe8"
+           amplitude="0.09" speed="0.42" density="16" size="1.20" opacity="0.74" />
+  <Profile id="artSolarViolet" effect="solar" color="#d7a8ff" intensity="0.88"
+           accentColor="#a36bff" coreColor="#fff0d0"
+           amplitude="0.15" speed="0.70" density="18" size="1.30" opacity="0.76" />
+
+  <!-- 回声与虚影 -->
+  <Profile id="artEchoCyanRose" effect="echo" color="#5deaff" intensity="0.80"
+           accentColor="#4ce8ff" coreColor="#ff78da"
+           amplitude="0.26" speed="0.65" density="5" size="1.00" opacity="0.70" />
+  <Profile id="artEchoGoldBlue" effect="echo" color="#ffd67a" intensity="0.82"
+           accentColor="#ffc25c" coreColor="#7bd8ff"
+           amplitude="0.20" speed="0.45" density="4" size="0.95" opacity="0.68" />
+  <Profile id="artEchoRose" effect="echo" color="#ff86b8" intensity="0.74"
+           accentColor="#ff6fa8" coreColor="#ffe3f0"
+           amplitude="0.30" speed="0.80" density="6" size="1.00" opacity="0.66" />
+  <Profile id="artPhantomMoon" effect="phantom" color="#c9efff" intensity="0.72"
+           accentColor="#d3f3ff" coreColor="#ffffff"
+           amplitude="0.14" speed="0.28" density="4" size="1.10" opacity="0.58" />
+  <Profile id="artPhantomMint" effect="phantom" color="#bdffe9" intensity="0.70"
+           accentColor="#baffea" coreColor="#f7ffff"
+           amplitude="0.10" speed="0.20" density="3" size="1.00" opacity="0.52" />
+
+  <!-- 赛博故障色，以及可做底图替换的完整方块网格 -->
+  <Profile id="artCyberMagentaCyan" effect="cyber" color="#ff4aa8" intensity="0.95"
+           accentColor="#ff2c9b" coreColor="#32f6ff"
+           amplitude="0.075" speed="6.00" density="8" size="1.00" opacity="0.88" />
+  <Profile id="artCyberLimeViolet" effect="cyber" color="#c4ff62" intensity="0.90"
+           accentColor="#b7ff2d" coreColor="#a975ff"
+           amplitude="0.065" speed="4.20" density="7" size="1.00" opacity="0.84" />
+  <Profile id="artBlocksVioletCyan" effect="blocks" color="#f4f2ff" intensity="1.00"
+           accentColor="#b56dff" coreColor="#58f4ff"
+           amplitude="0.24" speed="0.50" density="72" size="1.00" opacity="1.00" />
+  <Profile id="artBlocksRedGold" effect="blocks" color="#fff6ed" intensity="0.98"
+           accentColor="#ff5e45" coreColor="#ffe181"
+           amplitude="0.20" speed="0.38" density="64" size="1.00" opacity="1.00" />
+
+  <!-- 霜晶、电弧与符文环 -->
+  <Profile id="artFrostBlue" effect="frost" color="#9ce5ff" intensity="0.80"
+           accentColor="#89dcff" coreColor="#ffffff"
+           amplitude="0.08" speed="0.35" density="12" size="1.25" opacity="0.72" />
+  <Profile id="artFrostMint" effect="frost" color="#b7ffe4" intensity="0.76"
+           accentColor="#9affd4" coreColor="#f0fff9"
+           amplitude="0.06" speed="0.24" density="10" size="1.05" opacity="0.68" />
+  <Profile id="artLightningViolet" effect="lightning" color="#c4a6ff" intensity="0.92"
+           accentColor="#b489ff" coreColor="#fff6ad"
+           amplitude="0.10" speed="5.00" density="9" size="1.20" opacity="0.86" />
+  <Profile id="artLightningCyan" effect="lightning" color="#83edff" intensity="0.88"
+           accentColor="#45d7ff" coreColor="#ffffff"
+           amplitude="0.07" speed="3.80" density="8" size="1.10" opacity="0.82" />
+  <Profile id="artRuneJade" effect="rune" color="#79ffdb" intensity="0.84"
+           accentColor="#43f0c4" coreColor="#ffe093"
+           amplitude="0.05" speed="0.30" density="22" size="1.30" opacity="0.76" />
+  <Profile id="artRuneCrimson" effect="rune" color="#ff91a4" intensity="0.80"
+           accentColor="#ff5976" coreColor="#ffd98f"
+           amplitude="0.03" speed="0.20" density="18" size="1.15" opacity="0.72" />
+</Profiles>

@@ -27,10 +27,22 @@ namespace Touhou.WeaponBadges
             internal Texture2D Premultiplied;
             internal Texture2D Straight;
             internal Vector2[] Glints;
+            internal Vector2[] EdgeAnchors;
+            internal Texture2D HaloPremultiplied;
+            internal Texture2D HaloStraight;
+            internal int HaloPadding;
+            internal Vector2[] ContourAnchors;
+            internal Vector2[] ContourNormals;
             internal Rectangle? Bounds;
             internal long LastUse;
             internal long Bytes;
-            public void Dispose() { Premultiplied?.Dispose(); Straight?.Dispose(); }
+            internal Dictionary<int, SilhouetteAura> Auras = new Dictionary<int, SilhouetteAura>();
+            public void Dispose()
+            {
+                Premultiplied?.Dispose(); Straight?.Dispose();
+                HaloPremultiplied?.Dispose(); HaloStraight?.Dispose();
+                foreach (SilhouetteAura aura in Auras.Values) { aura.Dispose(); }
+            }
         }
 
         private readonly Dictionary<MaskKey, Mask> masks = new Dictionary<MaskKey, Mask>();
@@ -42,11 +54,15 @@ namespace Touhou.WeaponBadges
         private int maxRows = 24, segments = 7, maxBands = 2, maxSparkles = int.MaxValue;
         private bool sparkles = true;
         private int maxPerFrame = 128, drawnThisFrame;
+        private int artQuality = 2;
+        internal int LastSubmissions { get; private set; }
+        internal int SubmissionLimit => artQuality == 0 ? 16 : artQuality == 1 ? 40 : 80;
 
         internal SweepRenderer(int cacheMegabytes) { budget = (long)cacheMegabytes * 1024 * 1024; }
 
         internal void Configure(string quality, bool enableSparkles, int frameLimit, int cacheMegabytes)
         {
+            artQuality = quality == "low" ? 0 : quality == "balanced" ? 1 : 2;
             maxRows = quality == "low" ? 8 : quality == "balanced" ? 12 : 24;
             segments = quality == "low" ? 3 : quality == "balanced" ? 5 : 7;
             maxBands = quality == "low" ? 1 : 2;
@@ -57,27 +73,37 @@ namespace Touhou.WeaponBadges
             // GPU resources are still released only after queued draws finish.
         }
 
-        internal void Draw(ISpriteBatch batch, Sprite sprite, Rectangle source, Vector2 position,
+        internal bool Draw(ISpriteBatch batch, Sprite sprite, Rectangle source, Vector2 position,
             Vector2 origin, float rotation, Vector2 scale, SpriteEffects effects, float depth,
             Color originalColor, SweepProfile profile, float seed, bool world, float worldIntensity,
             bool straightAlpha = false)
+            => DrawLayer(batch, sprite, source, position, origin, rotation, scale, effects, depth,
+                originalColor, profile, seed, world, worldIntensity, straightAlpha, 0, false);
+
+        internal bool DrawLayer(ISpriteBatch batch, Sprite sprite, Rectangle source, Vector2 position,
+            Vector2 origin, float rotation, Vector2 scale, SpriteEffects effects, float depth,
+            Color originalColor, SweepProfile profile, float seed, bool world, float worldIntensity,
+            bool straightAlpha, int submissionLimit, bool itemAlreadyCounted)
         {
+            LastSubmissions = 0;
             if (profile == null || originalColor.A == 0 || originalColor.R + originalColor.G + originalColor.B < 4 ||
                 source.Width < 1 || source.Height < 1 || scale.X == 0 || scale.Y == 0 ||
-                (world && worldIntensity <= 0) || (profile.Intensity <= 0 && profile.Glow <= 0 && profile.Pulse <= 0)) { return; }
+                (world && worldIntensity <= 0) || (profile.Intensity <= 0 && profile.Glow <= 0 && profile.Pulse <= 0)) { return false; }
             // Check before reading/creating a mask as well as before overlay draws.
-            if (maxPerFrame > 0 && drawnThisFrame >= maxPerFrame) { return; }
+            if (!itemAlreadyCounted && maxPerFrame > 0 && drawnThisFrame >= maxPerFrame) { return false; }
             Texture2D sourceTexture = sprite.Texture;
-            if (sourceTexture == null || sourceTexture.IsDisposed) { return; }
+            if (sourceTexture == null || sourceTexture.IsDisposed) { return false; }
             var key = new MaskKey(sourceTexture, source);
-            if (failed.Contains(key)) { return; }
+            if (failed.Contains(key)) { return false; }
             try
             {
-                Mask mask = GetMask(key, sprite.FilePath.Value);
-                if (mask == null) { return; }
+                bool soft = profile.ArtEffect != null && SoftEffectAtlas.AppliesTo(profile.ArtEffect.Kind);
+                Mask mask = GetMask(key, sprite.FilePath.Value, soft);
+                if (mask == null) { return false; }
                 mask.LastUse = time.ElapsedTicks;
                 Texture2D texture = world || straightAlpha ? mask.Straight : mask.Premultiplied;
                 bool counted = false;
+                int submissions = 0;
                 double seconds = time.Elapsed.TotalSeconds;
                 float phase = (float)(seconds / profile.Period + seed);
                 phase -= (float)Math.Floor(phase);
@@ -85,6 +111,32 @@ namespace Touhou.WeaponBadges
                 // World batches sort by depth, so the overlay sits just in front of
                 // the item itself, without jumping in front of the wearer's limbs.
                 float overlayDepth = world ? Math.Max(0, depth - 0.0000005f) : depth;
+                if (profile.ArtEffect != null)
+                {
+                    Texture2D softTexture = soft ? SoftEffectAtlas.Get(sourceTexture.GraphicsDevice, world || straightAlpha) : null;
+                    SilhouetteAura aura = profile.ArtEffect.Presentation == "aura" && soft
+                        ? GetAura(mask, key, sprite.FilePath.Value, profile.ArtEffect.Kind) : null;
+                    int submitted = ArtEffectRenderer.Draw(new ArtDrawContext
+                    {
+                        Batch = batch, OriginalTexture = sourceTexture, MaskTexture = texture,
+                        PixelTexture = GUI.WhiteTexture, Source = source,
+                        Bounds = mask.Bounds ?? new Rectangle(0, 0, source.Width, source.Height),
+                        EdgeAnchors = mask.EdgeAnchors,
+                        SoftTexture = softTexture,
+                        AuraTexture = aura == null ? null : world || straightAlpha ? aura.Straight : aura.Premultiplied,
+                        AuraWidth = aura?.Width ?? 0, AuraHeight = aura?.Height ?? 0,
+                        HaloTexture = world || straightAlpha ? mask.HaloStraight : mask.HaloPremultiplied,
+                        HaloPadding = mask.HaloPadding, ContourAnchors = mask.ContourAnchors, ContourNormals = mask.ContourNormals,
+                        Position = position, Origin = origin, Scale = scale, Rotation = rotation,
+                        Depth = overlayDepth, Effects = effects, OriginalColor = originalColor,
+                        PrimaryColor = profile.Color, Opacity = opacity * profile.Intensity,
+                        Seed = seed, Time = (float)seconds, StraightAlpha = world || straightAlpha, World = world,
+                        Quality = artQuality, Sparkles = sparkles, Style = profile.ArtEffect, DrawBudget = submissionLimit
+                    });
+                    LastSubmissions = submitted;
+                    if (submitted > 0 && !itemAlreadyCounted) { drawnThisFrame++; }
+                    return submitted > 0;
+                }
                 Color tint = FlowColor(profile, (float)(seconds * 0.18 + seed));
                 float glow = profile.Glow + profile.Pulse * (0.5f + 0.5f * (float)Math.Sin(phase * Math.PI * 2));
                 if (glow > 0.001f)
@@ -138,14 +190,22 @@ namespace Touhou.WeaponBadges
                     }
                 }
 
+                return counted;
+
                 void DrawOverlay(Rectangle slice, Color color, Vector2 sliceOrigin)
                 {
+                    if (submissionLimit > 0 && submissions >= submissionLimit) { return; }
                     Rectangle visible = Rectangle.Intersect(slice, mask.Bounds ?? new Rectangle(0, 0, source.Width, source.Height));
                     if (color.A == 0 || visible.Width <= 0 || visible.Height <= 0) { return; }
                     batch.Draw(texture, position, slice, color, rotation, sliceOrigin, scale, effects, overlayDepth);
+                    LastSubmissions = ++submissions;
                     // One item overlay, regardless of its number of bands/glints.
                     // Fully faded/off-sprite batches leave room for later items.
-                    if (!counted) { drawnThisFrame++; counted = true; }
+                    if (!counted)
+                    {
+                        if (!itemAlreadyCounted) { drawnThisFrame++; }
+                        counted = true;
+                    }
                 }
             }
             catch (Exception e)
@@ -153,6 +213,7 @@ namespace Touhou.WeaponBadges
                 // An unreadable third-party texture must not interrupt the base draw.
                 failed.Add(key);
                 DebugConsole.AddWarning($"[Touhou.WeaponBadges] 扫光贴图跳过 {sprite.FilePath}: {e.Message}");
+                return false;
             }
         }
 
@@ -183,7 +244,9 @@ namespace Touhou.WeaponBadges
         private static Color Tint(Color color, float alpha, bool straight)
         {
             float a = Math.Clamp(alpha, 0, 1);
-            return straight ? new Color(color.R, color.G, color.B, (byte)(a * 255)) : color * a;
+            // Barotrauma XNATypes.Color * float changes alpha only.
+            return straight ? new Color(color.R, color.G, color.B, (byte)(a * 255)) :
+                new Color((byte)(color.R * a), (byte)(color.G * a), (byte)(color.B * a), (byte)(a * 255));
         }
 
         private static Color FlowColor(SweepProfile profile, float hue)
@@ -205,10 +268,24 @@ namespace Touhou.WeaponBadges
             return Color.Lerp(profile.Color, rainbow, profile.Rainbow);
         }
 
-        private Mask GetMask(MaskKey key, string file)
+        private Mask GetMask(MaskKey key, string file, bool needsHalo)
         {
-            if (masks.TryGetValue(key, out Mask cached)) { return cached; }
+            int padding = needsHalo ? SoftHalo.Padding(key.Source.Width, key.Source.Height) : 0;
+            long haloBytes = needsHalo ? (long)(key.Source.Width + padding * 2) * (key.Source.Height + padding * 2) * 8 : 0;
+            if (masks.TryGetValue(key, out Mask cached))
+            {
+                if (needsHalo && cached.HaloStraight == null)
+                {
+                    if (cached.Bytes + haloBytes > budget) { return null; }
+                    if (usedBytes + haloBytes > budget) { requestedSpace = Math.Max(requestedSpace, haloBytes); return null; }
+                    CreateHalo(cached, key, SpriteAlphaReader.Read(key.Texture, key.Source, file), padding);
+                    cached.Bytes += haloBytes;
+                    usedBytes += haloBytes;
+                }
+                return cached;
+            }
             long bytes = (long)key.Source.Width * key.Source.Height * 8;
+            bytes += haloBytes;
             // Oversize is temporary: increasing the live budget must allow a retry.
             if (bytes > budget) { return null; }
             if (usedBytes + bytes > budget)
@@ -247,7 +324,20 @@ namespace Touhou.WeaponBadges
                 }
             }
             if (right <= left || bottom <= top) { failed.Add(key); return null; }
+            var edgeAnchors = new List<Vector2>(24);
+            int sampleCount = Math.Min(24, key.Source.Width);
+            for (int sample = 0; sample < sampleCount; sample++)
+            {
+                int x = Math.Min(key.Source.Width - 1, (int)((sample + .5f) * key.Source.Width / sampleCount));
+                for (int y = 0; y < key.Source.Height; y++)
+                {
+                    if (alpha[y * key.Source.Width + x] < 80) { continue; }
+                    edgeAnchors.Add(new Vector2(x, y));
+                    break;
+                }
+            }
             var result = new Mask { Glints = glints.ToArray(), LastUse = time.ElapsedTicks, Bytes = bytes,
+                EdgeAnchors = edgeAnchors.ToArray(),
                 Bounds = new Rectangle(left, top, right - left, bottom - top) };
             try
             {
@@ -255,11 +345,49 @@ namespace Touhou.WeaponBadges
                 result.Premultiplied.SetData(premultiplied);
                 result.Straight = new Texture2D(key.Texture.GraphicsDevice, key.Source.Width, key.Source.Height);
                 result.Straight.SetData(straight);
+                if (needsHalo) { CreateHalo(result, key, alpha, padding); }
             }
             catch { result.Dispose(); throw; }
             masks.Add(key, result);
             usedBytes += bytes;
             return result;
+        }
+
+        private SilhouetteAura GetAura(Mask mask, MaskKey key, string file, string kind)
+        {
+            int material = SilhouetteAura.Material(kind);
+            if (mask.Auras.TryGetValue(material, out SilhouetteAura cached)) { return cached; }
+            long bytes = SilhouetteAura.Bytes(key.Source.Width, key.Source.Height, mask.HaloPadding);
+            if (mask.Bytes + bytes > budget || (key.Source.Width + mask.HaloPadding * 2) * 4 > 4096 ||
+                (key.Source.Height + mask.HaloPadding * 2) * 4 > 4096) { return null; }
+            if (usedBytes + bytes > budget) { requestedSpace = Math.Max(requestedSpace, bytes); return null; }
+            SilhouetteAura aura = SilhouetteAura.Create(key.Texture.GraphicsDevice,
+                SpriteAlphaReader.Read(key.Texture, key.Source, file), key.Source.Width, key.Source.Height,
+                mask.HaloPadding, SoftEffectAtlas.Alpha, 512, material);
+            mask.Auras.Add(material, aura);
+            usedBytes += bytes; mask.Bytes += bytes;
+            return aura;
+        }
+
+        private static void CreateHalo(Mask mask, MaskKey key, byte[] alpha, int padding)
+        {
+            byte[] halo = SoftHalo.BuildAlpha(alpha, key.Source.Width, key.Source.Height, padding);
+            int width = key.Source.Width + padding * 2, height = key.Source.Height + padding * 2;
+            var colors = new Color[halo.Length];
+            Texture2D straight = null, premultiplied = null;
+            try
+            {
+                for (int i = 0; i < colors.Length; i++) { colors[i] = new Color((byte)255, (byte)255, (byte)255, halo[i]); }
+                straight = new Texture2D(key.Texture.GraphicsDevice, width, height);
+                straight.SetData(colors);
+                for (int i = 0; i < colors.Length; i++) { byte a = halo[i]; colors[i] = new Color(a, a, a, a); }
+                premultiplied = new Texture2D(key.Texture.GraphicsDevice, width, height);
+                premultiplied.SetData(colors);
+                SoftHalo.Contour(alpha, key.Source.Width, key.Source.Height, out Vector2[] points, out Vector2[] normals);
+                mask.HaloStraight = straight; mask.HaloPremultiplied = premultiplied;
+                mask.HaloPadding = padding; mask.ContourAnchors = points; mask.ContourNormals = normals;
+            }
+            catch { straight?.Dispose(); premultiplied?.Dispose(); throw; }
         }
 
         internal void EndFrame()

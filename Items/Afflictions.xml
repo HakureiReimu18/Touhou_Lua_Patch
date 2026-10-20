@@ -39,7 +39,7 @@
       <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
     </Affliction>
 
-    <!-- 异常物品系统在用的两件（Lua：Server/Systems/Touhou_Anomalous_Items.lua）：
+    <!-- 异常物品系统（CSharp/Shared/AnomalousItems.cs）：
          排斥不适用 Slow 类压速度 + 高 strength 时色差，进场有 Lua 提示。
          ⚠ 休眠：失笑（TH-08 已改为点名换位，不再用眩晕；要恢复感染笑方案时从 _Archive 旧脚本搬回）
     <Stun name="失笑" identifier="Touhou_Anomaly_Forced_Laugh" description="你止不住地笑，笑得弯下腰，笑得丢掉了手里的东西。" type="stun"
@@ -50,7 +50,8 @@
     -->
     <Slow name="排斥不适" identifier="Touhou_Anomaly_Repulse" description="恶心、眩晕、无法抑制的战栗——有什么东西不希望任何活人靠近，也不许死者留下。" type="slow"
           limbspecific="false" indicatorlimb="Torso" activationthreshold="1" showiconthreshold="1" maxstrength="100">
-      <Effect minstrength="0" maxstrength="100" strengthchange="-4" minspeedmultiplier="1" maxspeedmultiplier="0.45"
+      <!-- 档位由领域统一维持，离圈或装箱归零，不能再边维持边自然衰减 -->
+      <Effect minstrength="0" maxstrength="100" strengthchange="0" minspeedmultiplier="1" maxspeedmultiplier="0.45"
               minchromaticaberration="0" maxchromaticaberration="3" />
       <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
     </Slow>

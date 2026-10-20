@@ -137,7 +137,7 @@
 	<affix.prefix.embers>‖color:192,64,255,255‖Embers‖color:end‖‖color:255,255,255,255‖</affix.prefix.embers>
 	<affix.desc.embers>Damage increases as durability drops: +15% damage at 25% durability or lower</affix.desc.embers>
 	<affix.prefix.endurance>‖color:192,64,255,255‖Endurance‖color:end‖‖color:255,255,255,255‖</affix.prefix.endurance>
-	<affix.desc.endurance>30% chance per use to not consume the weapon's own durability</affix.desc.endurance>
+	<affix.desc.endurance>30% chance per use to not consume the weapon's or magazine's durability</affix.desc.endurance>
 	<entityname.Touhou_Scatter_Spell_Card_Cannon>Scatter Spell Card Launcher</entityname.Touhou_Scatter_Spell_Card_Cannon>
 	<entitydescription.Touhou_Scatter_Spell_Card_Cannon>A slow-firing spell card launcher that uses chaingun ammunition. It briefly charges up, then fires a fan of several rounds at once. Higher damage per shot, but every round costs 1.5x the ammunition durability.</entitydescription.Touhou_Scatter_Spell_Card_Cannon>
 </infotexts>

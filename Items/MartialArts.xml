@@ -5,7 +5,7 @@
          武术武器制作说明
          ============================================================
          一件武术武器 = 普通近战武器结构（MeleeWeapon 数据）+ 动作组件（MartialArtsWeapon）
-         + 可选的握持贴图层（MartialArtsWearable，纯贴图数据，见下）。
+         + 可选的握持贴图层（MartialArtsWearable，不占衣服槽，见下）。
 
          操作（玩家）：右键按住 = 架势（拳架/持握），瞄准中左键 = 出招。
          连击：上一招结束 1 秒内再出招——双持自动换另一件武器的手，踢腿自动换脚。
@@ -27,6 +27,10 @@
                     个位数；默认 6）。太大会把人带跑，太小蹬不出去。
          torque   : 仅 kick 用——肢体转向扭矩。强烈建议保持 0（非 0 会注入
                     自旋）。组件默认 2.5，踢腿内部已强制按 0 处理。
+         bodylean : 拳类身体前倾峰值（度，0~12），默认 0。只改本人的姿态目标；
+                    行走减为 40%，水中/离地/爬梯/倒地停用，不改支撑脚和碰撞体。
+         bodydip  : 拳类蓄力下沉峰值（米，0~0.08），默认 0，随角色关节比例缩放。
+                    两项设 0 就回到原来的纯手臂动画。
 
          ── MeleeWeapon 侧调参（原版语义，直接生效）────────────────
          reload             : 攻速基数。实际冷却 = max(reload, duration+0.35)
@@ -37,7 +41,7 @@
            targetimpulseworld : 击退冲量（X 自动乘朝向，Y 正=向上）
            targetimpulse    : 径向击退（从命中点向外）
            penetration      : 护甲穿透 0~1
-           structuredamage  : 对船体/门伤害（踢门用）
+           structuredamage  : 原版结构伤害字段；当前武术扫描只打角色，尚不支持踢门
            severlimbsprobability : 断肢概率（对怪物，给一点点很带感）
          伤害结算公式（自动执行）：(1+MeleeAttackMultiplier) × (1+品质威力)，
          词缀系统的近战词缀同样生效（就走这个入口）。
@@ -45,8 +49,8 @@
          ── 握持贴图（可选，穿戴层）────────────────────────────────
          物品末尾加一个 <MartialArtsWearable>（注意：不是 <Wearable>——
          原版 Wearable 组件挂在武器上会干扰出招，实测加入就出不了拳）。
-         它是纯数据组件：内部用分离的 Wearable 实例复用原版 sprite 解析，
-         与槽位/输入/装备系统零交互。里面的 <sprite>
+         内部用分离的 Wearable 实例复用原版 sprite 解析，
+         不参与槽位/输入路由。里面的 <sprite>
          用原版穿戴贴图的完整格式——和做一件潜水服一模一样：
            <sprite name="..." texture="贴图路径" limb="LeftHand"
                    inheritlimbdepth="false" inheritscale="true" scale="0.5"
@@ -56,65 +60,196 @@
          原版 LimbType 枚举都能用。sourcerect/origin/scale/depth 等属性
          与原版穿戴完全一致。手持时贴图自动挂到肢体上（跟随出招动作），
          放下自动摘除。
+         matchholdinghand="true"：单只拳套按 RightHand/RightForearm/RightArm 制作，
+                    放到左手时自动挂到对应左肢体；护腿等成套装备保持 false。
+         hideheldsprite="true"（默认）：挂载成功后只隐藏场景手持物图，
+                    背包图、掉落图保留；素材加载失败时也保留普通手持图兜底。
+         drawaboveclothes="true"（默认）：同一肢体上画在装束/外套部件上方。
+         drawabovearm="true"（默认 false）：大拳套伸到前臂时，画在同侧手臂之前；
+                    只改深度，不改挂载肢体、动作或防护范围。
+         protectwhenheld="true"（默认）：内部可写原版 damagemodifier，
+                    只保护挂图的肢体，握持且耐久>0时生效；收起/损坏停用。
+                    减伤与穿甲走原版；deflectprojectiles 是原版装甲偏转，
+                    不等于全身无敌或所有弹丸都必定反弹。
          ============================================================ -->
 
     <!--测试拳套：直拳（快而轻）-->
-    <Item name="铁莲拳" identifier="Touhou_Iron_Lotus_Fist" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.2" impactsoundtag="impact_metal_light">
-      <InventoryIcon texture="%ModDir%/Images/Touhou_Iron_Lotus_Fist.png" sourcerect="0,0,96,166" origin="0.5,0.5" />
-      <Sprite texture="%ModDir%/Images/Touhou_Iron_Lotus_Fist.png" depth="0.4" sourcerect="0,0,96,166" />
-      <Body width="24" height="16" density="5"/>
-      <MeleeWeapon slots="Any,RightHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.2" swing="false" msg="ItemMsgPickUpSelect">
-        <attack targetimpulseworld="4,1">
-          <Affliction identifier="blunttrauma" strength="9" />
-          <Affliction identifier="internaldamage" strength="3"  />
+    <Item name="铁莲拳套" identifier="Touhou_Iron_Lotus_Fist" tags="smallitem,weapon,Hong_Meirin_Exclusive,Touhou_Weapon_Level02" subcategory="Touhou" category="Weapon" scale="0.2" impactsoundtag="impact_metal_light">
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Iron_Lotus_Fist.png" sourcerect="78,265,96,166" origin="0.5,0.5" />
+      <Sprite texture="%ModDir%/Images/Touhou_Iron_Lotus_Fist.png" depth="0.55" sourcerect="78,265,96,166" />
+      <Body width="96" height="166" density="10"/>
+      <Price baseprice="500" sold="false">
+        <Price storeidentifier="merchantoutpost" multiplier="1.2"/>
+        <Price storeidentifier="merchantcity" multiplier="1.0"/>
+        <Price storeidentifier="merchantresearch" multiplier="1.2"/>
+        <Price storeidentifier="merchantmilitary" multiplier="0.9"/>
+        <Price storeidentifier="merchantmine" multiplier="1.25"/>
+        <Price storeidentifier="merchantarmory" multiplier="0.9"/>
+      </Price>
+      <Deconstruct time="5">
+        <Item identifier="steel" amount="2"/>
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="5">
+        <RequiredSkill identifier="Touhou_Magic" level="30"/>
+        <RequiredItem identifier="silicon" amount="2"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="4"/>
+        <RequiredItem identifier="Magic_Material" amount="2"/>
+        <RequiredItem identifier="Touhou_Base_Metal" />
+      </Fabricate>
+      <MeleeWeapon slots="Any,RightHand,LeftHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.1" swing="false" msg="ItemMsgPickUpSelect">
+        <attack targetimpulseworld="4,1" penetration="0.1" severlimbsprobability="0.2">
+          <Affliction identifier="blunttrauma" strength="10" />
+          <Affliction identifier="internaldamage" strength="2"  />
           <Affliction identifier="stun" strength="0.2" probability="0.1" />
         </attack>
+        <StatusEffect type="OnActive" target="Character" Interval="0.5">
+          <Conditional Touhou_Hong_Meirin_Character_Effect="gt 0"/>
+          <Conditional Hyouibana_Effect_Prefect_Hong_Meirin="gt 0"/>
+          <Conditional MRE_Satori_Effect="gt 0"/>
+          <Affliction identifier="Hong_Meirin_Weapons" strength="50"/>
+        </StatusEffect>
+        <StatusEffect type="OnActive" target="Character" comparison="And" Interval="0.5">
+          <Conditional Touhou_Hong_Meirin_Character_Effect="eq 0"/>
+          <Conditional Hyouibana_Effect_Prefect_Hong_Meirin="eq 0"/>
+          <Conditional MRE_Satori_Effect="eq 0"/>
+          <Affliction identifier="Touhou_Character_Incompatible_Attack_Multiply_Effect01" strength="100"/>
+        </StatusEffect>
+        <RequiredSkill identifier="Touhou_Magic" level="30"/>
       </MeleeWeapon>
-      <MartialArtsWeapon strike="punch" force="16" torque="2.5" duration="0.2" reach="1.6" height="0.1"/>
-      <MartialArtsWearable>
-        <sprite name="Touhou_Iron_Lotus_Fist" texture="%ModDir%/Images/Touhou_Iron_Lotus_Fist.png" limb="RightHand" inheritlimbdepth="true" inheritscale="false" scale="0.2"
-                hidelimb="false" sourcerect="0,0,166,96" origin="0.5,0.5"/>
+      <MartialArtsWeapon strike="punch" force="16" torque="2.5" duration="0.2" reach="1.6" height="0.1" bodylean="5" bodydip="0.025"/>
+      <MartialArtsWearable matchholdinghand="true" hideheldsprite="true" drawaboveclothes="true" drawabovearm="true" protectwhenheld="true">
+        <damagemodifier afflictiontypes="damage,bleeding" armorsector="0,180" damagemultiplier="0.7" damagesound="LimbArmor" deflectprojectiles="true"/>
+        <damagemodifier afflictiontypes="burn" armorsector="0,180" damagemultiplier="0.85"/>
+        <damagemodifier afflictiontypes="stun" armorsector="0,180" damagemultiplier="0.5"/>
+        <!--原图手部在下方；以掌根对齐，腕上的护片自然伸向前臂。-->
+        <sprite name="ma_fist_hand" texture="%ModDir%/Images/Touhou_Iron_Lotus_Fist.png" limb="RightHand" inheritlimbdepth="true" inheritscale="true" scale="0.4"
+                hidelimb="true" canbehiddenbyotherwearables="false" sourcerect="78,265,96,166" origin="0.635417,0.650602"/>
       </MartialArtsWearable>
+      <Quality>
+        <QualityStat stattype="StrikingPowerMultiplier" value="0.12"/>
+      </Quality>
+      <aitarget sightrange="500" soundrange="250" fadeouttime="1"/>
+      <SkillRequirementHint identifier="Touhou_Magic" level="30"/>
     </Item>
 
     <!--测试护手：重拳（慢而重，直拳机制的数值变体）-->
-    <Item name="测试护手" identifier="ma_gauntlet_test" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.5" impactsoundtag="impact_metal_light">
-      <Sprite texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" depth="0.55" origin="0.5,0.5"/>
-      <InventoryIcon name="" texture="Content/Items/Weapons/weapons.png" sourcerect="0,0,32,32" origin="0.5,0.5"/>
-      <Body width="26" height="18" density="5"/>
-      <MeleeWeapon slots="Any,RightHand,LeftHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.15" swing="false" msg="ItemMsgPickUpSelect">
-        <attack targetimpulseworld="6,3">
-          <Affliction identifier="blunttrauma" strength="14" />
-          <Affliction identifier="internaldamage" strength="6" />
+    <Item name="龙鳞拳铠" identifier="Touhou_Dragon_Scale_Gauntlets" tags="smallitem,weapon,Hong_Meirin_Exclusive,Touhou_Weapon_Level03" subcategory="Touhou" category="Weapon" scale="0.25" impactsoundtag="impact_metal_light">
+      <Sprite texture="%ModDir%/Images/Touhou_Dragon_Scale_Gauntlets.png" sourcerect="78,265,96,166" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon texture="%ModDir%/Images/Touhou_Dragon_Scale_Gauntlets.png" sourcerect="24,25,150,406" origin="0.5,0.5"/>
+      <Body width="96" height="166" density="10"/>
+      <Price baseprice="2000" sold="false">
+        <Price storeidentifier="merchantoutpost" multiplier="1.2"/>
+        <Price storeidentifier="merchantcity" multiplier="1.0"/>
+        <Price storeidentifier="merchantresearch" multiplier="1.2"/>
+        <Price storeidentifier="merchantmilitary" multiplier="0.9"/>
+        <Price storeidentifier="merchantmine" multiplier="1.25"/>
+        <Price storeidentifier="merchantarmory" multiplier="0.9"/>
+      </Price>
+      <Deconstruct time="5">
+        <Item identifier="steel" amount="2"/>
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="5">
+        <RequiredSkill identifier="Touhou_Magic" level="50"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="4"/>
+        <RequiredItem identifier="Score_Point" amount="2"/>
+        <RequiredItem identifier="Touhou_Base_Metal" />
+      </Fabricate>
+      <MeleeWeapon slots="Any,RightHand,LeftHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.2" swing="false" msg="ItemMsgPickUpSelect">
+        <attack targetimpulseworld="6,3" penetration="0.2" severlimbsprobability="0.5">
+          <Affliction identifier="blunttrauma" strength="19" />
+          <Affliction identifier="internaldamage" strength="3" />
           <Affliction identifier="stun" strength="0.3" probability="0.3" />
         </attack>
+        <StatusEffect type="OnActive" target="Character" Interval="0.5">
+          <Conditional Touhou_Hong_Meirin_Character_Effect="gt 0"/>
+          <Conditional Hyouibana_Effect_Prefect_Hong_Meirin="gt 0"/>
+          <Conditional MRE_Satori_Effect="gt 0"/>
+          <Affliction identifier="Hong_Meirin_Weapons" strength="50"/>
+        </StatusEffect>
+        <StatusEffect type="OnActive" target="Character" comparison="And" Interval="0.5">
+          <Conditional Touhou_Hong_Meirin_Character_Effect="eq 0"/>
+          <Conditional Hyouibana_Effect_Prefect_Hong_Meirin="eq 0"/>
+          <Conditional MRE_Satori_Effect="eq 0"/>
+          <Affliction identifier="Touhou_Character_Incompatible_Attack_Multiply_Effect01" strength="100"/>
+        </StatusEffect>
+        <RequiredSkill identifier="Touhou_Magic" level="50"/>
       </MeleeWeapon>
-      <MartialArtsWeapon strike="punch" force="7" torque="2.5" duration="0.4" reach="1.9" height="0"/>
-      <MartialArtsWearable>
-        <sprite name="ma_gauntlet_l" texture="Content/Items/Weapons/weapons.png" limb="LeftHand" inheritlimbdepth="false" inheritscale="true" scale="0.5" hidelimb="false" sourcerect="0,0,32,32" origin="0.5,0.5"/>
-        <sprite name="ma_gauntlet_r" texture="Content/Items/Weapons/weapons.png" limb="RightHand" inheritlimbdepth="false" inheritscale="true" scale="0.5" hidelimb="false" sourcerect="0,0,32,32" origin="0.5,0.5"/>
+      <MartialArtsWeapon strike="punch" force="16" torque="2.5" duration="0.3" reach="1.9" height="0" bodylean="12" bodydip="0.04"/>
+      <MartialArtsWearable matchholdinghand="true" hideheldsprite="true" drawaboveclothes="true" protectwhenheld="true">
+        <damagemodifier afflictiontypes="damage,bleeding" armorsector="0,180" damagemultiplier="0.65" damagesound="LimbArmor" deflectprojectiles="true"/>
+        <damagemodifier afflictiontypes="burn" armorsector="0,180" damagemultiplier="0.75"/>
+        <damagemodifier afflictiontypes="stun" armorsector="0,180" damagemultiplier="0.5"/>
+        <!--腕口留一点重叠，转腕时不会把整片臂铠当成手掌甩。-->
+        <sprite name="ma_gauntlet_forearm" texture="%ModDir%/Images/Touhou_Dragon_Scale_Gauntlets.png" limb="RightForearm" inheritlimbdepth="true" inheritscale="true" scale="0.4"
+                hidelimb="false" canbehiddenbyotherwearables="false" sourcerect="24,25,150,329" origin="0.771942,0.778200"/>
+        <sprite name="ma_gauntlet_hand" texture="%ModDir%/Images/Touhou_Dragon_Scale_Gauntlets.png" limb="RightHand" inheritlimbdepth="true" inheritscale="true" scale="0.4"
+                hidelimb="false" canbehiddenbyotherwearables="false" sourcerect="78,350,96,81" origin="0.635417,0.283951"/>
       </MartialArtsWearable>
+      <Quality>
+        <QualityStat stattype="StrikingPowerMultiplier" value="0.1"/>
+      </Quality>
+      <aitarget sightrange="500" soundrange="250" fadeouttime="1"/>
+      <SkillRequirementHint identifier="Touhou_Magic" level="50"/>
     </Item>
 
     <!--测试护腿：正蹬腿-->
-    <Item name="断流护腿" identifier="Touhou_Torrent_Cutting_Greaves" tags="smallitem,weapon" subcategory="Touhou" category="Weapon" scale="0.25" impactsoundtag="impact_metal_light">
-      <Sprite texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" sourcerect="0,0,184,352" depth="0.55" origin="0.5,0.5"/>
-      <InventoryIcon name="" texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" sourcerect="0,0,184,352" origin="0.5,0.5"/>
-      <Body width="30" height="20" density="5"/>
+    <Item name="断流护腿" identifier="Touhou_Torrent_Cutting_Greaves" tags="smallitem,weapon,Hong_Meirin_Exclusive,Touhou_Weapon_Level03" subcategory="Touhou" category="Weapon" scale="0.25" impactsoundtag="impact_metal_light">
+      <Sprite texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" sourcerect="15,19,159,323" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon name="" texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" sourcerect="15,19,159,323" origin="0.5,0.5"/>
+      <Body width="159" height="323" density="10"/>
+      <Price baseprice="2000" sold="false">
+        <Price storeidentifier="merchantoutpost" multiplier="1.2"/>
+        <Price storeidentifier="merchantcity" multiplier="1.0"/>
+        <Price storeidentifier="merchantresearch" multiplier="1.2"/>
+        <Price storeidentifier="merchantmilitary" multiplier="0.9"/>
+        <Price storeidentifier="merchantmine" multiplier="1.25"/>
+        <Price storeidentifier="merchantarmory" multiplier="0.9"/>
+      </Price>
+      <Deconstruct time="5">
+        <Item identifier="steel" amount="2"/>
+      </Deconstruct>
+      <Fabricate suitablefabricators="Magic_Altar" requiredtime="5">
+        <RequiredSkill identifier="Touhou_Magic" level="50"/>
+        <RequiredItem identifier="Touhou_Plant_Extract" amount="4"/>
+        <RequiredItem identifier="Score_Point" amount="3"/>
+        <RequiredItem identifier="Touhou_Base_Metal" amount="3" />
+      </Fabricate>
       <MeleeWeapon slots="Any,RightHand,LeftHand" holdpos="0,0" handle1="0,0" holdangle="0" reload="0.9" swing="false" msg="ItemMsgPickUpSelect">
-        <attack targetimpulseworld="12,4">
-          <Affliction identifier="blunttrauma" strength="36" />
+        <attack targetimpulseworld="12,4" penetration="0.2" severlimbsprobability="0.9">
+          <Affliction identifier="blunttrauma" strength="34" />
           <Affliction identifier="internaldamage" strength="6" />
           <Affliction identifier="stun" strength="0.6" probability="0.6" />
         </attack>
+        <StatusEffect type="OnActive" target="Character" Interval="0.5">
+          <Conditional Touhou_Hong_Meirin_Character_Effect="gt 0"/>
+          <Conditional Hyouibana_Effect_Prefect_Hong_Meirin="gt 0"/>
+          <Conditional MRE_Satori_Effect="gt 0"/>
+          <Affliction identifier="Hong_Meirin_Weapons" strength="50"/>
+        </StatusEffect>
+        <StatusEffect type="OnActive" target="Character" comparison="And" Interval="0.5">
+          <Conditional Touhou_Hong_Meirin_Character_Effect="eq 0"/>
+          <Conditional Hyouibana_Effect_Prefect_Hong_Meirin="eq 0"/>
+          <Conditional MRE_Satori_Effect="eq 0"/>
+          <Affliction identifier="Touhou_Character_Incompatible_Attack_Multiply_Effect01" strength="100"/>
+        </StatusEffect>
+        <RequiredSkill identifier="Touhou_Magic" level="50"/>
       </MeleeWeapon>
       <MartialArtsWeapon strike="kick" force="14" torque="0" duration="0.3" reach="1.0" height="-0.35"/>
-      <MartialArtsWearable>
-        <sprite name="ma_legguard_l" texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" limb="LeftLeg" inheritlimbdepth="false" inheritscale="true" scale="0.5"
-                hidelimb="false" sourcerect="0,0,184,352" origin="0.5,0.5"/>
-        <sprite name="ma_legguard_r" texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" limb="RightLeg" inheritlimbdepth="false" inheritscale="true" scale="0.5"
-                hidelimb="false" sourcerect="0,0,184,352" origin="0.5,0.5"/>
+      <MartialArtsWearable drawaboveclothes="true" protectwhenheld="true">
+        <damagemodifier afflictiontypes="damage,bleeding" armorsector="0,180" damagemultiplier="0.5" damagesound="LimbArmor" deflectprojectiles="true"/>
+        <damagemodifier afflictiontypes="burn" armorsector="0,180" damagemultiplier="0.8"/>
+        <damagemodifier afflictiontypes="stun" armorsector="0,180" damagemultiplier="0.5"/>
+        <!--保留上方红色延伸；金属下端落在踝关节上方，不拿整张画布中心当小腿中心。-->
+        <sprite name="ma_legguard_l" texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" limb="LeftLeg" inheritlimbdepth="true" inheritscale="true" scale="0.3"
+                hidelimb="false" canbehiddenbyotherwearables="false" sourcerect="15,19,159,323" origin="0.798742,0.622291"/>
+        <sprite name="ma_legguard_r" texture="%ModDir%/Images/Touhou_Torrent_Cutting_Greaves.png" limb="RightLeg" inheritlimbdepth="true" inheritscale="true" scale="0.3"
+                hidelimb="false" canbehiddenbyotherwearables="false" sourcerect="15,19,159,323" origin="0.798742,0.622291"/>
       </MartialArtsWearable>
+      <Quality>
+        <QualityStat stattype="StrikingPowerMultiplier" value="0.08"/>
+      </Quality>
+      <aitarget sightrange="500" soundrange="250" fadeouttime="1"/>
+      <SkillRequirementHint identifier="Touhou_Magic" level="50"/>
     </Item>
 
   </Items>

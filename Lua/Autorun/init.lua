@@ -39,8 +39,9 @@ if Game.IsSingleplayer or SERVER then
     --[[异常物品系统（TH-01 会回来的货箱 + TH-02 比里面大的柜子 + TH-03 排斥样本
         + TH-08 点名喇叭 + 铅封收容箱）。装进收容箱（Touhou_Containment）效果全停；
         休眠 4 件在 _Archive/AnomalousItems_v1_全8件.xml。
-        见 Items/AnomalousItems.xml 与 Items/Afflictions.xml 末尾]]
-    dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Anomalous_Items.lua")
+        已迁移 CSharp/Shared/AnomalousItems.cs；旧 Lua 留作回滚，不能两套同时跑。
+        回滚须同时恢复 XML 的旧 LuaHook / 音效和 affliction 衰减，见迁移文档。]]
+    -- dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Anomalous_Items.lua")
 
     -- 角色天赋
     --[[红美铃天赋「气与姿态」：须排在 Touhou_Magic_Weapon_Bonus.lua 之后（DamageMultiplier 补丁依赖其加载顺序）]]

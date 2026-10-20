@@ -3,7 +3,7 @@
   <!--
     异常物品系统（当前在跑）：TH-01 会回来的货箱 + TH-02 比里面大的柜子 + TH-03「五十米」样本
     + TH-08 点名喇叭 + 铅封收容箱。
-    一件物品一条规则；逻辑在 Lua/Scripts/Server/Systems/Touhou_Anomalous_Items.lua。
+    一件物品一条规则；逻辑在 CSharp/Shared/AnomalousItems.cs，旧 Lua 已停载。
     休眠的 4 件在 _Archive/AnomalousItems_v1_全8件.xml，放出时搬回来配 Lua。
 
     机构命名（已定案，写档案/新物品时沿用）：
@@ -13,16 +13,26 @@
       - 档案卡抬头格式：【异常封锁局·证物登记 TH-XX】，落款"回收：潜渊行动组"
       - 档案全文与新增模板：Docs/异常封锁局档案/（README 为总目，SEAL-TH-XX_模板.md 开新档用）
 
-    组件契约（Lua 依赖，改动需同步）：
+    组件契约（C# 依赖，改动需同步）：
       - 收容物带 Touhou_Anomalous tag；收容箱带 Touhou_Containment tag，且带原版 artifactcontainer tag
         （原版异星遗物的效果触发条件是「容器无 artifactcontainer tag」，所以本箱挂这个 tag 即天然兼容，不用 Lua）
-      - 持续音效走 LightComponent 的 StatusEffect OnActive：Lua 翻 IsOn 同时控制"出声/静音"
-      - 收容判定：Lua 沿 ParentInventory 往上找，祖先带 Touhou_Containment 就全部失效
-      - TH-08 的吹奏走 RangedWeapon 出声（vanilla 车喇叭同款）+ OnUse 挂 LuaHook
+      - 持续音效挂 TouhouAnomaly 的 OnActive，每个实例各自循环；收容时组件停声
+      - 收容判定：沿 ParentInventory 往上找，祖先带 Touhou_Containment 就全部失效
+      - TH-08 走 RangedWeapon 出声与装填，C# 在成功 Use 后拿真实使用者
 
     贴图说明：水晶/喇叭用原版图调色（占位），收容箱用原版密封箱调色；正式美术后补。
   -->
   <Items>
+    <!--普通容器遮不住；收容由组件检查整条父链-->
+    <Item name="" identifier="Touhou_Anomaly_Restless_Light" tags="smallitem,alienartifact,Touhou_Anomalous"
+          subcategory="Touhou" category="Alien" scale="0.35" maxstacksize="1" hideinmenus="true"
+          cargocontaineridentifier="metalcrate" fireproof="true" impactsoundtag="impact_metal_light">
+      <Sprite texture="Content/Items/Electricity/signalcomp.png" sourcerect="304,528,64,96" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon texture="Content/Items/Electricity/signalcomp.png" sourcerect="304,528,64,96" origin="0.5,0.5"/>
+      <Body width="40" height="60" density="12"/>
+      <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
+      <TouhouRestlessLight canbeselected="false" allowingameediting="false" updatewhenbroken="true"/>
+    </Item>
 
     <!-- ========== 铅封收容箱：异常物品的"安全状态" ========== -->
     <Item name="重型封锁收容箱" identifier="Touhou_Containment_Crate" tags="crate,cabinet,container,Touhou_Containment,artifactcontainer,tsm_danger_box" subcategory="Touhou"
@@ -49,18 +59,19 @@
       </Fabricate>
       <Sprite texture="%ModDir%/Images/Touhou_Containment_Crate.png" sourcerect="0,0,424,600" depth="0.8" />
       <Body width="424" height="600" density="15" />
-      <Holdable selectkey="Select" pickkey="Use" slots="RightHand+LeftHand" PickingTime="8.0" aimpos="65,-10" handle1="0,0" attachable="true" aimable="false">
+      <Holdable selectkey="Select" pickkey="Use" slots="RightHand+LeftHand" PickingTime="8.0" aimpos="65,-10" handle1="0,0" attachable="true" aimable="true">
         <RequiredItem items="screwdriver" type="Equipped" requireempty="true" IgnoreInEditor="false" />
         <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.5" setvalue="true" />
       </Holdable>
-      <!-- 收容范围：本补丁收容物 + 原版异星遗物（带 alienartifact tag）；紫色密封灯（有货在位时 Lua 点亮） -->
-      <ItemContainer capacity="12" slotsperrow="4" maxstacksize="1" canbeselected="true" hideitems="true" keepopenwhenequipped="true" movableframe="true">
+      <!-- 收容范围：本补丁收容物 + 原版异星遗物；内容物变化时点亮紫灯 -->
+      <ItemContainer autofill="False" capacity="12" slotsperrow="4" maxstacksize="1" canbeselected="true" hideitems="true" >
         <Containable items="Touhou_Anomalous,alienartifact,tsm_danger_item,tsm_danger_bloack" />
       </ItemContainer>
       <LightComponent range="90" lightcolor="170,90,255,255" powerconsumption="0" IsOn="false" castshadows="false"
                       allowingameediting="false" canbeselected="false">
         <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
       </LightComponent>
+      <TouhouAnomaly canbeselected="false" allowingameediting="false" updatewhenbroken="true" />
     </Item>
 
     <!-- ========== TH-01 会回来的货箱 ========== -->
@@ -81,15 +92,15 @@
       <Holdable slots="RightHand+LeftHand" holdpos="0,-80" handle1="-30,14" handle2="30,14" aimable="false" msg="ItemMsgPickUpSelect">
         <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.7" setvalue="true" />
       </Holdable>
-      <!-- 回归次数（Lua 读写，存 MemoryComponent.Value） -->
+      <!-- 沿用旧存档的回归次数 -->
       <MemoryComponent canbeselected="false" allowingameediting="false" />
-      <!-- 箱内轻响：IsOn=在箱外才响（Lua 控制）。用的是原版轻金属碰撞声，待正式音效 -->
+      <TouhouAnomaly canbeselected="false" allowingameediting="false" updatewhenbroken="true">
+        <Sound file="Content/Sounds/Impact/MetalImpactLight1.ogg" type="OnActive" range="300" volume="0.5" loop="true" />
+      </TouhouAnomaly>
+      <!-- 光与声音分开，避免藏在普通背包里时灯组件休眠把声音也停了 -->
       <LightComponent range="40" lightcolor="80,70,90,255" powerconsumption="0" IsOn="false" castshadows="false"
                       allowingameediting="false" canbeselected="false">
         <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
-        <StatusEffect type="OnActive" target="This" stackable="false" forcePlaySounds="true" Interval="1.0">
-          <sound file="Content/Sounds/Impact/MetalImpactLight1.ogg" range="300" volume="0.5" loop="true" />
-        </StatusEffect>
       </LightComponent>
     </Item>
 
@@ -115,8 +126,9 @@
       <Holdable slots="RightHand+LeftHand" holdpos="0,-100" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect">
         <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.5" setvalue="true" />
       </Holdable>
-      <!-- 15 格，比外形离谱地能装；定时换走一件内容物（Lua），进收容箱则安静 -->
+      <!-- 15 格，比外形离谱地能装；只换直接内容物，装着收容物的包也不碰 -->
       <ItemContainer capacity="15" maxstacksize="1" canbeselected="true" hideitems="true" keepopenwhenequipped="true" movableframe="true" />
+      <TouhouAnomaly canbeselected="false" allowingameediting="false" updatewhenbroken="true" />
     </Item>
 
     <!-- ========== TH-03「五十米」样本 ========== -->
@@ -138,13 +150,13 @@
       <Holdable slots="RightHand+LeftHand" holdpos="0,-60" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect">
         <StatusEffect type="OnActive" target="Character" SpeedMultiplier="0.85" setvalue="true" />
       </Holdable>
-      <!-- 心跳声：IsOn=在箱外才响（Lua 控制） -->
+      <TouhouAnomaly canbeselected="false" allowingameediting="false" updatewhenbroken="true">
+        <Sound file="Content/Sounds/HeartbeatSystole1.ogg" type="OnActive" range="600" volume="1.6" loop="true" />
+      </TouhouAnomaly>
+      <!-- 心跳按实例循环，收容时直接停声 -->
       <LightComponent range="45" lightcolor="120,30,30,255" powerconsumption="0" IsOn="false" castshadows="false"
                       allowingameediting="false" canbeselected="false">
         <sprite texture="Content/Particles/ParticleAtlas.png" sourcerect="0,0,1,1" origin="0.15,0" />
-        <StatusEffect type="OnActive" target="This" stackable="false" forcePlaySounds="true">
-          <sound file="Content/Sounds/HeartbeatSystole1.ogg" range="600" volume="1.6" loop="true" />
-        </StatusEffect>
       </LightComponent>
     </Item>
 
@@ -168,9 +180,6 @@
         <Sound file="Content/Items/Weapons/honk.ogg" type="OnUse" range="1200" volume="2.0" />
       </RangedWeapon>
       <Holdable slots="Any,RightHand,LeftHand" aimpos="100,0" handle1="-15,-3" aimable="true" msg="ItemMsgPickUpSelect">
-        <StatusEffect type="OnUse" target="This">
-          <LuaHook name="Touhou.AnomalyTrumpet.blow" />
-        </StatusEffect>
       </Holdable>
       <!-- 声音大得离谱，AI 听得见 -->
       <aitarget soundrange="1200" fadeouttime="5" />

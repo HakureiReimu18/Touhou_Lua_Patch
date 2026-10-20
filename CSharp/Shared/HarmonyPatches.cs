@@ -828,27 +828,49 @@ namespace Touhou.Affixes
             if (item.ContainedItems == null) return;
             float roll = Rand.Range(0f, 1f, Rand.RandSync.Unsynced);
             if (roll >= def.AmmoSaveChance) return;
-            bool refunded = false;
             foreach (var c in item.ContainedItems)
             {
                 if (c == null || !before.TryGetValue(c.ID, out float oldCond)) continue;
                 float consumed = oldCond - c.Condition;
                 if (consumed <= 0f) continue;
                 c.Condition = Math.Min(c.MaxCondition, c.Condition + consumed);
-                refunded = true;
             }
-            if (refunded) Mod.DebugLog($"[{def.Identifier}] ammo save proc on {item.Name}");
         }
 
-        /// 持恒：本次使用（OnUse 这一轮）扣掉的自身耐久按概率退回去
+        /// 持恒：本次使用（OnUse 这一轮）扣掉的自身耐久和弹匣/内容物耐久按同一个概率一起退回
         static void ApplySelfWearSave(Item item, AffixDef def, UseSnapshot snap)
         {
             if (snap == null) return;
-            float consumed = snap.ItemCondition - item.Condition;
-            if (consumed <= 0f) return;
+            float selfConsumed = snap.ItemCondition - item.Condition;
+            bool anyConsumed = selfConsumed > 0f;
+            // 自耗武器往往连弹匣耐久一起扣，只退枪壳的话词缀等于只生效一半
+            if (!anyConsumed && snap.Conditions != null && item.ContainedItems != null)
+            {
+                foreach (var c in item.ContainedItems)
+                {
+                    if (c != null && snap.Conditions.TryGetValue(c.ID, out float oldCond)
+                        && oldCond - c.Condition > 0f)
+                    {
+                        anyConsumed = true;
+                        break;
+                    }
+                }
+            }
+            if (!anyConsumed) return;
             if (Rand.Range(0f, 1f, Rand.RandSync.Unsynced) >= def.SelfWearSaveChance) return;
-            item.Condition = Math.Min(item.MaxCondition, item.Condition + consumed);
-            Mod.DebugLog($"[{def.Identifier}] self-wear save proc on {item.Name}");
+
+            if (selfConsumed > 0f)
+                item.Condition = Math.Min(item.MaxCondition, item.Condition + selfConsumed);
+            if (snap.Conditions != null && item.ContainedItems != null)
+            {
+                foreach (var c in item.ContainedItems)
+                {
+                    if (c == null || !snap.Conditions.TryGetValue(c.ID, out float oldCond)) continue;
+                    float consumed = oldCond - c.Condition;
+                    if (consumed <= 0f) continue;
+                    c.Condition = Math.Min(c.MaxCondition, c.Condition + consumed);
+                }
+            }
         }
 
         /// 领先：射前满耐久、这发又确实扣了 → 满匣首发，增伤。散装弹药没这概念，不支持

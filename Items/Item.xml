@@ -394,10 +394,10 @@
                       只有过蓄自爆的掷骰在服务端/单人端做，Condition 变化自动同步（联机能看到爆炸画面和伤害）。
              调试：CSharp/Shared/ReleaseFire.cs 里把 ReleaseFireLog.Verbose 改成 true，
                    开始蓄力 / 每次开火（蓄力百分比、实际伤害倍率、穿甲）/ 过蓄自爆都会打一行日志。 -->
-        <ReleaseFire chargetime="3" hardcap="6" damagemultiplier="1,10" penetration="0,1"
-                     crittime="3" explodechance="0.10" explodegrowth="0.30" explodechancemax="0.95">
+        <ReleaseFire chargetime="3" hardcap="6" damagemultiplier="1,10" penetration="0,0.9"
+                     crittime="3" explodechance="0.10" explodegrowth="0.20" explodechancemax="0.95">
           <ReleaseFireModifier tag="monorail_overclock" crittime="2" />
-          <ReleaseFireModifier tag="monorail_stabilizer" explodechancemultiplier="0.25" />
+          <ReleaseFireModifier tag="monorail_overclock" explodechancemultiplier="0.25" />
         </ReleaseFire>
         <RequiredItems items="Touhou_Monorail_Ammo,Touhou_Monorail_Bullet" type="Contained" msg="ItemMsgAmmoRequired" />
         <!--                <StatusEffect type="OnUse" target="Contained">
@@ -431,12 +431,12 @@
       <Projectile characterusable="false" hitscan="true" removeonhit="true" sticktocharacters="true" sticktoitems="true" maxtargetstohit="3" sticktostructures="true" sticktodoors="false">
         <ParticleEmitter particle="UFO_Danmu_Laser" particleamount="1" velocitymin="0" velocitymax="0" scalemultiplier="1,0.35" colormultiplier="255,130,170,255" />
         <!-- 基础穿甲为 0：命中时的总穿甲 = 弹药穿甲 + 武器穿甲，蓄力时插件会将武器穿甲从 0 提升至 1（见 <ReleaseFire> 的 penetration） -->
-        <Attack itemdamage="100" targetforce="5" targetimpulse="5" severlimbsprobability="5.0" penetration="0.0">
-          <Affliction identifier="lacerations" strength="10" />
-          <Affliction identifier="explosiondamage" strength="10" />
+        <Attack itemdamage="100" targetforce="5" targetimpulse="5" severlimbsprobability="5.0" penetration="0.1">
+          <Affliction identifier="lacerations" strength="20" />
+          <Affliction identifier="explosiondamage" strength="20" />
           <Affliction identifier="Touhou_Lost_Dream" strength="10" multiplyafflictionsbymaxvitality="true" />
           <Affliction identifier="slow" strength="10" multiplyafflictionsbymaxvitality="true" />
-          <Affliction identifier="stun" strength="1.0" multiplyafflictionsbymaxvitality="true" />
+          <Affliction identifier="stun" strength="0.8" multiplyafflictionsbymaxvitality="true" />
         </Attack>
         <StatusEffect type="OnActive" target="This" lifetime="0.4">
           <ParticleEmitter particle="StarDanmuBoom" copyentityangle="true" anglemin="105" anglemax="255" particleamount="3" velocitymin="200" velocitymax="600" colormultiplier="255,36,36,200" scalemin="0.1" scalemax="0.2" />
