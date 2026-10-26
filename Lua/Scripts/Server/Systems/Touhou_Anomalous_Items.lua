@@ -1,4 +1,4 @@
--- 已停载：机制迁往 CSharp/Shared/AnomalousItems.cs；保留原实现作比较和回滚参考。
+-- 已停载：机制迁往 CSharp/Shared/Anomalies/AnomalousItems.cs；保留原实现作比较和回滚参考。
 -- 不能只取消 dofile 注释就回滚，XML 组件、声音与 affliction 衰减也要一起恢复。
 -- 异常物品系统（旧版：TH-01 会回来的货箱 + TH-02 比里面大的柜子 + TH-03「五十米」样本
 -- + TH-08 点名喇叭 + 铅封收容箱）。

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  全局武器能量回能加成表（TouhouWeaponEnergy）。
+
+  数值是百分比，可正可负；多个来源命中后相加，最终倍率夹在 0~5。
+  tag        = 物品 tag（武器本体或穿戴槽）；物品也可以直接用 TouhouModEnergy_* 命名，
+               那样不用写在这里。
+  affliction = 角色身上的 affliction id
+  talent     = 角色已有天赋 id
+  同一行写多个条件＝与关系（都满足才生效）。
+
+  天赋和 affliction 在引擎里没有 tag 字段，所以只能靠这张表按 id 登记。
+  本包优先，其他内容包放同名文件里的条目也会被读进来。
+-->
+<WeaponEnergyModifiers>
+    <!--示例：直接按 affliction 认（傲慢护符现在用的是物品 tag，二选一即可）
+    <Modifier affliction="Touhou_Pride_Amulet_Effect" natural="50"/>
+    -->
+
+    <!--示例：某个天赋让伤害回能 +30%
+    <Modifier talent="Touhou_Some_Talent" damage="30"/>
+    -->
+
+    <!--示例：任意自定义 tag，不遵循 TouhouModEnergy_* 命名也能用
+    <Modifier tag="Some_Mod_Tag" natural="25" damage="25"/>
+    -->
+</WeaponEnergyModifiers>

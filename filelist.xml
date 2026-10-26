@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<contentpackage name="东方潜渊行动组Lua补丁" modversion="1.1.0" corepackage="False" steamworkshopid="3578631758" gameversion="1.12.7.0">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<contentpackage name="东方潜渊行动组Lua补丁" modversion="1.1.1" corepackage="False" steamworkshopid="3578631758" gameversion="1.13.4.0">
   <Item file="%ModDir%/Items/Item.xml" />
   <Item file="%ModDir%/Items/Tools.xml" />
   <Item file="%ModDir%/Items/Cooktop.xml" />
@@ -8,12 +8,35 @@
   <Item file="%ModDir%/Items/EnchantingStation.xml" />
   <Item file="%ModDir%/Items/BondCharm.xml" />
   <Item file="%ModDir%/Items/MartialArts.xml" />
-  <!--⚠ 封存（2026-10）：弹药袋体系整体暂停，物品不再加载；恢复时把下面这行反注释即可
-      （同时恢复 Lua/Autorun/init.lua 里那三个 dofile 与 CSharp/Shared/AmmoStorage.cs 的 SEALED 常量）-->
-  <!-- <Item file="%ModDir%/Items/AmmoStorage.xml" /> -->
+  <Item file="%ModDir%/Items/EngineerTransitions.xml" />
+  <Item file="%ModDir%/Items/CaptainTransitions.xml" />
+  <Item file="%ModDir%/Items/SecurityTransitions.xml" />
+  <Item file="%ModDir%/Items/MechanicTransitions.xml" />
+  <Jobs file="%ModDir%/Jobs/EngineerTransitions.xml" />
+  <Jobs file="%ModDir%/Jobs/CaptainTransitions.xml" />
+  <Jobs file="%ModDir%/Jobs/SecurityTransitions.xml" />
+  <Jobs file="%ModDir%/Jobs/MechanicTransitions.xml" />
+  <Talents file="%ModDir%/Talents/EngineerTransitionTalents.xml" />
+  <Talents file="%ModDir%/Talents/CaptainTransitionTalents.xml" />
+  <Talents file="%ModDir%/Talents/SecurityTransitionTalents.xml" />
+  <Afflictions file="%ModDir%/Talents/SecurityTalentAfflictions.xml" />
+  <Talents file="%ModDir%/Talents/MechanicTransitionTalents.xml" />
+  <Afflictions file="%ModDir%/Talents/MechanicTalentAfflictions.xml" />
+  <TalentTrees file="%ModDir%/Talents/EngineerTransitionTrees.xml" />
+  <TalentTrees file="%ModDir%/Talents/CaptainTransitionTrees.xml" />
+  <TalentTrees file="%ModDir%/Talents/SecurityTransitionTrees.xml" />
+  <TalentTrees file="%ModDir%/Talents/MechanicTransitionTrees.xml" />
   <Text file="%ModDir%/Text/Text.xml" />
   <Text file="%ModDir%/Text/Affixes_SChinese.xml" />
   <Text file="%ModDir%/Text/Affixes_English.xml" />
   <Text file="%ModDir%/Text/Items_TraditionalChinese.xml" />
+  <Text file="%ModDir%/Text/EngineerTransitions_SChinese.xml" />
+  <Text file="%ModDir%/Text/EngineerTransitions_English.xml" />
+  <Text file="%ModDir%/Text/CaptainTransitions_SChinese.xml" />
+  <Text file="%ModDir%/Text/CaptainTransitions_English.xml" />
+  <Text file="%ModDir%/Text/SecurityTalents_SChinese.xml" />
+  <Text file="%ModDir%/Text/SecurityTalents_English.xml" />
+  <Text file="%ModDir%/Text/MechanicTransitions_SChinese.xml" />
+  <Text file="%ModDir%/Text/MechanicTransitions_English.xml" />
   <Afflictions file="%ModDir%/Items/Afflictions.xml" />
 </contentpackage>

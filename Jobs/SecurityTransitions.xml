@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Jobs>
+  <!--原版安全官的三套初始装备都保留，避免转职后服装变体索引对不上。-->
+  <Job identifier="securityofficer_arcane" hiddenjob="true" initialcount="0" minnumber="0" maxnumber="0" allowalways="false"
+       onlyjobspecificdialog="false" minkarma="0" pricemultiplier="1.15" vitalitymodifier="0" idlebehavior="Patrol"
+       uicolor="0.45,0.65,0.95">
+    <Jobicon>
+      <sprite texture="Content/UI/MainIconsAtlas.png" sourcerect="256,256,128,128" origin="0.5,0.5"/>
+    </Jobicon>
+    <JobiconSmall>
+      <sprite texture="Content/UI/CommandUIAtlas.png" sourcerect="612,640,28,28" origin="0.5,0.5"/>
+    </JobiconSmall>
+    <Skills>
+      <Skill identifier="weapons" level="40,50" primary="true" pvplevel="60" pricemultiplier="20"/>
+      <Skill identifier="medical" level="25,35" pvplevel="50"/>
+      <Skill identifier="mechanical" level="15,25" pvplevel="50"/>
+      <Skill identifier="electrical" level="15,25" pvplevel="50"/>
+      <Skill identifier="helm" level="5,10" pvplevel="50" pricemultiplier="10"/>
+      <Skill identifier="Touhou_Magic" level="20,30" pvplevel="60"/>
+    </Skills>
+    <ItemSet>
+      <Item identifier="securityuniform1" identifierteam2="securityseparatistsuniform1" equip="true" outfit="true"/>
+      <Item identifier="idcard" equip="true" showpreview="false"/>
+      <Item identifier="headset" equip="true" showpreview="false"/>
+      <Item identifier="divingknife" equip="false"/>
+      <Item identifier="handcuffs" GameMode="PvE"/>
+      <Item identifier="stunbaton" GameMode="PvE">
+        <Item identifier="batterycell" showpreview="false"/>
+      </Item>
+      <Item identifier="revolver" GameMode="PvP" equip="false">
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+      </Item>
+    </ItemSet>
+    <ItemSet>
+      <Item identifier="securityuniform2" identifierteam2="securityseparatistsuniform2" equip="true" outfit="true"/>
+      <Item identifier="idcard" equip="true" showpreview="false"/>
+      <Item identifier="headset" equip="true" showpreview="false"/>
+      <Item identifier="divingknife" equip="false"/>
+      <Item identifier="handcuffs" GameMode="PvE"/>
+      <Item identifier="stunbaton" GameMode="PvE">
+        <Item identifier="batterycell" showpreview="false"/>
+      </Item>
+      <Item identifier="revolver" GameMode="PvP" equip="false">
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+      </Item>
+    </ItemSet>
+    <ItemSet>
+      <Item identifier="securityuniform3" identifierteam2="securityseparatistsuniform3" equip="true" outfit="true"/>
+      <Item identifier="idcard" equip="true" showpreview="false"/>
+      <Item identifier="headset" equip="true" showpreview="false"/>
+      <Item identifier="divingknife" equip="false"/>
+      <Item identifier="handcuffs" GameMode="PvE"/>
+      <Item identifier="stunbaton" GameMode="PvE">
+        <Item identifier="batterycell" showpreview="false"/>
+      </Item>
+      <Item identifier="revolver" GameMode="PvP" equip="false">
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+      </Item>
+    </ItemSet>
+    <AutonomousObjectives>
+      <Order identifier="fightintruders" prioritymodifier="1"/>
+      <Order identifier="rescue" prioritymodifier="1"/>
+      <Order identifier="extinguishfires" prioritymodifier="0.75"/>
+      <Order identifier="inspectnoises" prioritymodifier="0.5"/>
+      <Order identifier="operatereactor" option="powerup" prioritymodifier="0.2"/>
+      <Order identifier="fixleaks" prioritymodifier="0.1"/>
+    </AutonomousObjectives>
+    <AppropriateOrders>
+      <Order identifier="operateweapons"/>
+      <Order identifier="fightintruders"/>
+    </AppropriateOrders>
+  </Job>
+  
+  <Job identifier="securityofficer_mystic" hiddenjob="true" initialcount="0" minnumber="0" maxnumber="0" allowalways="false"
+       onlyjobspecificdialog="false" minkarma="0" pricemultiplier="1.15" vitalitymodifier="0" idlebehavior="Patrol"
+       uicolor="0.8,0.35,0.6">
+    <Jobicon>
+      <sprite texture="Content/UI/MainIconsAtlas.png" sourcerect="256,256,128,128" origin="0.5,0.5"/>
+    </Jobicon>
+    <JobiconSmall>
+      <sprite texture="Content/UI/CommandUIAtlas.png" sourcerect="612,640,28,28" origin="0.5,0.5"/>
+    </JobiconSmall>
+    <Skills>
+      <Skill identifier="weapons" level="40,50" primary="true" pvplevel="60" pricemultiplier="20"/>
+      <Skill identifier="medical" level="25,35" pvplevel="50"/>
+      <Skill identifier="mechanical" level="15,25" pvplevel="50"/>
+      <Skill identifier="electrical" level="15,25" pvplevel="50"/>
+      <Skill identifier="helm" level="5,10" pvplevel="50" pricemultiplier="10"/>
+      <Skill identifier="Touhou_Magic" level="20,30" pvplevel="60"/>
+    </Skills>
+    <ItemSet>
+      <Item identifier="securityuniform1" identifierteam2="securityseparatistsuniform1" equip="true" outfit="true"/>
+      <Item identifier="idcard" equip="true" showpreview="false"/>
+      <Item identifier="headset" equip="true" showpreview="false"/>
+      <Item identifier="divingknife" equip="false"/>
+      <Item identifier="handcuffs" GameMode="PvE"/>
+      <Item identifier="stunbaton" GameMode="PvE">
+        <Item identifier="batterycell" showpreview="false"/>
+      </Item>
+      <Item identifier="revolver" GameMode="PvP" equip="false">
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+      </Item>
+    </ItemSet>
+    <ItemSet>
+      <Item identifier="securityuniform2" identifierteam2="securityseparatistsuniform2" equip="true" outfit="true"/>
+      <Item identifier="idcard" equip="true" showpreview="false"/>
+      <Item identifier="headset" equip="true" showpreview="false"/>
+      <Item identifier="divingknife" equip="false"/>
+      <Item identifier="handcuffs" GameMode="PvE"/>
+      <Item identifier="stunbaton" GameMode="PvE">
+        <Item identifier="batterycell" showpreview="false"/>
+      </Item>
+      <Item identifier="revolver" GameMode="PvP" equip="false">
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+      </Item>
+    </ItemSet>
+    <ItemSet>
+      <Item identifier="securityuniform3" identifierteam2="securityseparatistsuniform3" equip="true" outfit="true"/>
+      <Item identifier="idcard" equip="true" showpreview="false"/>
+      <Item identifier="headset" equip="true" showpreview="false"/>
+      <Item identifier="divingknife" equip="false"/>
+      <Item identifier="handcuffs" GameMode="PvE"/>
+      <Item identifier="stunbaton" GameMode="PvE">
+        <Item identifier="batterycell" showpreview="false"/>
+      </Item>
+      <Item identifier="revolver" GameMode="PvP" equip="false">
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+        <Item identifier="revolverround"/>
+      </Item>
+    </ItemSet>
+    <AutonomousObjectives>
+      <Order identifier="fightintruders" prioritymodifier="1"/>
+      <Order identifier="rescue" prioritymodifier="1"/>
+      <Order identifier="extinguishfires" prioritymodifier="0.75"/>
+      <Order identifier="inspectnoises" prioritymodifier="0.5"/>
+      <Order identifier="operatereactor" option="powerup" prioritymodifier="0.2"/>
+      <Order identifier="fixleaks" prioritymodifier="0.1"/>
+    </AutonomousObjectives>
+    <AppropriateOrders>
+      <Order identifier="operateweapons"/>
+      <Order identifier="fightintruders"/>
+    </AppropriateOrders>
+  </Job>
+</Jobs>

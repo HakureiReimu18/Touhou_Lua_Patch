@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TalentTrees>
+    <!--底树先沿用 1.13.4 原版安全官；以后直接改本文件，插件不会覆盖或重新拼接。-->
+    <TalentTree jobidentifier="securityofficer_arcane">
+        <SubTree identifier="security_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="protectandserve"/>
+                <TalentOption identifier="firstaidtraining"/>
+                <TalentOption identifier="physicalconditioning"/>
+                <TalentOption identifier="swole"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="3">
+                <TalentOption identifier="weaponsmith"/>
+                <TalentOption identifier="dontpushit"/>
+                <TalentOption identifier="munitionsexpertise"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="frogman" type="specialization" requires="security_primary" blocks="enforcer,gunner">
+            <TalentOptions>
+                <TalentOption identifier="boardingparty"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="slayer"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="easyturtle"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="specops"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="enforcer" type="specialization" requires="security_primary" blocks="frogman,gunner">
+            <TalentOptions>
+                <TalentOption identifier="pacificationkit"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="stonewall"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="crustyseaman"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="implacable"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="gunner" type="specialization" requires="security_primary" blocks="frogman,enforcer">
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Emergency_Avoidance"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="tandemfire"/>
+                <TalentOption identifier="commando"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="gunrunner"/>
+                <TalentOption identifier="extrapowder"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Talents_Yokai_Primary11"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="magic_bullet_hunter" nameidentifier="talenttree.magic_bullet_hunter" type="specialization" requires="security_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_MagicBulletHunter_Talent01"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_MagicBulletHunter_Talent02"/>
+                <TalentOption identifier="Touhou_MagicBulletHunter_Talent03"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_MagicBulletHunter_Talent04"/>
+                <TalentOption identifier="Touhou_MagicBulletHunter_Talent05"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Security_Talent_Completed"/>
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+    
+    <TalentTree jobidentifier="securityofficer_mystic">
+        <SubTree identifier="security_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="protectandserve"/>
+                <TalentOption identifier="firstaidtraining"/>
+                <TalentOption identifier="physicalconditioning"/>
+                <TalentOption identifier="swole"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="3">
+                <TalentOption identifier="weaponsmith"/>
+                <TalentOption identifier="dontpushit"/>
+                <TalentOption identifier="munitionsexpertise"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="frogman" type="specialization" requires="security_primary" blocks="enforcer,gunner">
+            <TalentOptions>
+                <TalentOption identifier="boardingparty"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="slayer"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="easyturtle"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="specops"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="enforcer" type="specialization" requires="security_primary" blocks="frogman,gunner">
+            <TalentOptions>
+                <TalentOption identifier="pacificationkit"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="stonewall"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="crustyseaman"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="implacable"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="gunner" type="specialization" requires="security_primary" blocks="frogman,enforcer">
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Emergency_Avoidance"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="tandemfire"/>
+                <TalentOption identifier="commando"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="gunrunner"/>
+                <TalentOption identifier="extrapowder"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Talents_Yokai_Primary11"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="abyss_hunter" nameidentifier="talenttree.abyss_hunter" type="specialization" requires="security_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_MysticJob_Talent01"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_AbyssHunter_Talent02"/>
+                <TalentOption identifier="Touhou_AbyssHunter_Talent03"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_AbyssHunter_Talent04"/>
+                <TalentOption identifier="Touhou_AbyssHunter_Talent05"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Security_Talent_Completed"/>
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+</TalentTrees>

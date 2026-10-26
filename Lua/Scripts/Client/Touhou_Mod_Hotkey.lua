@@ -146,6 +146,22 @@ local L = {
         hb_r = "红",
         hb_g = "绿",
         hb_b = "蓝",
+        energy_settings = "能量条设置",
+        we_hint = "只影响本机显示，改动即时生效",
+        we_show = "显示能量条",
+        we_follow_weapon = "位置：跟随武器界面",
+        we_follow_custom = "位置：自定义屏幕位置",
+        we_horizontal = "方向：横条",
+        we_vertical = "方向：竖条",
+        we_pos_x = "水平位置",
+        we_pos_y = "垂直位置",
+        we_length = "条长度",
+        we_thickness = "条厚度",
+        we_active_color = "激活后颜色",
+        we_idle_color = "激活前颜色",
+        we_force_colors = "强制覆盖武器配色",
+        we_decimals = "数值显示小数",
+        we_loading = "（未检测到能量条模块，先按默认值显示；保存后 C# 加载时生效）",
         bs_interval = "结算间隔（秒）",
         bs_resist = "转移抗性折算系数（0-1）",
         bs_distance = "链接距离上限（0 = 不限）",
@@ -300,6 +316,22 @@ local L = {
         hb_r = "R",
         hb_g = "G",
         hb_b = "B",
+        energy_settings = "Energy bar settings",
+        we_hint = "Client-side display only; changes apply immediately",
+        we_show = "Show energy bar",
+        we_follow_weapon = "Position: above weapon UI",
+        we_follow_custom = "Position: custom screen spot",
+        we_horizontal = "Orientation: horizontal",
+        we_vertical = "Orientation: vertical",
+        we_pos_x = "Horizontal position",
+        we_pos_y = "Vertical position",
+        we_length = "Bar length",
+        we_thickness = "Bar thickness",
+        we_active_color = "Active color",
+        we_idle_color = "Standby color",
+        we_force_colors = "Override weapon colors",
+        we_decimals = "Show decimals",
+        we_loading = "(Energy bar module not detected - showing defaults; saved settings apply once the C# part loads)",
         bs_interval = "Settle interval (seconds)",
         bs_resist = "Resistance scale on transfer (0-1)",
         bs_distance = "Max link distance (0 = unlimited)",
@@ -1347,6 +1379,92 @@ local function hb_slider_row(layout, height, label, min, max, fmt, get, set)
     end
 end
 
+-- ==================== 武器能量条设置页（energybar） ====================
+-- C# 侧（WeaponEnergyHud.cs）把合并后的配置写到 TouhouWeaponEnergyState.txt（与热键配置同目录），
+-- 本页只读它展示；改动写 TouhouWeaponEnergyConfig.txt，C# 每帧查 mtime 即时重载。
+-- 缺 state 文件（C# 未加载）时按下面这份默认值显示，别让页面空着。
+local WE_DEFAULT = {
+    show = 1, follow = 1, anchorx = 0.50, anchory = 0.86,
+    vertical = 0, length = 220, thickness = 14,
+    activecolor = "100,220,255", idlecolor = "150,170,190",
+    forcecolors = 0,  -- 1=设置页颜色强行覆盖武器自带配色
+    decimals = 0,     -- 1=能量数值显示小数
+}
+local we_state = nil
+local we_missing = false
+
+local function we_parse_state(text)
+    local st = {}
+    for k, v in pairs(WE_DEFAULT) do st[k] = v end
+    for line in string.gmatch(text or "", "[^\r\n]+") do
+        local k, v = string.match(line, "^([^=]+)=(.*)$")
+        if k ~= nil and WE_DEFAULT[k] ~= nil then
+            if type(WE_DEFAULT[k]) == "number" then
+                st[k] = tonumber(v) or WE_DEFAULT[k]
+            else
+                st[k] = v
+            end
+        end
+    end
+    return st
+end
+
+local function we_load_state()
+    if File == nil then return nil end
+    local ok, text = pcall(function() return File.ReadAllText(hb_dir_file("TouhouWeaponEnergyState.txt")) end)
+    if not ok or text == nil then return nil end
+    return we_parse_state(text)
+end
+
+local function we_write_config()
+    if File == nil or we_state == nil then return end
+    local lines = {
+        "show=" .. (we_state.show == 1 and "1" or "0"),
+        "follow=" .. (we_state.follow == 1 and "1" or "0"),
+        "anchorx=" .. string.format("%.2f", we_state.anchorx or 0.5),
+        "anchory=" .. string.format("%.2f", we_state.anchory or 0.86),
+        "vertical=" .. (we_state.vertical == 1 and "1" or "0"),
+        "length=" .. string.format("%.0f", we_state.length or 220),
+        "thickness=" .. string.format("%.0f", we_state.thickness or 14),
+        "activecolor=" .. tostring(we_state.activecolor or WE_DEFAULT.activecolor),
+        "idlecolor=" .. tostring(we_state.idlecolor or WE_DEFAULT.idlecolor),
+        "forcecolors=" .. (we_state.forcecolors == 1 and "1" or "0"),
+        "decimals=" .. (we_state.decimals == 1 and "1" or "0"),
+    }
+    pcall(function()
+        File.WriteAllText(hb_dir_file("TouhouWeaponEnergyConfig.txt"), table.concat(lines, "\n"))
+    end)
+end
+
+-- 取某个颜色键的单通道（ch: 1=R 2=G 3=B）
+local function we_color_channel(key, ch)
+    local r, g, b = hb_parse_color(we_state[key])
+    if ch == 1 then return r elseif ch == 2 then return g else return b end
+end
+
+local function we_set_color_channel(key, ch, value)
+    local r, g, b = hb_parse_color(we_state[key])
+    local v = math.floor(math.min(math.max(value, 0), 255) + 0.5)
+    if ch == 1 then r = v elseif ch == 2 then g = v else b = v end
+    we_state[key] = r .. "," .. g .. "," .. b
+end
+
+-- 能量条页滑条行：拖动即写配置（本机设置，不需要保存按钮）
+local function we_slider_row(layout, height, label, min, max, fmt, get, set)
+    local row = add_row(layout, height)
+    hb_add_text(Vector2(0.3, 1), row.RectTransform, label, GUI.Alignment.CenterLeft)
+    local scroll = GUI.ScrollBar(GUI.RectTransform(Vector2(0.5, 1), row.RectTransform), 0.1)
+    scroll.Range = Vector2(min, max)
+    local value_text = hb_add_text(Vector2(0.18, 1), row.RectTransform, string.format(fmt, get()), GUI.Alignment.CenterLeft)
+    scroll.BarScroll = math.min(math.max((get() - min) / (max - min), 0), 1)
+    scroll.OnMoved = function(bar, s)
+        set(min + (max - min) * s)
+        value_text.Text = RichString.Plain(RawLString(string.format(fmt, get())))
+        we_write_config()
+        return true
+    end
+end
+
 -- ==================== 武器伤害与防具抗性设置页（damage） ====================
 -- 数据流（联机全由 C# 负责传输，本页不碰网络）：
 --   本页「保存/档位/重置」→ 写 TouhouDamageRequest.txt；
@@ -1603,7 +1721,7 @@ local function bs_textbox_row(layout, label, key, pending)
 end
 
 -- ==================== 物品特效配置页（effects） ====================
--- C# 接口在 CSharp/Client/EffectSettings.cs（命名空间 Touhou.WeaponBadges）：
+-- C# 接口在 CSharp/Client/WeaponBadges/EffectSettings.cs（命名空间 Touhou.WeaponBadges）：
 --   Read() 返回 "键=值" 多行快照；Save(文本) 校验通过才写盘并即时生效，返回空串 = 成功、否则是失败原因。
 -- 页面只在打开/保存时碰 C#（不做每帧轮询）；编辑走暂存表，返回/Esc 直接丢弃。
 local FX_TYPE = "Touhou.WeaponBadges.EffectSettings"
@@ -1753,53 +1871,35 @@ local function open_menu()
     if menu_page == "hub" then
         add_text(Vector2(1, ROW_H), layout.RectTransform, T("window_title"), GUI.Alignment.Center)
 
-        local btn_hotkey = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("menu_hotkey")))
-        btn_hotkey.OnClicked = function()
-            menu_page = "bindings"
-            pcall(open_menu)
-            return true
+        -- 两列排布：每个按钮只占半宽，行数从 9 行降到 4 行，密集感明显减轻
+        local hub_columns = GUI.LayoutGroup(GUI.RectTransform(Vector2(1, 0.70), layout.RectTransform), true, GUI.Anchor.CenterLeft)
+        hub_columns.RelativeSpacing = 0.03
+        local function hub_column()
+            local col = GUI.LayoutGroup(GUI.RectTransform(Vector2(0.475, 1), hub_columns.RectTransform))
+            col.Stretch = true
+            col.RelativeSpacing = 0.03
+            return col
+        end
+        local function hub_button(col, label_key, on_click)
+            local btn = GUI.Button(GUI.RectTransform(Vector2(1, 0.21), col.RectTransform), RawLString(T(label_key)))
+            btn.OnClicked = on_click
+            return btn
+        end
+        -- 切页 + 进页前的暂存重置（各页重读自己的状态快照）
+        local function go_page(page, reset)
+            return function()
+                if reset ~= nil then reset() end
+                menu_page = page
+                pcall(open_menu)
+                return true
+            end
         end
 
-        local btn_bond = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("bond_settings")))
-        btn_bond.OnClicked = function()
-            -- 绑定设置是本菜单的子页面，直接切页（数据经 TouhouBondState.txt 快照读取）
-            bond_state = nil  -- 强制重读状态快照
-            menu_page = "bondsettings"
-            pcall(open_menu)
-            return true
-        end
+        local left_col = hub_column()
+        local right_col = hub_column()
 
-        local btn_condloss = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("condloss_settings")))
-        btn_condloss.OnClicked = function()
-            bond_state = nil
-            menu_page = "condloss"
-            pcall(open_menu)
-            return true
-        end
-
-        local btn_hudbar = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("hudbar_settings")))
-        btn_hudbar.OnClicked = function()
-            -- 进度条设置是本菜单的子页面，直接切页（同尺寸窗口原位替换，零延迟）
-            hb_selected = nil
-            hb_state = nil  -- 强制重读状态快照
-            menu_page = "hudbars"
-            pcall(open_menu)
-            return true
-        end
-
-        local btn_damage = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("damage_settings")))
-        btn_damage.OnClicked = function()
-            -- 武器伤害与防具抗性设置是本菜单的子页面（读 TouhouDamageState.txt / 写 TouhouDamageRequest.txt，传输由 C# 桥接）
-            dmg_state = nil
-            dmg_dirty = false
-            dmg_selected = nil
-            menu_page = "damage"
-            pcall(open_menu)
-            return true
-        end
-
-        local btn_costumelock = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("cl_settings")))
-        btn_costumelock.OnClicked = function()
+        hub_button(left_col, "menu_hotkey", go_page("bindings"))
+        hub_button(left_col, "cl_settings", go_page("costumelock", function()
             -- 进入页面时重置编辑暂存（跟随服务器最新值）
             cl_pending_enabled = nil
             cl_pending_time = nil
@@ -1807,23 +1907,36 @@ local function open_menu()
             cl_dirty = false
             cl_list_scroll = 0
             cl_unlockall_confirm = nil
-            menu_page = "costumelock"
-            pcall(open_menu)
-            return true
-        end
+        end))
+        hub_button(left_col, "bond_settings", go_page("bondsettings", function()
+            bond_state = nil  -- 强制重读状态快照
+        end))
+        hub_button(left_col, "condloss_settings", go_page("condloss", function()
+            bond_state = nil
+        end))
 
-        local btn_effects = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("fx_settings")))
-        btn_effects.OnClicked = function()
+        hub_button(right_col, "hudbar_settings", go_page("hudbars", function()
+            hb_selected = nil
+            hb_state = nil  -- 强制重读状态快照
+        end))
+        hub_button(right_col, "energy_settings", go_page("energybar", function()
+            we_state = nil  -- 强制重读状态快照
+        end))
+        hub_button(right_col, "damage_settings", go_page("damage", function()
+            -- 读 TouhouDamageState.txt / 写 TouhouDamageRequest.txt，传输由 C# 桥接
+            dmg_state = nil
+            dmg_dirty = false
+            dmg_selected = nil
+        end))
+        hub_button(right_col, "fx_settings", go_page("effects", function()
             -- 进页重读 C# 快照；上次未保存的暂存在这里被丢弃
             fx_state = nil
             fx_dirty = false
             fx_status = nil
-            menu_page = "effects"
-            pcall(open_menu)
-            return true
-        end
+        end))
 
-        local btn_close = GUI.Button(GUI.RectTransform(Vector2(1, ROW_H), layout.RectTransform), RawLString(T("close")))
+        local close_row = add_row(layout, ROW_H)
+        local btn_close = GUI.Button(GUI.RectTransform(Vector2(1, 1), close_row.RectTransform), RawLString(T("close")))
         btn_close.OnClicked = function()
             close_menu()
             return true
@@ -2181,6 +2294,162 @@ local function open_menu()
                 return true
             end
             local close_button = GUI.Button(GUI.RectTransform(Vector2(0.5, 1), bottom_row.RectTransform), RawLString(T("close")))
+            close_button.OnClicked = function()
+                close_menu()
+                return true
+            end
+        end
+        return
+    end
+
+    if menu_page == "energybar" then
+        if we_state == nil then
+            we_state = we_load_state()
+            we_missing = we_state == nil
+            if we_state == nil then we_state = we_parse_state(nil) end
+        end
+        add_text(Vector2(1, HB_H), layout.RectTransform, T("window_title") .. " - " .. T("energy_settings"), GUI.Alignment.Center)
+
+        local build_ok, build_err = xpcall(function()
+        if we_missing then
+            add_text(Vector2(1, HB_H), layout.RectTransform, T("we_loading"), GUI.Alignment.Center)
+        else
+            add_text(Vector2(1, HB_H), layout.RectTransform, T("we_hint"), GUI.Alignment.Center)
+        end
+
+        -- 左右排版：左列布局（位置/方向/尺寸），右列两套颜色
+        local columns = GUI.LayoutGroup(GUI.RectTransform(Vector2(1, 0.70), layout.RectTransform), true, GUI.Anchor.CenterLeft)
+        columns.RelativeSpacing = 0.02
+        local WE_H = 0.10
+
+        local left = GUI.LayoutGroup(GUI.RectTransform(Vector2(0.48, 1), columns.RectTransform))
+        -- 不 Stretch：两列行高保持一致（左列 7 行比右列 8 行矮，底部留点空）
+        left.RelativeSpacing = 0.01
+
+        do
+            local row = add_row(left, WE_H)
+            local tick = GUI.TickBox(GUI.RectTransform(Vector2(1, 1), row.RectTransform), RawLString(T("we_show")))
+            tick.Selected = we_state.show == 1
+            tick.OnSelected = function(tb)
+                we_state.show = tb.Selected and 1 or 0
+                we_write_config()
+                return true
+            end
+        end
+
+        do
+            local row = add_row(left, WE_H)
+            local btn = GUI.Button(GUI.RectTransform(Vector2(1, 1), row.RectTransform),
+                RawLString(we_state.follow == 1 and T("we_follow_weapon") or T("we_follow_custom")))
+            btn.OnClicked = function()
+                we_state.follow = (we_state.follow == 1) and 0 or 1
+                we_write_config()
+                pcall(open_menu)
+                return true
+            end
+        end
+
+        do
+            local row = add_row(left, WE_H)
+            local btn = GUI.Button(GUI.RectTransform(Vector2(1, 1), row.RectTransform),
+                RawLString(we_state.vertical == 1 and T("we_vertical") or T("we_horizontal")))
+            btn.OnClicked = function()
+                we_state.vertical = (we_state.vertical == 1) and 0 or 1
+                we_write_config()
+                pcall(open_menu)
+                return true
+            end
+        end
+
+        -- 位置按屏幕百分比给（0=左/上边缘，100=右/下边缘），换分辨率也不会跑出去
+        we_slider_row(left, WE_H, T("we_pos_x"), 0, 100, "%.0f",
+            function() return (we_state.anchorx or 0.5) * 100 end,
+            function(v) we_state.anchorx = v / 100 end)
+        we_slider_row(left, WE_H, T("we_pos_y"), 0, 100, "%.0f",
+            function() return (we_state.anchory or 0.86) * 100 end,
+            function(v) we_state.anchory = v / 100 end)
+        we_slider_row(left, WE_H, T("we_length"), 60, 600, "%.0f",
+            function() return we_state.length or 220 end,
+            function(v) we_state.length = v end)
+        we_slider_row(left, WE_H, T("we_thickness"), 4, 40, "%.0f",
+            function() return we_state.thickness or 14 end,
+            function(v) we_state.thickness = v end)
+
+        do
+            local row = add_row(left, WE_H)
+            local tick = GUI.TickBox(GUI.RectTransform(Vector2(1, 1), row.RectTransform), RawLString(T("we_decimals")))
+            tick.Selected = we_state.decimals == 1
+            tick.OnSelected = function(tb)
+                we_state.decimals = tb.Selected and 1 or 0
+                we_write_config()
+                return true
+            end
+        end
+
+        local right = GUI.LayoutGroup(GUI.RectTransform(Vector2(0.48, 1), columns.RectTransform))
+        right.RelativeSpacing = 0.01
+
+        local color_groups = {
+            { key = "activecolor", label = T("we_active_color") },
+            { key = "idlecolor", label = T("we_idle_color") },
+        }
+        for _, cg in ipairs(color_groups) do
+            local preview = nil
+            do
+                local row = add_row(right, WE_H)
+                hb_add_text(Vector2(0.7, 1), row.RectTransform, cg.label, GUI.Alignment.CenterLeft)
+                preview = GUI.Frame(GUI.RectTransform(Vector2(0.24, 0.7), row.RectTransform), nil)
+                local pr, pg, pb = hb_parse_color(we_state[cg.key])
+                preview.Color = Color(pr, pg, pb, 255)
+            end
+            local channels = { { T("hb_r"), 1 }, { T("hb_g"), 2 }, { T("hb_b"), 3 } }
+            for _, ch in ipairs(channels) do
+                local ch_index = ch[2]
+                we_slider_row(right, WE_H, ch[1], 0, 255, "%.0f",
+                    function() return we_color_channel(cg.key, ch_index) end,
+                    function(v)
+                        we_set_color_channel(cg.key, ch_index, v)
+                        -- 拖滑条时就地刷新色块，不用重建整页
+                        local pr, pg, pb = hb_parse_color(we_state[cg.key])
+                        pcall(function() preview.Color = Color(pr, pg, pb, 255) end)
+                    end)
+            end
+        end
+
+        -- 颜色优先级：默认关 = 武器 XML 有颜色就用武器的，没有才用上面这组默认色
+        do
+            local row = add_row(right, WE_H)
+            local tick = GUI.TickBox(GUI.RectTransform(Vector2(1, 1), row.RectTransform), RawLString(T("we_force_colors")))
+            tick.Selected = we_state.forcecolors == 1
+            tick.OnSelected = function(tb)
+                we_state.forcecolors = tb.Selected and 1 or 0
+                we_write_config()
+                return true
+            end
+        end
+        end, function(e) return tostring(e) end)
+        if not build_ok then
+            add_text(Vector2(1, HB_H), layout.RectTransform, "页面构建出错: " .. tostring(build_err), GUI.Alignment.Center)
+            pcall(function() File.WriteAllText(hb_dir_file("page_error.txt"), tostring(build_err)) end)
+        end
+
+        -- 返回主菜单 / 重置默认值 / 关闭
+        do
+            local bottom_row = add_row(layout, HB_H)
+            local back_btn = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), bottom_row.RectTransform), RawLString(T("back")))
+            back_btn.OnClicked = function()
+                menu_page = "hub"
+                pcall(open_menu)
+                return true
+            end
+            local reset_btn = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), bottom_row.RectTransform), RawLString(T("reset_default")))
+            reset_btn.OnClicked = function()
+                for k, v in pairs(WE_DEFAULT) do we_state[k] = v end
+                we_write_config()
+                pcall(open_menu)
+                return true
+            end
+            local close_button = GUI.Button(GUI.RectTransform(Vector2(0.33, 1), bottom_row.RectTransform), RawLString(T("close")))
             close_button.OnClicked = function()
                 close_menu()
                 return true

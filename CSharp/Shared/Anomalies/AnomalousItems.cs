@@ -34,6 +34,9 @@ namespace Touhou.Anomalies
             harmony.PatchAll(typeof(AnomalyParentChangedPatch));
             harmony.PatchAll(typeof(AnomalyTrumpetUsePatch));
             harmony.PatchAll(typeof(AnomalyDeferredCleanupPatch));
+#if CLIENT
+            harmony.PatchAll(typeof(AnomalySubtitlePatch));
+#endif
             LuaCsSetup.Instance.Hook.Add("roundEnd", "Touhou.Anomalies.End", OnRoundEnd);
             LuaCsSetup.Instance.Hook.Add("roundStart", "Touhou.Anomalies.Start", OnRoundStart);
         }
@@ -111,6 +114,30 @@ namespace Touhou.Anomalies
             AnomalyRuntime.DrainRemoved();
         }
     }
+
+#if CLIENT
+    [HarmonyPatch(typeof(GameClient), nameof(GameClient.AddChatMessage), new[] { typeof(ChatMessage) })]
+    internal static class AnomalySubtitlePatch
+    {
+        private static bool Prefix(ChatMessage message)
+        {
+            if (!AnomalyRuntime.OwnContext || message == null || message.Type != ChatMessageType.Server ||
+                message.Sender != null || message.SenderName == null ||
+                !message.SenderName.StartsWith(AnomalyRuntime.SubtitleSenderPrefix, StringComparison.Ordinal)) return true;
+            try
+            {
+                AnomalyRuntime.ShowSubtitle(message.Text);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                // 字幕没画出来就留在聊天栏，也别退回要点 OK 的窗口。
+                AnomalyRuntime.Warn("异常字幕显示失败，保留聊天消息", ex);
+                return true;
+            }
+        }
+    }
+#endif
 
     public sealed class TouhouAnomaly : ItemComponent
     {
@@ -384,6 +411,7 @@ namespace Touhou.Anomalies
 
     internal static class AnomalyRuntime
     {
+        internal const string SubtitleSenderPrefix = "Touhou.Anomalies.Subtitle:";
         internal static readonly Random Random = new Random();
         internal static readonly Identifier TrumpetId = "Touhou_Anomaly_Laugh_Trumpet".ToIdentifier();
         private static readonly Identifier ContainmentTag = "Touhou_Containment".ToIdentifier();
@@ -426,6 +454,7 @@ namespace Touhou.Anomalies
             new List<(TouhouAnomaly, Vector2)>();
         private static readonly Dictionary<Character, float> FieldTargets = new Dictionary<Character, float>();
         private static readonly Dictionary<Character, float> Desired = new Dictionary<Character, float>();
+        private static readonly Dictionary<Character, float> ClosestStone = new Dictionary<Character, float>();
         private static readonly List<Character> ToRemove = new List<Character>();
         private sealed class BlowStamp { internal double Time = double.NaN; }
         private static ConditionalWeakTable<Item, BlowStamp> lastBlow = new ConditionalWeakTable<Item, BlowStamp>();
@@ -505,6 +534,7 @@ namespace Touhou.Anomalies
             ActiveStones.Clear();
             FieldTargets.Clear();
             Desired.Clear();
+            ClosestStone.Clear();
             ToRemove.Clear();
             lastBlow = new ConditionalWeakTable<Item, BlowStamp>();
             fieldElapsed = 0f;
@@ -580,16 +610,26 @@ namespace Touhou.Anomalies
 
         internal static void Notify(Character target, string text, string sender = "???")
         {
-            if (!Authority || target == null || target.Removed) return;
+            if (!Authority || target == null || target.Removed || string.IsNullOrWhiteSpace(text)) return;
+            // 沿用原生定向消息的收件人和去重，客户端只把本系统的提示改成字幕。
 #if SERVER
             foreach (var client in GameMain.Server.ConnectedClients)
                 if (client.Character == target)
-                    GameMain.Server.SendDirectChatMessage(ChatMessage.Create(sender, text, ChatMessageType.MessageBox, null), client);
+                    GameMain.Server.SendDirectChatMessage(
+                        ChatMessage.Create(SubtitleSenderPrefix + sender, text, ChatMessageType.Server, null), client);
 #else
             if (target == Character.Controlled)
-                GameMain.GameSession?.CrewManager?.AddSinglePlayerChatMessage(sender, text, ChatMessageType.Default, null);
+                ShowSubtitle(text);
 #endif
         }
+#if CLIENT
+        internal static void ShowSubtitle(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+            // 和异传书走同一个顶部滚动队列，低语不用再叠一声 UI 提示音。
+            GUI.AddMessage(text, new Color(135, 206, 250), 8f, playSound: false);
+        }
+#endif
         internal static void NotifyNearby(Vector2 position, string text, float radius)
         {
 #if SERVER
@@ -678,26 +718,40 @@ namespace Touhou.Anomalies
             fieldClock += deltaTime;
             fieldElapsed += deltaTime;
             if (fieldElapsed < 1f) return;
+            float step = Math.Min(fieldElapsed, 2f);
             fieldElapsed = 0f;
-            RebuildFields(true);
+            RebuildFields(true, step);
         }
         private static bool ActiveStone(TouhouAnomaly stone) => !stone.Disposed && !stone.Item.Removed &&
             !stone.Item.IsInRemoveQueue && !IsContained(stone.Item);
 
-        internal static void RebuildFields(bool messages)
+        internal static void RebuildFields(bool messages, float exposureSeconds = 0f)
         {
             if (!Authority || !IsMainThread || rebuilding || (Stones.Count == 0 && FieldTargets.Count == 0)) return;
             rebuilding = true;
             try
             {
                 Desired.Clear();
+                ClosestStone.Clear();
                 ActiveStones.Clear();
                 foreach (var stone in Stones)
                     if (ActiveStone(stone)) ActiveStones.Add((stone, RootOwner(stone.Item).WorldPosition));
                 // 全部收容时只撤掉旧效果，不再查场上的角色。
                 if (ActiveStones.Count > 0)
                     CollectFieldTargets(messages);
-                foreach (var pair in Desired) SetField(pair.Key, pair.Value);
+                foreach (var pair in Desired)
+                {
+                    SetField(pair.Key, pair.Value);
+                    if (exposureSeconds > 0f && pair.Key.IsHuman)
+                    {
+                        float distance = ClosestStone[pair.Key];
+                        // 多份样本只取最近一份；装箱事件只撤场，不能顺手再伤一次。
+                        float madness = distance < 200f * 200f ? 1f : distance < 300f * 300f ? 0.5f : 0.25f;
+                        AddExposure(pair.Key, "psychosis", madness * exposureSeconds);
+                        if (distance < 300f * 300f)
+                            AddExposure(pair.Key, "organdamage", (distance < 200f * 200f ? 0.75f : 0.15f) * exposureSeconds);
+                    }
+                }
                 foreach (var pair in FieldTargets)
                     if (!Desired.ContainsKey(pair.Key)) SetField(pair.Key, 0f);
                 FieldTargets.Clear();
@@ -731,9 +785,17 @@ namespace Touhou.Anomalies
                     }
                     float strength = distance < 300f * 300f ? 80f : 30f;
                     if (!Desired.TryGetValue(c, out float current) || strength > current) Desired[c] = strength;
+                    if (!ClosestStone.TryGetValue(c, out float closest) || distance < closest) ClosestStone[c] = distance;
                     if (messages) NotifyField(active.Source, c, distance);
                 }
             }
+        }
+        private static void AddExposure(Character c, string id, float amount)
+        {
+            var prefab = AfflictionPrefab.Prefabs.Find(p => p.Identifier == id.ToIdentifier());
+            if (prefab == null || c.CharacterHealth == null || amount <= 0f) return;
+            c.CharacterHealth.ApplyAffliction(null, prefab.Instantiate(amount));
+            c.HealthUpdateInterval = 0f;
         }
         private static void SetField(Character c, float strength)
         {

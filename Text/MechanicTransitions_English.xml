@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="English" translatedname="English">
+    <JobName.mechanic_arcane>Arcane Machinist</JobName.mechanic_arcane>
+    <JobDescription.mechanic_arcane>A mechanic who protects the submarine with machinery and magic.</JobDescription.mechanic_arcane>
+    <JobName.mechanic_mystic>Fractured Artisan</JobName.mechanic_mystic>
+    <JobDescription.mechanic_mystic>A mechanic who turns damage and broken machinery into combat strength.</JobDescription.mechanic_mystic>
+    <talenttree.arcane_mechanic>Arcane Machinist</talenttree.arcane_mechanic>
+    <talenttree.fractured_artisan>Fractured Artisan</talenttree.fractured_artisan>
+    <entityname.Touhou_Mechanic_Arcane_Book>Arcane Machinist Transition Book</entityname.Touhou_Mechanic_Arcane_Book>
+    <entitydescription.Touhou_Mechanic_Arcane_Book>Hold in both hands and use or aim to read. Requires a base mechanic, both primary talent stages completed, Mechanical 80 and Magic 60. Consumed on registration. Activates next round or on a new mechanic body after death. Lose 40% of total experience on activation and reselect profession talents; talents outside the old profession tree, skills and equipment remain.</entitydescription.Touhou_Mechanic_Arcane_Book>
+    <entityname.Touhou_Mechanic_Mystic_Book>Fractured Artisan Transition Book</entityname.Touhou_Mechanic_Mystic_Book>
+    <entitydescription.Touhou_Mechanic_Mystic_Book>Hold in both hands and use or aim to read. Requires a base mechanic, both primary talent stages completed, Mechanical 80 and Weapons 60. Consumed on registration. Activates next round or on a new mechanic body after death. Lose 40% of total experience on activation and reselect profession talents; talents outside the old profession tree, skills and equipment remain.</entitydescription.Touhou_Mechanic_Mystic_Book>
+    <talentname.Touhou_ArcaneMechanic_Talent01>Mechanical Lore</talentname.Touhou_ArcaneMechanic_Talent01>
+    <talentdescription.Touhou_ArcaneMechanic_Talent01>Raise the skill level cap to 120.</talentdescription.Touhou_ArcaneMechanic_Talent01>
+    <talentname.Touhou_ArcaneMechanic_Talent02>Precision Welding</talentname.Touhou_ArcaneMechanic_Talent02>
+    <talentdescription.Touhou_ArcaneMechanic_Talent02>+30% hull repair speed. Devices you finish repairing deteriorate at half speed. This talent does not repeatedly stack the deterioration reduction.</talentdescription.Touhou_ArcaneMechanic_Talent02>
+    <talentname.Touhou_ArcaneMechanic_Talent03>Fine Craftsmanship</talentname.Touhou_ArcaneMechanic_Talent03>
+    <talentdescription.Touhou_ArcaneMechanic_Talent03>+1 crafted item quality and +50% skill gain speed.</talentdescription.Touhou_ArcaneMechanic_Talent03>
+    <talentname.Touhou_ArcaneMechanic_Talent04>Mechanical Protection</talentname.Touhou_ArcaneMechanic_Talent04>
+    <talentdescription.Touhou_ArcaneMechanic_Talent04>Take 15% less attack damage inside submarine compartments, including flooded rooms.</talentdescription.Touhou_ArcaneMechanic_Talent04>
+    <talentname.Touhou_ArcaneMechanic_Talent05>Mechanical Construction</talentname.Touhou_ArcaneMechanic_Talent05>
+    <talentdescription.Touhou_ArcaneMechanic_Talent05>Deal 20% more blunt trauma and 10% more lacerations.</talentdescription.Touhou_ArcaneMechanic_Talent05>
+    <talentname.Touhou_FracturedMechanic_Talent02>Fury</talentname.Touhou_FracturedMechanic_Talent02>
+    <talentdescription.Touhou_FracturedMechanic_Talent02>Melee damage increases linearly as health falls: 0% at full health, up to 30% at zero health.</talentdescription.Touhou_FracturedMechanic_Talent02>
+    <talentname.Touhou_FracturedMechanic_Talent03>Sacrifice</talentname.Touhou_FracturedMechanic_Talent03>
+    <talentdescription.Touhou_FracturedMechanic_Talent03>Incoming attack damage decreases linearly as health falls: 0% reduction at full health, up to 20% at zero health.</talentdescription.Touhou_FracturedMechanic_Talent03>
+    <talentname.Touhou_FracturedMechanic_Talent04>Scrap-Fueled Warfare</talentname.Touhou_FracturedMechanic_Talent04>
+    <talentdescription.Touhou_FracturedMechanic_Talent04>Average your repair speed bonus and hull repair speed bonus. Each 1% grants 0.1% ranged attack damage, capped at 15%. The base 100% speed is not counted.</talentdescription.Touhou_FracturedMechanic_Talent04>
+    <talentname.Touhou_FracturedMechanic_Talent05>Machine Spirit Reflection</talentname.Touhou_FracturedMechanic_Talent05>
+    <talentdescription.Touhou_FracturedMechanic_Talent05>Each 1% maximum health bonus grants 1% ranged attack damage, capped at 15%.</talentdescription.Touhou_FracturedMechanic_Talent05>
+    <talentname.Touhou_Special_Mechanic_Talent_Completed>Master Artisan</talentname.Touhou_Special_Mechanic_Talent_Completed>
+    <talentdescription.Touhou_Special_Mechanic_Talent_Completed>+10% effective skill levels. Each Mechanical skill point grants 0.05% damage to all attacks, capped at 10%.</talentdescription.Touhou_Special_Mechanic_Talent_Completed>
+    <afflictionname.Touhou_FracturedMechanic_Rage>Fury</afflictionname.Touhou_FracturedMechanic_Rage>
+    <afflictiondescription.Touhou_FracturedMechanic_Rage>Legacy save compatibility state. Fury now grants melee damage through its stat-scaling talent ability.</afflictiondescription.Touhou_FracturedMechanic_Rage>
+    <afflictionname.Touhou_MasterArtisan_SkillBoost>Master Artisan</afflictionname.Touhou_MasterArtisan_SkillBoost>
+    <afflictiondescription.Touhou_MasterArtisan_SkillBoost>Effective skill levels increased by 10%.</afflictiondescription.Touhou_MasterArtisan_SkillBoost>
+</infotexts>

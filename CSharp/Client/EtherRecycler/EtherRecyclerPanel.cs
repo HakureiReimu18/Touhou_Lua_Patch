@@ -534,7 +534,7 @@ internal static class EtherRecyclerPanel
         state.Panel.Visible = true;
 
         // 关键：独立 GUIFrame 必须每帧注册进 GUI 更新列表才会被绘制/交互
-        //（先例：本模组 CSharp/Shared/BondGui.cs 的 WindowTick；原版组件则是经 Item HUD 注册）
+        //（先例：本模组 CSharp/Shared/Bond/BondGui.cs 的 WindowTick；原版组件则是经 Item HUD 注册）
         state.Panel.AddToGUIUpdateList(false, 1);
     }
 

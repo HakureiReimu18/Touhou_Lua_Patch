@@ -57,6 +57,7 @@
   <Bar affliction="Patchouli_Asthma" color="120,75,100" maxstrength="100" enabled="true"/>
   <Bar affliction="FlandreTalent4_Effect_CD" color="220,55,55" maxstrength="100" enabled="true"/>
   <Bar affliction="Touhou_Lunatic_Reisen_Effect" color="220,25,200" maxstrength="100" enabled="true"/>
+  <Bar affliction="Touhou_Security_MagicShield" color="255,255,255" maxstrength="100" enabled="true"/>
   <!-- 示例（对应 affliction ）：
   <Bar affliction="Alice_Doll_Energy" name="人偶能量" color="200,160,255" maxstrength="100" enabled="true"/>
   <Bar affliction="Touhou_Blood_Clock_Time" name="血之时计" color="220,60,60" maxstrength="100" enabled="true"/>

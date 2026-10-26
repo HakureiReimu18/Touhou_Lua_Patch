@@ -30,7 +30,7 @@
                           只填 thornsstun 即"纯眩晕反击"（失重）；thornsstunchance 缺省 1 = 必定触发
       forcetwohandedranged true = 单手远程武器变为双手握持（专注）
       massbonusmult/massthreshold 巨人杀手：对质量 ≥ 阈值的生物伤害倍率（命中时判定）
-      chargetimemult      蓄力武器充能时间倍率（MaxChargeTime getter 实时乘算，紧张/等候）
+      chargetimemult      蓄力武器充能时间倍率（Update/Use 内的 MaxChargeTime 读取统一乘算，紧张/等候）
       firstshotdamagemult 满弹匣首发的伤害倍率（仅耐久式弹匣，领先）
       lonewolfdamagemult  快捷栏（含手部）只有这一把附魔武器时的伤害倍率（单打独斗）
       stonerollonly       true = 随机附魔只能roll到附魔石上（奇迹），再经石头转移到物品
@@ -199,7 +199,7 @@
   <Affix identifier="thorns" tier="Epic" nameprefix="‖color:192,64,255,255‖荆棘‖color:end‖‖color:255,255,255,255‖" applicable="armor" damagetakenmult="0.95" thornsbleeding="8" thornslacerations="5" thornsstun="0.3" thornsstunchance="0.5" thornsinterval="1" desc="受到的伤害 -5%；受到攻击时反击：使攻击者流血 +8、撕裂伤 +5，50% 概率眩晕 0.3 秒（1 秒冷却，不影响队友）" descarmor="受到的伤害 -5%；受到攻击时反击：使攻击者流血 +8、撕裂伤 +5，50% 概率眩晕 0.3 秒（1 秒冷却，不影响队友）" />
   <!-- 巨人杀手：命中时按目标 Character.Mass 判定，人类约 70-80，阈值 100 只影响大型生物 -->
   <Affix identifier="giantslayer" tier="Epic" nameprefix="‖color:192,64,255,255‖巨人杀手‖color:end‖‖color:255,255,255,255‖" applicable="weapon" massbonusmult="1.15" massthreshold="100" desc="对大型生物（质量 ≥100）伤害 +15%" />
-  <!-- 紧张：蓄力时间实时减35%（MaxChargeTime getter 补丁，跟随武器充能时间的实时变化） -->
+  <!-- 紧张：蓄力时间实时减35%（Update/Use 读取 MaxChargeTime 时统一乘算，跟随武器充能时间的实时变化） -->
   <Affix identifier="tense" tier="Epic" nameprefix="‖color:192,64,255,255‖紧张‖color:end‖‖color:255,255,255,255‖" applicable="rangedweapon" chargetimemult="0.65" desc="蓄力武器的充能时间 -35%" />
   <!-- 余烬：耐久越低伤害越高（100% 无加成，25% 及以下吃满 +15%）。只给带 Touhou_Recycle_Weapon tag 的自耗武器 -->
   <Affix identifier="embers" tier="Epic" nameprefix="‖color:192,64,255,255‖余烬‖color:end‖‖color:255,255,255,255‖" applicable="weapon" requiredtags="Touhou_Recycle_Weapon" lowconditiondamagemult="1.15" desc="耐久越低伤害越高：耐久 25% 及以下时伤害 +15%" />
@@ -293,5 +293,5 @@
        取下则用空白附魔石（附魔台：武器 + 空白石头 → 词缀转到石头上）。
        只能附在带 requiredtags 指定 tag 的武器上——把 tag 加到你允许的武器 XML 里即可（逗号分隔多个），
        没加 tag 的武器不参与，防止拿它给普通武器刷词缀 -->
-  <Affix identifier="salvage" tier="Epic" nameprefix="‖color:192,64,255,255‖回收‖color:end‖‖color:255,255,255,255‖" applicable="weapon" requiredtags="Touhou_Recycle_Weapon" desc="武器额外获得一个词缀槽（任意词缀，不能是回收）；额外词缀必须用附魔石转移附上，可在附魔台用空白附魔石把该词缀取下保存" />
+  <Affix identifier="salvage" tier="Epic" nameprefix="‖color:192,64,255,255‖回收‖color:end‖‖color:255,255,255,255‖" applicable="weapon" requiredtags="Touhou_Recycle_Weapon" desc="武器额外获得一个词缀槽（任意词缀，不能是回收）；额外词缀必须用附魔石转移附上，可在附魔台用空白附魔石把该词缀取下保存，回收本身也能这样取下" />
 </ItemAffixes>

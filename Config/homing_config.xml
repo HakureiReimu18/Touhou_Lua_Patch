@@ -29,7 +29,7 @@
 
   文件顶上的开关：enabled 总开关；maxActive 同时最多追几发；scansPerFrame 每帧最多扫描几个目标。
 
-  想看性能：把插件代码里 HomingProfiler.Enabled 改成 true（CSharp/Shared/HomingProjectiles.cs 文件末尾的
+  想看性能：把插件代码里 HomingProfiler.Enabled 改成 true（CSharp/Shared/Combat/Homing/HomingProjectiles.cs 文件末尾的
     HomingProfiler 类），每 5 秒控制台会给一条 [perf] 汇总：tick 平均/峰值耗时、当前追踪几发、
     周期内扫描了几次角色表。平时这个开关关闭，追踪系统不产生任何性能日志。
 

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Talents>
+    
+    <!--机关学识：允许技能水平上限达到120-->
+    <Talent identifier="Touhou_ArcaneMechanic_Talent01">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Buff.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneMechanic_Talent01"/>
+        <AbilityGroupInterval interval="4.9">
+            <Abilities>
+                <CharacterAbilitySkillCap maxskill="120"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    
+    <!--精密焊接：船壳修复速度+30%，且修复的设备老化速度减半-->
+    <Talent identifier="Touhou_ArcaneMechanic_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneMechanic_Talent02"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="RepairToolStructureRepairMultiplier" value="0.3"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnRepairComplete">
+            <Abilities>
+                <!-- 同一个天赋反复修理或多人修理，不再把 0.5 一层层相乘。 -->
+                <CharacterAbilityGiveItemStat stattype="DetoriationSpeed" value="0.5" stackable="false"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!--精工匠造：制作物品质量+1，技能获取速度+50%-->
+    <Talent identifier="Touhou_ArcaneMechanic_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Production.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneMechanic_Talent03"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="IncreaseFabricationQuality" value="1"/>
+                <CharacterAbilityGiveStat stattype="SkillGainSpeed" value="0.5"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!--机关保护：在潜艇内受到的伤害减少15%-->
+    <Talent identifier="Touhou_ArcaneMechanic_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneMechanic_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttacked">
+            <Conditions>
+                <AbilityConditionCharacter targetabilitytarget="false">
+                    <Conditional CurrentHull="neq null" Submarine="neq null"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="-0.15"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!--机关工造：造成的钝器伤增加20%，造成的撕裂伤增加10%-->
+    <Talent identifier="Touhou_ArcaneMechanic_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneMechanic_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="OnAddDamageAffliction">
+            <Abilities>
+                <CharacterAbilityModifyAffliction afflictionidentifiers="blunttrauma" addedmultiplier="0.2"/>
+                <CharacterAbilityModifyAffliction afflictionidentifiers="lacerations" addedmultiplier="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!-- 彼岸低语直接在树里引用已有 Touhou_MysticJob_Talent01。 -->
+    <!-- 狂怒用通用生命属性换算；献祭不是 StatType，仍由 Lua 改本次攻击承伤。 -->
+    
+    <!--狂怒：生命值越低，近战攻击伤害越高，最高30%-->
+    <Talent identifier="Touhou_FracturedMechanic_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_FracturedMechanic_Talent02"/>
+        <AbilityGroupInterval interval="0.5">
+            <Abilities>
+                <!-- 清理旧存档的狂怒状态，不再同时保留两份增伤。 -->
+<!--                <CharacterAbilityReduceAffliction afflictionid="Touhou_FracturedMechanic_Rage" amount="100"/>-->
+                <CharacterAbilityModifyStatToVitality stattype="MeleeAttackMultiplier" maxvalue="0.3" requiresalive="false"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    
+    <!--献祭：生命值越低，受到的伤害越少，最高减少20%-->
+    <Talent identifier="Touhou_FracturedMechanic_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_FracturedMechanic_Talent03"/>
+    </Talent>
+    
+    <!--以废养战：根据修复速度和船体修复速度的平均值，每有1%，就增加0.1%远程攻击伤害，最多15%-->
+    <Talent identifier="Touhou_FracturedMechanic_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Ranged.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_FracturedMechanic_Talent04"/>
+        <AbilityGroupInterval interval="0.5">
+            <Abilities>
+                <CharacterAbilityModifyStatToStat stattype="RangedAttackMultiplier"
+                    sourcestats="RepairSpeed,RepairToolStructureRepairMultiplier" multiplier="0.1" maxvalue="0.15"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    
+    <!--器灵反射：每有1%最大生命值加成，就增加1%远程攻击伤害，最多15%-->
+    <Talent identifier="Touhou_FracturedMechanic_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Ranged.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_FracturedMechanic_Talent05"/>
+        <AbilityGroupInterval interval="0.5">
+            <Abilities>
+                <CharacterAbilityModifyStatToStat stattype="RangedAttackMultiplier"
+                    sourcestats="MaximumHealthMultiplier" multiplier="1" maxvalue="0.15"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    
+    <!--大工匠：技能水平+10%。每有1点机械工程，增加0.05%所有攻击伤害，最高10%-->
+    <Talent identifier="Touhou_Special_Mechanic_Talent_Completed">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Production.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_Special_Mechanic_Talent_Completed"/>
+        <AbilityGroupInterval interval="0.5">
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true" setvalue="true">
+                            <Affliction identifier="Touhou_MasterArtisan_SkillBoost" amount="1"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="0.5">
+            <Conditions>
+                <AbilityConditionHasSkill skillidentifier="mechanical" minvalue="200" invert="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStatToSkill stattype="AttackMultiplier" skillidentifier="mechanical" maxvalue="0.05"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="0.5">
+            <Conditions>
+                <AbilityConditionHasSkill skillidentifier="mechanical" minvalue="200"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="AttackMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+</Talents>

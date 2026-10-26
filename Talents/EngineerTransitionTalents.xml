@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Talents>
+    <!--效果已补：全部使用被动/条件/配方，不引入主动技能；数值按主模组同类天赋档位起调。-->
+    
+    <!--符文解明-->
+    <!--制作的物品质量+1，修理速度+20%-->
+    <Talent identifier="Touhou_ArcaneEngineer_Talent01">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneEngineer_Talent01"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="IncreaseFabricationQuality" value="1.0"/>
+                <CharacterAbilityGiveStat stattype="RepairSpeed" value="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!--精心设计-->
+    <!--修理过的电器，它的老化速度减半-->
+    <Talent identifier="Touhou_ArcaneEngineer_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneEngineer_Talent02"/>
+        <AbilityGroupEffect abilityeffecttype="OnRepairComplete">
+            <Conditions>
+                <AbilityConditionItem category="Electrical"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityGiveItemStat stattype="DetoriationSpeed" value="0.5"/>
+            </Abilities>
+        </AbilityGroupEffect>
+<!--        <AbilityGroupEffect abilityeffecttype="OnRepairComplete">
+            <Conditions>
+                <AbilityConditionItem category="Machine"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityGiveItemStat stattype="DetoriationSpeed" value="0.5"/>
+            </Abilities>
+        </AbilityGroupEffect>-->
+    </Talent>
+    <!--紧急处理-->
+    <!--修理速度+20%，船壳修理速度+20%，经验获取速度+20%-->
+    <Talent identifier="Touhou_ArcaneEngineer_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneEngineer_Talent03"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="RepairSpeed" value="0.2"/>
+                <CharacterAbilityGiveStat stattype="RepairToolStructureRepairMultiplier" value="0.2"/>
+                <CharacterAbilityGiveStat stattype="ExperienceGainMultiplier" value="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!--电动力学-->
+    <!--弹幕攻击有概率附加电击和烧伤-->
+    <Talent identifier="Touhou_ArcaneEngineer_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Ranged.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneEngineer_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData tags="Touhou_Magic_Danmu" ignorenonharmfulattacks="true" weapontype="Ranged"/>
+                <AbilityConditionServerRandom randomchance="0.5"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityHitAffliction affliction="electricshock" strength="15" onceperattack="true" dividebylimbcount="true" cooldown="0.5"/>
+                <CharacterAbilityHitAffliction affliction="burn" strength="5.0" multiplier="inherit" onceperattack="true" dividebylimbcount="true" cooldown="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    <!--电流相生-->
+    <!--攻击时有概率造成额外眩晕和电击-->
+    <Talent identifier="Touhou_ArcaneEngineer_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Indirect_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneEngineer_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true" weapontype="Ranged,Melee"/>
+                <AbilityConditionServerRandom randomchance="0.5"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityHitAffliction affliction="stun" strength="0.5" onceperattack="true" cooldown="0.3"/>
+                <CharacterAbilityHitAffliction affliction="electricshock" strength="30" onceperattack="true" cooldown="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!--大工程师-->
+    <!--增加10%最大生命值。每有1点电器工程水平，增加0.05%所有攻击伤害，最多10%-->
+    <Talent identifier="Touhou_Special_Engineer_Talent_Completed">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ArcaneEngineer_Talent06"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MaximumHealthMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasSkill skillidentifier="electrical" minvalue="200" invert="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStatToSkill stattype="AttackMultiplier" maxvalue="0.05" skillidentifier="electrical"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasSkill skillidentifier="electrical" minvalue="200" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="AttackMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    
+    
+    
+    
+    <!--彼岸低语-->
+    <!--攻击伤害+10%-->
+    <Talent identifier="Touhou_MysticJob_Talent01">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MysticEngineer_Talent01"/>
+        <AbilityGroupInterval interval="2.9">
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="RangedAttackMultiplier" value="0.1"/>
+                <CharacterAbilityModifyStat stattype="MeleeAttackMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    
+    <!--淬炼-->
+    <!--船体炮塔耗电-15%，自己操作的炮塔伤害+5%-->
+    <Talent identifier="Touhou_MysticEngineer_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Ranged.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MysticEngineer_Talent02"/>
+        <AbilityGroupInterval interval="2.9">
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="TurretPowerCostReduction" value="0.15"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData weapontype="Turret" ignorenonharmfulattacks="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.05"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    <!--放射增压-->
+    <!--远程攻击有概率对敌人附加少量辐射病和烧伤-->
+    <Talent identifier="Touhou_MysticEngineer_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Ranged.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MysticEngineer_Talent03"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true" weapontype="Ranged"/>
+                <AbilityConditionServerRandom randomchance="0.3"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityHitAffliction affliction="radiationsickness" strength="5" onceperattack="true" dividebylimbcount="true" cooldown="0.2"/>
+                <CharacterAbilityHitAffliction affliction="burn" strength="2.0" multiplier="inherit" onceperattack="true" dividebylimbcount="true" cooldown="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!--淬炼二度-->
+    <!--制作物品的质量+1，血量高于50%时，缓慢恢复部分伤势-->
+    <Talent identifier="Touhou_MysticEngineer_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MysticEngineer_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="IncreaseFabricationQuality" value="1.0"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="2.0">
+            <Conditions>
+                <AbilityConditionAboveVitality vitalitypercentage="0.5"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects SetUser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true">
+                            <ReduceAffliction type="damage" amount="0.2"/>
+                            <ReduceAffliction type="bleeding" amount="0.4"/>
+                            <ReduceAffliction type="burn" amount="0.1"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    <!--伽马重铸-->
+    <!--对带有辐射病的敌人造成的伤害增加，敌人的辐射病越高，造成的伤害越高，最高15%-->
+    <Talent identifier="Touhou_MysticEngineer_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Indirect_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MysticEngineer_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+                <AbilityConditionCharacter targetabilitytarget="true">
+                    <Conditional radiationsickness="gte 75"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.15"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+                <AbilityConditionCharacter targetabilitytarget="true">
+                    <Conditional radiationsickness="gte 50"/>
+                    <Conditional radiationsickness="lte 74.9"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.12"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+                <AbilityConditionCharacter targetabilitytarget="true">
+                    <Conditional radiationsickness="gte 25"/>
+                    <Conditional radiationsickness="lte 49.9"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.08"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+                <AbilityConditionCharacter targetabilitytarget="true">
+                    <Conditional radiationsickness="gt 0"/>
+                    <Conditional radiationsickness="lte 24.9"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.05"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+</Talents>

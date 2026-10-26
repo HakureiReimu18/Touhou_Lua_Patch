@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Afflictions>
+    <!-- 减伤由天赋处理，单独得到这个状态不会凭空获得减伤。 -->
+    <Affliction identifier="Touhou_Security_MagicShield" type="talentbuff" isbuff="true"
+                limbspecific="false" maxstrength="100" activationthreshold="0.000001"
+                showiconthreshold="0.01" showinhealthscannerthreshold="101">
+        <Effect minstrength="0" maxstrength="100"/>
+        <Icon texture="%ModDir:2941124988%/Images/Afflictions/Hong_Meirin_Qi.png" sourcerect="0,0,128,128"/>
+    </Affliction>
+    <Affliction identifier="Touhou_Security_Tactician" type="talentbuff" isbuff="true"
+                limbspecific="false" maxstrength="1" duration="2" activationthreshold="0"
+                showiconthreshold="2" showinhealthscannerthreshold="2">
+        <Effect minstrength="0" maxstrength="1" minskillmultiplier="1.1" maxskillmultiplier="1.1"/>
+    </Affliction>
+    <Affliction identifier="Touhou_Security_CoolHead" type="talentbuff" isbuff="true"
+                limbspecific="false" maxstrength="1" duration="2" activationthreshold="0"
+                showiconthreshold="2" showinhealthscannerthreshold="2">
+        <Effect minstrength="0" maxstrength="1" resistancefor="bleeding" minresistance="0.15" maxresistance="0.15"/>
+    </Affliction>
+</Afflictions>

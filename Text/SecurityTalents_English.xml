@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="English" translatedname="English">
+    <JobName.securityofficer_arcane>Magic Bullet Hunter</JobName.securityofficer_arcane>
+    <JobDescription.securityofficer_arcane>A security officer who enchants chambers and ammunition. Uses the security officer tree with the Magic Bullet Hunter branch.</JobDescription.securityofficer_arcane>
+    <JobName.securityofficer_mystic>Abyss Hunter</JobName.securityofficer_mystic>
+    <JobDescription.securityofficer_mystic>A security officer who listens to whispers from beyond and hunts the deep. Uses the security officer tree with the Abyss Hunter branch.</JobDescription.securityofficer_mystic>
+    <entityname.Touhou_Security_Arcane_Book>Magic Bullet Transition Book</entityname.Touhou_Security_Arcane_Book>
+    <entitydescription.Touhou_Security_Arcane_Book>Hold in both hands and use or aim to read. Requires a base-game security officer, both primary talent stages completed, Weapons 80 and Magic 60. Consumed on successful registration. Becomes effective next round, or on a newly created security officer body after death. On activation, lose 40% of total experience and reselect profession talents; extra talents outside the old profession tree, skills, and equipment remain. One completed transition per player per campaign.</entitydescription.Touhou_Security_Arcane_Book>
+    <entityname.Touhou_Security_Mystic_Book>Abyss Hunter Transition Book</entityname.Touhou_Security_Mystic_Book>
+    <entitydescription.Touhou_Security_Mystic_Book>Hold in both hands and use or aim to read. Requires a base-game security officer, both primary talent stages completed and Weapons 80. Consumed on successful registration. Becomes effective next round, or on a newly created security officer body after death. On activation, lose 40% of total experience and reselect profession talents; extra talents outside the old profession tree, skills, and equipment remain. One completed transition per player per campaign.</entitydescription.Touhou_Security_Mystic_Book>
+    <talenttree.magic_bullet_hunter>Magic Bullet Hunter</talenttree.magic_bullet_hunter>
+    <talenttree.abyss_hunter>Abyss Hunter</talenttree.abyss_hunter>
+    <talentname.Touhou_MagicBulletHunter_Talent01>Enchanted Chamber</talentname.Touhou_MagicBulletHunter_Talent01>
+    <talentdescription.Touhou_MagicBulletHunter_Talent01>+10% danmaku attack damage.</talentdescription.Touhou_MagicBulletHunter_Talent01>
+    <talentname.Touhou_MagicBulletHunter_Talent02>Elemental Warheads</talentname.Touhou_MagicBulletHunter_Talent02>
+    <talentdescription.Touhou_MagicBulletHunter_Talent02>Ranged hits independently have a 30% chance to inflict burns and a 30% chance to inflict freezing. Firing a handheld weapon using a condition-based magazine independently has a 20% chance to refund the magazine condition consumed. Batteries and loose rounds are not refunded.</talentdescription.Touhou_MagicBulletHunter_Talent02>
+    <talentname.Touhou_MagicBulletHunter_Talent03>Precision Strike</talentname.Touhou_MagicBulletHunter_Talent03>
+    <talentdescription.Touhou_MagicBulletHunter_Talent03>Ranged hits have a 30% chance to deal an additional 20% attack damage.</talentdescription.Touhou_MagicBulletHunter_Talent03>
+    <talentname.Touhou_MagicBulletHunter_Talent04>Magic Shield</talentname.Touhou_MagicBulletHunter_Talent04>
+    <talentdescription.Touhou_MagicBulletHunter_Talent04>Above 95% health, regenerate 1 shield point per second, up to 100. Any positive shield charge reduces incoming attack damage by 15%. Each hit costs 10% of its base damage, clamped to 0.25–2 points. Falling below the health threshold stops regeneration but does not remove remaining charge.</talentdescription.Touhou_MagicBulletHunter_Talent04>
+    <talentname.Touhou_MagicBulletHunter_Talent05>Arcane Skin</talentname.Touhou_MagicBulletHunter_Talent05>
+    <talentdescription.Touhou_MagicBulletHunter_Talent05>+10% physical damage resistance, +10% burn resistance, and +10% maximum health.</talentdescription.Touhou_MagicBulletHunter_Talent05>
+    <talentname.Touhou_AbyssHunter_Talent02>Rend</talentname.Touhou_AbyssHunter_Talent02>
+    <talentdescription.Touhou_AbyssHunter_Talent02>Attacks inflict an additional 2 lacerations and 2 bleeding. Additional affliction totals do not scale with the number of limbs hit by one explosion.</talentdescription.Touhou_AbyssHunter_Talent02>
+    <talentname.Touhou_AbyssHunter_Talent03>Brutal Nature</talentname.Touhou_AbyssHunter_Talent03>
+    <talentdescription.Touhou_AbyssHunter_Talent03>+10% damage to all attacks; +20% TeamAttackMultiplier against same-team characters.</talentdescription.Touhou_AbyssHunter_Talent03>
+    <talentname.Touhou_AbyssHunter_Talent04>Execute</talentname.Touhou_AbyssHunter_Talent04>
+    <talentdescription.Touhou_AbyssHunter_Talent04>Against living enemies below 50% health, deal an additional 15% attack damage and gain a 30% chance to inflict 3 bleeding.</talentdescription.Touhou_AbyssHunter_Talent04>
+    <talentname.Touhou_AbyssHunter_Talent05>Cool Head</talentname.Touhou_AbyssHunter_Talent05>
+    <talentdescription.Touhou_AbyssHunter_Talent05>+5% maximum health and +15% bleeding resistance.</talentdescription.Touhou_AbyssHunter_Talent05>
+    <talentname.Touhou_Special_Security_Talent_Completed>Master Tactician</talentname.Touhou_Special_Security_Talent_Completed>
+    <talentdescription.Touhou_Special_Security_Talent_Completed>+10% effective skill levels and +20% melee attack damage.</talentdescription.Touhou_Special_Security_Talent_Completed>
+    <afflictionname.Touhou_Security_MagicShield>Magic Shield</afflictionname.Touhou_Security_MagicShield>
+    <afflictiondescription.Touhou_Security_MagicShield>With the Magic Shield talent, positive charge reduces incoming attack damage by 15%. Regenerates 1 point per second above 95% health; hits consume charge.</afflictiondescription.Touhou_Security_MagicShield>
+    <afflictionname.Touhou_Security_Tactician>Master Tactician</afflictionname.Touhou_Security_Tactician>
+    <afflictiondescription.Touhou_Security_Tactician>Effective skill levels increased by 10%.</afflictiondescription.Touhou_Security_Tactician>
+    <afflictionname.Touhou_Security_ArcaneSkin>Arcane Skin</afflictionname.Touhou_Security_ArcaneSkin>
+    <afflictiondescription.Touhou_Security_ArcaneSkin>Physical damage and burn resistance increased by 10%.</afflictiondescription.Touhou_Security_ArcaneSkin>
+    <afflictionname.Touhou_Security_CoolHead>Cool Head</afflictionname.Touhou_Security_CoolHead>
+    <afflictiondescription.Touhou_Security_CoolHead>Bleeding resistance increased by 15%.</afflictiondescription.Touhou_Security_CoolHead>
+</infotexts>

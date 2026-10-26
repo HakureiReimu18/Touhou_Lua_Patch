@@ -179,7 +179,7 @@ end
 -- 扩展收录：Config/CostumePack_Extra.xml（<Item category="..." identifier="..." />，分类同 basic/plus/headwear）
 -- 收录所有已启用内容包各自的这份文件（含本模组），按加载顺序合并；本模组排最前、优先级最高，别的模组放自己 Config 即可。
 -- 重复 id 去重，分类名写错跳过并打日志。用文本扫描而非 XElement 解析：结构简单，跨 LuaCs 版本最稳。
--- 与 CSharp/Shared/HomingProjectiles.cs 扫 Config/homing_config.xml 是同一套做法。
+-- 与 CSharp/Shared/Combat/Homing/HomingProjectiles.cs 扫 Config/homing_config.xml 是同一套做法。
 local function register_static(type_name)
     local ok, result = pcall(function()
         local t = LuaUserData.CreateStatic(type_name)

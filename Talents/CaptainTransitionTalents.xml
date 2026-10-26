@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Talents>
+    <!--星詠船长-->
+    <!--星位序列：技能上限 120-->
+    <Talent identifier="Touhou_AstralCaptain_Talent01">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Buff.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AstralCaptain_Talent01"/>
+        <AbilityGroupInterval interval="4.9">
+            <Abilities>
+                <CharacterAbilitySkillCap maxskill="120"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+
+    <!--航路校正：泵和引擎效率 +15%-->
+    <Talent identifier="Touhou_AstralCaptain_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Production.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AstralCaptain_Talent02"/>
+        <AbilityGroupInterval interval="60">
+            <Abilities>
+                <CharacterAbilityGiveItemStatToTags tags="pump" stattype="PumpSpeed" stackable="false" value="1.15"/>
+                <CharacterAbilityGiveItemStatToTags tags="engine" stattype="EngineSpeed" stackable="false" value="1.15"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveItemStatToTags tags="pump" stattype="PumpSpeed" stackable="false" value="1.15"/>
+                <CharacterAbilityGiveItemStatToTags tags="engine" stattype="EngineSpeed" stackable="false" value="1.15"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--危机预兆：炮塔耗电 -10%，自己操作的炮塔伤害 +10%-->
+    <Talent identifier="Touhou_AstralCaptain_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Ranged.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AstralCaptain_Talent03"/>
+        <AbilityGroupInterval interval="9.9">
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="TurretPowerCostReduction" value="0.1"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData weapontype="Turret" ignorenonharmfulattacks="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--星图指引：给其他船员下达命令时，自己获得 30 点驾驶水平-->
+    <Talent identifier="Touhou_AstralCaptain_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Buff.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AstralCaptain_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="OnGiveOrder">
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects>
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true">
+                            <Affliction identifier="Touhou_AstralCaptain_OrderHelm" amount="1"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--星图共鸣：完成所有任务且无人死亡时，全船员六项技能各 +0.5-->
+    <Talent identifier="Touhou_AstralCaptain_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Buff.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AstralCaptain_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="OnAllMissionsCompleted">
+            <Conditions>
+                <AbilityConditionNoCrewDied/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffectsToAllies requiresalive="true" allowself="true">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true">
+                            <GiveSkill skillidentifier="electrical" amount="0.5" triggertalents="false"/>
+                            <GiveSkill skillidentifier="helm" amount="0.5" triggertalents="false"/>
+                            <GiveSkill skillidentifier="mechanical" amount="0.5" triggertalents="false"/>
+                            <GiveSkill skillidentifier="medical" amount="0.5" triggertalents="false"/>
+                            <GiveSkill skillidentifier="weapons" amount="0.5" triggertalents="false"/>
+                            <GiveSkill skillidentifier="Touhou_Magic" amount="0.5" triggertalents="false"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffectsToAllies>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--深渊船长-->
+    <!--彼岸低语：远程/近战攻击伤害 +10%（与放射工程师同款）-->
+<!--    <Talent identifier="Touhou_AbyssalCaptain_Talent01">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AbyssalCaptain_Talent01"/>
+        <AbilityGroupInterval interval="2.9">
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="RangedAttackMultiplier" value="0.1"/>
+                <CharacterAbilityModifyStat stattype="MeleeAttackMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>-->
+
+    <!--放血：对怪物伤害 +15%；对人类造成伤害时附加出血-->
+    <Talent identifier="Touhou_AbyssalCaptain_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Indirect_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AbyssalCaptain_Talent02"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+                <AbilityConditionCharacter targettype="Enemy">
+                    <Conditional speciesname="neq human"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.15"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+                <AbilityConditionCharacter targettype="Enemy">
+                    <Conditional speciesname="eq human"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityHitAffliction affliction="bleeding" strength="6" onceperattack="true" cooldown="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--猎潮：手炮/手枪伤害 +15%-->
+    <Talent identifier="Touhou_AbyssalCaptain_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Ranged.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AbyssalCaptain_Talent03"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData tags="pistolammoitem" ignorenonharmfulattacks="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.15"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--深渊馈赠：击杀敌人有概率获得奖章，一巡回最多 4 个-->
+    <Talent identifier="Touhou_AbyssalCaptain_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Production.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AbyssalCaptain_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="OnKillCharacter" maxtriggercount="4">
+            <Conditions>
+                <AbilityConditionServerRandom randomchance="0.25"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityPutItem itemidentifier="coalitioncommendation" amount="1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--深渊统治：制作品质 +1，技能获取速度 +30%-->
+    <Talent identifier="Touhou_AbyssalCaptain_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AbyssalCaptain_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="IncreaseFabricationQuality" value="1.0"/>
+                <CharacterAbilityGiveStat stattype="SkillGainSpeed" value="0.3"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--大航海家（两条分支共享）-->
+    <!--所有攻击伤害 +5%，允许全速拖动生物；驾驶每点 +0.1% 最大生命，最多 20%-->
+    <Talent identifier="Touhou_Special_Captain_Talent_Completed">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_Captain_Talent06"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="AttackMultiplier" value="0.05"/>
+                <CharacterAbilityGiveFlag flagtype="MoveNormallyWhileDragging"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="10.0">
+            <Abilities>
+                <CharacterAbilityModifyStatToSkill stattype="MaximumHealthMultiplier" maxvalue="0.1" skillidentifier="helm"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasSkill skillidentifier="helm" minvalue="200" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="MaximumHealthMultiplier" value="0.2"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+</Talents>

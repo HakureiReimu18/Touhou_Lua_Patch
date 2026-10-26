@@ -3,7 +3,7 @@
   <Items>
     <!--⚠ 封存（2026-10）：整套弹药袋系统暂停，本文件已从 filelist.xml 注释掉、不再加载。
         恢复办法：filelist.xml 反注释 + Lua/Autorun/init.lua 里三个 dofile 反注释 +
-        CSharp/Shared/AmmoStorage.cs 的 SEALED 常量改成 false。
+        CSharp/Shared/Legacy/AmmoStorage.cs 的 SEALED 常量改成 false。
         下面是封存前的设计说明，重做时可直接参考：-->
     <!--
       ============================================================

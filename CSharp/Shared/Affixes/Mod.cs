@@ -282,6 +282,7 @@ namespace Touhou.Affixes
         public static bool AnyThornsAffixes;      // 荆棘：受击反伤
         public static bool AnyMassBonusAffixes;   // 巨人杀手：高质量目标增伤
         public static bool AnyChargeTimeAffixes;  // 紧张/等候：蓄力时间倍率
+        public static bool AnyFireRateAffixes;    // 深渊/迅捷等：射速倍率（RangedWeapon 动态读取）
         public static bool AnyFirstShotAffixes;   // 领先：满弹匣首发增伤
         public static bool AnyLoneWolfAffixes;    // 单打独斗：快捷栏唯一附魔武器增伤
 
@@ -541,6 +542,9 @@ namespace Touhou.Affixes
                 AnyThornsAffixes = AffixDefs.Values.Any(a => a.ThornsBleeding > 0f || a.ThornsLacerations > 0f || a.ThornsStun > 0f);
                 AnyMassBonusAffixes = AffixDefs.Values.Any(a => a.MassBonusMult > 1f);
                 AnyChargeTimeAffixes = AffixDefs.Values.Any(a => Math.Abs(a.ChargeTimeMult - 1f) > 0.0001f);
+                AnyFireRateAffixes = AffixDefs.Values.Any(a =>
+                    Math.Abs(a.FireRateMult - 1f) > 0.0001f
+                    || Math.Abs(a.SlotOneFireRateMult - 1f) > 0.0001f);
                 AnyFirstShotAffixes = AffixDefs.Values.Any(a => a.FirstShotDamageMult > 1f);
                 AnyLoneWolfAffixes = AffixDefs.Values.Any(a => a.LoneWolfDamageMult > 1f);
             }
@@ -1669,10 +1673,12 @@ namespace Touhou.Affixes
             if (defs.Count == 0)
             {
                 // 新组全无效：内存条目必须一并清，不然显示/效果补丁还在读旧词缀；
-                // 会话表同理，否则存档会写出已被拆除的幽灵 affixid
+                // 会话表同理，否则存档会写出已被拆除的幽灵 affixid。
+                // 空列表是"主动清空"的正常入口（取下回收/控制台移除），不刷警告
                 ItemAffixes.Remove(item.ID);
                 LastKnownAffixes.Remove(item.ID);
-                Warning($"SetAffixes: no valid affix in [{string.Join(",", affixIds)}], skipped {item.Name}");
+                if (affixIds.Count > 0)
+                    Warning($"SetAffixes: no valid affix in [{string.Join(",", affixIds)}], skipped {item.Name}");
                 return;
             }
 
@@ -1988,10 +1994,10 @@ namespace Touhou.Affixes
                 if (GameMain.NetworkMember == null || !GameMain.NetworkMember.IsServer) return;
 
                 // UID 和完整词缀列表从内存表取（SetAffixes 已先跑完），镜像标签和网络消息都带上。
-                // 奇迹时 affixId 是逗号连的全列表
-                string joinedIds = affix.Identifier;
+                // 奇迹时 affixId 是逗号连的全列表；affix 传 null = 广播移除（空串在接收端按清空处理）
+                string joinedIds = affix?.Identifier ?? "";
                 string uid = null;
-                if (ItemAffixes.TryGetValue(item.ID, out var bdata))
+                if (!string.IsNullOrEmpty(joinedIds) && ItemAffixes.TryGetValue(item.ID, out var bdata))
                 {
                     joinedIds = JoinAffixIds(bdata);
                     uid = bdata.Uid;
@@ -2004,9 +2010,10 @@ namespace Touhou.Affixes
                 {
                     if (it == null || it.Removed || it.ID != item.ID || ReferenceEquals(it, item)) continue;
                     // 无条件清旧重戳：重复附魔同一词缀时 uid 也会变，旧标签不清则
-                    // 客户端仍显示旧词缀、存档写出旧 uid
+                    // 客户端仍显示旧词缀、存档写出旧 uid；移除广播时 pairTags 为空，只清不加
                     RemoveAffixTag(it);
-                    it.Tags = string.IsNullOrEmpty(it.Tags) ? pairTags : it.Tags + "," + pairTags;
+                    if (!string.IsNullOrEmpty(pairTags))
+                        it.Tags = string.IsNullOrEmpty(it.Tags) ? pairTags : it.Tags + "," + pairTags;
                     mirrored++;
                 }
                 if (mirrored > 0)
@@ -2074,6 +2081,10 @@ namespace Touhou.Affixes
                 Warning($"BroadcastAffixApplied failed: {ex.Message}");
             }
         }
+
+        /// <summary>广播"词缀已移除"：空 affixId 在接收端按清空处理（见 HandleApplyAffixMessage）</summary>
+        public static void BroadcastAffixRemoved(Item item, List<Item> sharedSnapshot = null) =>
+            BroadcastAffixApplied(item, null, sharedSnapshot);
 
         // 优先走兼容接口的 LuaCsAction（跨版本稳）；老版本没有就表达式树照 Receive 委托的真实签名动态构造
         static void RegisterNetReceiver()
@@ -2202,13 +2213,13 @@ namespace Touhou.Affixes
                 if (component == null) continue;
                 var compType = component.GetType();
 
-                // 射速词条：Reload ÷ 倍率（属性引用已缓存，不按名字反射）
-                if (hasFireRate)
+                // 射速词条：Reload ÷ 倍率（属性引用已缓存，不按名字反射）。
+                // RangedWeapon 的 reload 字段会被 tag/StatusEffect 直接改写（幻胧月睨的瞄具就是 reload=3），
+                // 静态除一次会被覆盖；改由 FireRatePatch 在 Use/Equip 读字段时动态除。
+                // MeleeWeapon 没有这条动态读取路径，仍按旧法写实例。
+                if (hasFireRate && compType == ReflectionCache.MeleeWeaponType)
                 {
-                    var prop = compType == ReflectionCache.MeleeWeaponType ? ReflectionCache.MeleeWeaponReloadProp
-                             : compType == ReflectionCache.RangedWeaponType ? ReflectionCache.RangedWeaponReloadProp
-                             : null;
-                    TryApplyPropChange(data, prop, component, v => v / affix.FireRateMult, "firerate", item);
+                    TryApplyPropChange(data, ReflectionCache.MeleeWeaponReloadProp, component, v => v / affix.FireRateMult, "firerate", item);
                 }
 
                 // 散布词条：RangedWeapon.Spread / UnskilledSpread 乘算（<1 更精准）
@@ -2262,7 +2273,10 @@ namespace Touhou.Affixes
                     }
                 }
             }
-            StatAppliedItems.Add(item, null); // 标记本实例已改，另一上下文/重复调用直接跳过
+            // 只在真改过属性时加幂等标记：纯动态射速词缀（RangedWeapon）没有 PropChanges，
+            // 加了标记反而会挡住后续词缀的散布/技能等静态修改
+            bool changed = (data.PropChanges?.Count > 0) || (data.SkillChanges?.Count > 0) || (data.SlotChanges?.Count > 0);
+            if (changed) StatAppliedItems.Add(item, null); // 标记本实例已改，另一上下文/重复调用直接跳过
         }
 
         // 读原值→记录→写新值，移除词缀时按记录恢复
@@ -2566,9 +2580,10 @@ namespace Touhou.Affixes
             {
                 if (component == null) continue;
                 var compType = component.GetType();
-                var prop = compType == ReflectionCache.MeleeWeaponType ? ReflectionCache.MeleeWeaponReloadProp
-                         : compType == ReflectionCache.RangedWeaponType ? ReflectionCache.RangedWeaponReloadProp
-                         : null;
+                // RangedWeapon 的射速改由 FireRatePatch 在 Use/Equip 读字段时动态乘，
+                // 这里再静态改一次会和 tag 改写/动态读取叠成两次
+                if (compType != ReflectionCache.MeleeWeaponType) continue;
+                var prop = ReflectionCache.MeleeWeaponReloadProp;
                 if (prop == null || !prop.CanRead || !prop.CanWrite) continue;
                 try
                 {
@@ -2768,8 +2783,8 @@ namespace Touhou.Affixes
             return null;
         }
 
-        // 附魔台"取词缀"：目标 = 主词缀为回收、带一个额外词缀的物品 + 一块空白附魔石。
-        // 石头必须没有词缀（带词缀的石头走正常转移路径）；成功时输出要取下的词缀 id
+        // 附魔台"取词缀"：目标 = 主词缀为回收的物品 + 一块空白附魔石。只有回收时取下回收本身，
+        // 回收+额外词缀时取下额外词缀。石头必须没有词缀（带词缀的石头走正常转移路径）；成功时输出要取下的词缀 id
         public static bool TryGetSalvageExtraction(IEnumerable<Item> inputItems, out Item weapon, out Item stone, out string extraId)
         {
             weapon = null;
@@ -2788,11 +2803,12 @@ namespace Touhou.Affixes
                 // 放了普通附魔材料就按正常附魔走，别把材料晾在输入栏里
                 if (MaterialTiers.Keys.Any(k => item.HasTag(k))) { hasMaterial = true; continue; }
                 if (weapon != null) continue;
-                if (TryGetCurrentAffixIds(item, out var ids) && ids.Count == 2
-                    && ids[0] == SALVAGE_AFFIX_ID)
+                // 额外词缀（回收+1 个）或回收自己（只有回收）都能取到空白石头上
+                if (TryGetCurrentAffixIds(item, out var ids) && ids.Count > 0
+                    && ids[0] == SALVAGE_AFFIX_ID && ids.Count <= 2)
                 {
                     weapon = item;
-                    extraId = ids[1];
+                    extraId = ids.Count == 2 ? ids[1] : SALVAGE_AFFIX_ID;
                 }
             }
             if (hasMaterial || weapon == null || blankStone == null) { extraId = null; return false; }

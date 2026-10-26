@@ -39,13 +39,15 @@ if Game.IsSingleplayer or SERVER then
     --[[异常物品系统（TH-01 会回来的货箱 + TH-02 比里面大的柜子 + TH-03 排斥样本
         + TH-08 点名喇叭 + 铅封收容箱）。装进收容箱（Touhou_Containment）效果全停；
         休眠 4 件在 _Archive/AnomalousItems_v1_全8件.xml。
-        已迁移 CSharp/Shared/AnomalousItems.cs；旧 Lua 留作回滚，不能两套同时跑。
+        已迁移 CSharp/Shared/Anomalies/AnomalousItems.cs；旧 Lua 留作回滚，不能两套同时跑。
         回滚须同时恢复 XML 的旧 LuaHook / 音效和 affliction 衰减，见迁移文档。]]
     -- dofile(TLE.Path .. "/Lua/Scripts/Server/Systems/Touhou_Anomalous_Items.lua")
 
     -- 角色天赋
     --[[红美铃天赋「气与姿态」：须排在 Touhou_Magic_Weapon_Bonus.lua 之后（DamageMultiplier 补丁依赖其加载顺序）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Meiling_Qi_Talent.lua")
+    dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Security_Magic_Shield.lua")
+    dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Mechanic_Low_Health.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Jyoon_Wealth_Talent.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Sanae_Miracle_Talent.lua")
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Renko_Red_Spot_Freak_Report.lua")
@@ -67,25 +69,26 @@ if Game.IsSingleplayer or SERVER then
     --[[紫苑天赋「让一切徒劳无功的贫穷神」：每个巡回扣 50mk（原 XML 的 <CharacterAbilityGiveMoney amount="-50"/>
         会撞上 Character.GiveMoney 的 amount > 0 闸门被静默丢弃，见 Talents/TalentsShion.xml）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Shion_Poverty_Tax.lua")
-    --[[妹红天赋「不死之烟」：全队共享一次的复活（原 XML 只管自己、救不到队友，触发判定搬进 Lua，见 Talents/TalentsMokou.xml）]]
+    --[[妹红天赋「不死之烟」：本人负血时涅槃，同队每巡回共用一次机会（见 Talents/TalentsMokou.xml）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Mokou_Shared_Resurrection.lua")
-    --[[因幡天为天赋的随机效果：攻击/治疗抽奖 + 出血效应（原 XML 触发组与三段事件已注释，见 Talents/TalentsTewi.xml、
-        Talents/Talents_MRE.xml、Events/Touhou_Special_Events.xml）]]
+    --[[因幡天为天赋的随机效果：攻击/治疗抽奖只认玩家主动动作；出血效应按 MRE_Tewi 天赋每分钟自动抽
+        （原 XML 触发组与三段事件已注释，见 Talents/TalentsTewi.xml、Talents/Talents_MRE.xml、
+        Events/Touhou_Special_Events.xml）]]
     dofile(TLE.Path .. "/Lua/Scripts/Server/Talents/Tewi_Lucky_Talent.lua")
 
     -- 停用（源码在 Server/Disabled/）
-    --[[君王追踪已迁移至 C#（CSharp/Shared/MonarchHoming.cs），避免双重转向；回退就放开下行注释
+    --[[君王追踪已迁移至 C#（CSharp/Shared/Combat/Homing/MonarchHoming.cs），避免双重转向；回退就放开下行注释
         并停用 C# 侧 MonarchShootPatch。
     dofile(TLE.Path .. "/Lua/Scripts/Server/Disabled/Touhou_Monarch.lua")]]
     --[[人偶指挥（隐形信标方案）已停用：信标会被 DoVisibilityCheck 重新显形；重启用需同步恢复
-         CSharp/Shared/AliceDollCommand.cs 里 OnLoadCompleted 的注释。
+         CSharp/Shared/Legacy/AliceDollCommand.cs 里 OnLoadCompleted 的注释。
     dofile(TLE.Path .. "/Lua/Scripts/Server/Disabled/Alice_Doll_Command.lua")]]
 --[[    dofile(TLE.Path .. "/Lua/Scripts/Server/Disabled/Pseudologia.lua")]]
 --[[    dofile(TLE.Path .. "/Lua/Scripts/Server/Disabled/Touhou_Hisoutensoku_Amor.lua")]]
 end
 
 -- 下面几个脚本自己处理客户端/服务端分支，保持与原来一致：两端都加载
---[[单轨蓄力已迁到 C# 通用"松手开火"插件（CSharp/Shared/ReleaseFire.cs + Item.xml 的 <ReleaseFire>），
+--[[单轨蓄力已迁到 C# 通用"松手开火"插件（CSharp/Shared/Combat/Weapons/ReleaseFire.cs + Item.xml 的 <ReleaseFire>），
     参数/tag 改装都在那边配；回滚就放开下行注释，并把 Item.xml 单轨的 <ReleaseFire> 换回 Holdable 下的 LuaHook。
 dofile(TLE.Path.."/Lua/Scripts/Server/Disabled/Touhou_Monorail.lua")]]
 dofile(TLE.Path.."/Lua/Scripts/Server/Talents/Iroha_Versatile_Adaptation.lua")
@@ -104,7 +107,7 @@ dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Costume_Pack_Client.lua")
     逐枚绘制会把待发弹重复画上去。要恢复"画 1 枚弹种图标"需把它 dofile 回来并改成单枚绘制。]]
 -- dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Ammo_Pouch_Icons.lua")
 dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Mod_Hotkey.lua")
---以太回收机的自定义面板驱动（面板本体是 C#：CSharp/Client/EtherRecyclerPanel.cs）
+--以太回收机的自定义面板驱动（面板本体是 C#：CSharp/Client/EtherRecycler/EtherRecyclerPanel.cs）
 dofile(TLE.Path.."/Lua/Scripts/Client/Touhou_Ether_Recycler_Panel.lua")
 --[[改名台功能已下线（归档至 _Archive），不再加载 Touhou_Renamer.lua]]
 --[[人偶指挥（隐形信标方案）已停用，与 Server 侧同步下线。

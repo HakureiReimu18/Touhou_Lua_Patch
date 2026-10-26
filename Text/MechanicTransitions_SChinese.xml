@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="Simplified Chinese" translatedname="中文(简体)" nowhitespace="true">
+    <JobName.mechanic_arcane>机关术士</JobName.mechanic_arcane>
+    <JobDescription.mechanic_arcane>以机关与魔法守护潜艇的机修工。沿用机修工底树，并拥有机关术士分支。</JobDescription.mechanic_arcane>
+    <JobName.mechanic_mystic>破碎工匠</JobName.mechanic_mystic>
+    <JobDescription.mechanic_mystic>以残缺与伤痛换取战力的机修工。沿用机修工底树，并拥有破碎工匠分支。</JobDescription.mechanic_mystic>
+    <talenttree.arcane_mechanic>机关术士</talenttree.arcane_mechanic>
+    <talenttree.fractured_artisan>破碎工匠</talenttree.fractured_artisan>
+    <entityname.Touhou_Mechanic_Arcane_Book>机关异传书</entityname.Touhou_Mechanic_Arcane_Book>
+    <entitydescription.Touhou_Mechanic_Arcane_Book>双手拿起后按使用或瞄准键研读。需要原版机修工、完成基础树两个阶段、机械技能80、魔法技能60。成功后消耗并登记机关术士异传，下个巡回或死亡后新生成的机修工身体生效。生效时总经验损失40%，旧职业天赋清除后重选，树外额外天赋、技能和装备保留。</entitydescription.Touhou_Mechanic_Arcane_Book>
+    <entityname.Touhou_Mechanic_Mystic_Book>破碎异传书</entityname.Touhou_Mechanic_Mystic_Book>
+    <entitydescription.Touhou_Mechanic_Mystic_Book>双手拿起后按使用或瞄准键研读。需要原版机修工、完成基础树两个阶段、机械技能80、武器技能60。成功后消耗并登记破碎工匠异传，下个巡回或死亡后新生成的机修工身体生效。生效时总经验损失40%，旧职业天赋清除后重选，树外额外天赋、技能和装备保留。</entitydescription.Touhou_Mechanic_Mystic_Book>
+    <talentname.Touhou_ArcaneMechanic_Talent01>机关学识</talentname.Touhou_ArcaneMechanic_Talent01>
+    <talentdescription.Touhou_ArcaneMechanic_Talent01>允许技能水平上限达到120。</talentdescription.Touhou_ArcaneMechanic_Talent01>
+    <talentname.Touhou_ArcaneMechanic_Talent02>精密焊接</talentname.Touhou_ArcaneMechanic_Talent02>
+    <talentdescription.Touhou_ArcaneMechanic_Talent02>船壳修复速度+30%。完成修理的设备老化速度减半，同一天赋不重复叠加老化减速。</talentdescription.Touhou_ArcaneMechanic_Talent02>
+    <talentname.Touhou_ArcaneMechanic_Talent03>精工匠造</talentname.Touhou_ArcaneMechanic_Talent03>
+    <talentdescription.Touhou_ArcaneMechanic_Talent03>制作物品质量+1，技能获取速度+50%。</talentdescription.Touhou_ArcaneMechanic_Talent03>
+    <talentname.Touhou_ArcaneMechanic_Talent04>机关保护</talentname.Touhou_ArcaneMechanic_Talent04>
+    <talentdescription.Touhou_ArcaneMechanic_Talent04>在潜艇舱室内受到的攻击伤害减少15%，进水舱室也有效。</talentdescription.Touhou_ArcaneMechanic_Talent04>
+    <talentname.Touhou_ArcaneMechanic_Talent05>机关工造</talentname.Touhou_ArcaneMechanic_Talent05>
+    <talentdescription.Touhou_ArcaneMechanic_Talent05>造成的钝器伤+20%，造成的撕裂伤+10%。</talentdescription.Touhou_ArcaneMechanic_Talent05>
+    <talentname.Touhou_FracturedMechanic_Talent02>狂怒</talentname.Touhou_FracturedMechanic_Talent02>
+    <talentdescription.Touhou_FracturedMechanic_Talent02>生命值越低，近战攻击伤害越高。从满血时的0%线性增长至生命值为0时的30%，最高30%。</talentdescription.Touhou_FracturedMechanic_Talent02>
+    <talentname.Touhou_FracturedMechanic_Talent03>献祭</talentname.Touhou_FracturedMechanic_Talent03>
+    <talentdescription.Touhou_FracturedMechanic_Talent03>生命值越低，受到的攻击伤害越少。从满血时的0%线性增长至生命值为0时的20%，最高减少20%。</talentdescription.Touhou_FracturedMechanic_Talent03>
+    <talentname.Touhou_FracturedMechanic_Talent04>以废养战</talentname.Touhou_FracturedMechanic_Talent04>
+    <talentdescription.Touhou_FracturedMechanic_Talent04>修复速度加成与船壳修复速度加成取平均，每1%提供0.1%远程攻击伤害，最高+15%。不计入原本100%的基础速度。</talentdescription.Touhou_FracturedMechanic_Talent04>
+    <talentname.Touhou_FracturedMechanic_Talent05>器灵反射</talentname.Touhou_FracturedMechanic_Talent05>
+    <talentdescription.Touhou_FracturedMechanic_Talent05>每1%最大生命值加成提供1%远程攻击伤害，最高+15%。</talentdescription.Touhou_FracturedMechanic_Talent05>
+    <talentname.Touhou_Special_Mechanic_Talent_Completed>大工匠</talentname.Touhou_Special_Mechanic_Talent_Completed>
+    <talentdescription.Touhou_Special_Mechanic_Talent_Completed>技能水平+10%。每1点机械工程水平增加0.05%所有攻击伤害，最高+10%。</talentdescription.Touhou_Special_Mechanic_Talent_Completed>
+    <afflictionname.Touhou_FracturedMechanic_Rage>狂怒</afflictionname.Touhou_FracturedMechanic_Rage>
+    <afflictiondescription.Touhou_FracturedMechanic_Rage>旧版本狂怒状态，仅供存档兼容；近战伤害加成已改由天赋属性能力提供。</afflictiondescription.Touhou_FracturedMechanic_Rage>
+    <afflictionname.Touhou_MasterArtisan_SkillBoost>大工匠</afflictionname.Touhou_MasterArtisan_SkillBoost>
+    <afflictiondescription.Touhou_MasterArtisan_SkillBoost>技能水平提高10%。</afflictiondescription.Touhou_MasterArtisan_SkillBoost>
+</infotexts>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="Simplified Chinese" translatedname="中文(简体)" nowhitespace="true">
+    <JobName.securityofficer_arcane>魔弹猎人</JobName.securityofficer_arcane>
+    <JobDescription.securityofficer_arcane>以魔法强化枪膛和弹头的安全官。沿用安全官底树，追加魔弹猎人分支。</JobDescription.securityofficer_arcane>
+    <JobName.securityofficer_mystic>深渊猎手</JobName.securityofficer_mystic>
+    <JobDescription.securityofficer_mystic>倾听彼岸低语、追猎深海生物的安全官。沿用安全官底树，追加深渊猎手分支。</JobDescription.securityofficer_mystic>
+    <entityname.Touhou_Security_Arcane_Book>魔弹异传书</entityname.Touhou_Security_Arcane_Book>
+    <entitydescription.Touhou_Security_Arcane_Book>双手拿起后按使用键或瞄准键研读。需要原版安全官、完成基础树两个阶段、武器技能至少80、魔法技能至少60。成功后消耗并登记魔弹猎人异传；下个巡回，或死亡后新生成的安全官身体生效。生效时总经验损失40%，旧职业天赋清除后重选，树外装束等额外天赋、技能和装备保留。每名玩家每个战役限完成一次。</entitydescription.Touhou_Security_Arcane_Book>
+    <entityname.Touhou_Security_Mystic_Book>猎渊异传书</entityname.Touhou_Security_Mystic_Book>
+    <entitydescription.Touhou_Security_Mystic_Book>双手拿起后按使用键或瞄准键研读。需要原版安全官、完成基础树两个阶段、武器技能至少80。成功后消耗并登记深渊猎手异传；下个巡回，或死亡后新生成的安全官身体生效。生效时总经验损失40%，旧职业天赋清除后重选，树外装束等额外天赋、技能和装备保留。每名玩家每个战役限完成一次。</entitydescription.Touhou_Security_Mystic_Book>
+    <talenttree.magic_bullet_hunter>魔弹猎人</talenttree.magic_bullet_hunter>
+    <talenttree.abyss_hunter>深渊猎手</talenttree.abyss_hunter>
+    <talentname.Touhou_MagicBulletHunter_Talent01>附魔枪膛</talentname.Touhou_MagicBulletHunter_Talent01>
+    <talentdescription.Touhou_MagicBulletHunter_Talent01>弹幕攻击伤害 +10%。</talentdescription.Touhou_MagicBulletHunter_Talent01>
+    <talentname.Touhou_MagicBulletHunter_Talent02>元素弹头</talentname.Touhou_MagicBulletHunter_Talent02>
+    <talentdescription.Touhou_MagicBulletHunter_Talent02>远程命中分别有 30% 概率附加烧伤、30% 概率附加冻结，两者独立判定。使用手持枪械发射弹匣内的射弹时，另有 20% 概率返还本次弹匣耐久消耗，不返还电池或散装子弹。</talentdescription.Touhou_MagicBulletHunter_Talent02>
+    <talentname.Touhou_MagicBulletHunter_Talent03>精确打击</talentname.Touhou_MagicBulletHunter_Talent03>
+    <talentdescription.Touhou_MagicBulletHunter_Talent03>远程命中有 30% 概率使本次攻击伤害额外 +20%。</talentdescription.Touhou_MagicBulletHunter_Talent03>
+    <talentname.Touhou_MagicBulletHunter_Talent04>魔力护盾</talentname.Touhou_MagicBulletHunter_Talent04>
+    <talentdescription.Touhou_MagicBulletHunter_Talent04>生命值高于 95% 时，每秒恢复 1 点魔力护盾，上限 100。护盾大于 0 时，受到的攻击伤害减少 15%。受击按攻击基础伤害的 10% 消耗护盾，每次最少 0.25 点、最多 2 点。生命值降低只停止恢复，不清空剩余护盾。</talentdescription.Touhou_MagicBulletHunter_Talent04>
+    <talentname.Touhou_MagicBulletHunter_Talent05>魔力肌肤</talentname.Touhou_MagicBulletHunter_Talent05>
+    <talentdescription.Touhou_MagicBulletHunter_Talent05>物理伤害抗性 +10%，烧伤抗性 +10%，最大生命值 +10%。</talentdescription.Touhou_MagicBulletHunter_Talent05>
+    <talentname.Touhou_AbyssHunter_Talent02>撕裂</talentname.Touhou_AbyssHunter_Talent02>
+    <talentdescription.Touhou_AbyssHunter_Talent02>攻击命中时额外附加 2 点撕裂伤和 2 点出血。同次爆炸的附加总量不会随命中肢体数量增加。</talentdescription.Touhou_AbyssHunter_Talent02>
+    <talentname.Touhou_AbyssHunter_Talent03>残暴天性</talentname.Touhou_AbyssHunter_Talent03>
+    <talentdescription.Touhou_AbyssHunter_Talent03>所有攻击伤害 +10%；友军伤害 +20%。</talentdescription.Touhou_AbyssHunter_Talent03>
+    <talentname.Touhou_AbyssHunter_Talent04>处决</talentname.Touhou_AbyssHunter_Talent04>
+    <talentdescription.Touhou_AbyssHunter_Talent04>对生命值低于 50% 的存活敌人，本次攻击伤害额外 +15%，并有 30% 概率附加 3 点出血。</talentdescription.Touhou_AbyssHunter_Talent04>
+    <talentname.Touhou_AbyssHunter_Talent05>冷静头脑</talentname.Touhou_AbyssHunter_Talent05>
+    <talentdescription.Touhou_AbyssHunter_Talent05>最大生命值 +5%，出血抗性 +15%。</talentdescription.Touhou_AbyssHunter_Talent05>
+    <talentname.Touhou_Special_Security_Talent_Completed>大战术师</talentname.Touhou_Special_Security_Talent_Completed>
+    <talentdescription.Touhou_Special_Security_Talent_Completed>实际技能水平 +10%，近战攻击伤害 +20%。解锁配方：重机枪、重机枪弹匣</talentdescription.Touhou_Special_Security_Talent_Completed>
+    <afflictionname.Touhou_Security_MagicShield>魔力护盾</afflictionname.Touhou_Security_MagicShield>
+    <afflictiondescription.Touhou_Security_MagicShield>护盾存在时，魔力护盾天赋使受到的攻击伤害减少 15%。生命值高于 95% 时每秒恢复 1 点；受击消耗护盾。</afflictiondescription.Touhou_Security_MagicShield>
+    <afflictionname.Touhou_Security_Tactician>大战术师</afflictionname.Touhou_Security_Tactician>
+    <afflictiondescription.Touhou_Security_Tactician>实际技能水平提高 10%。</afflictiondescription.Touhou_Security_Tactician>
+    <afflictionname.Touhou_Security_ArcaneSkin>魔力肌肤</afflictionname.Touhou_Security_ArcaneSkin>
+    <afflictiondescription.Touhou_Security_ArcaneSkin>物理伤害抗性和烧伤抗性各提高 10%。</afflictiondescription.Touhou_Security_ArcaneSkin>
+    <afflictionname.Touhou_Security_CoolHead>冷静头脑</afflictionname.Touhou_Security_CoolHead>
+    <afflictiondescription.Touhou_Security_CoolHead>出血抗性提高 15%。</afflictiondescription.Touhou_Security_CoolHead>
+</infotexts>

@@ -1,4 +1,4 @@
--- 已停用（2026-10）：单轨蓄力迁到 C# 通用"松手开火"插件（CSharp/Shared/ReleaseFire.cs + Item.xml 的 <ReleaseFire>）。
+-- 已停用（2026-10）：单轨蓄力迁到 C# 通用"松手开火"插件（CSharp/Shared/Combat/Weapons/ReleaseFire.cs + Item.xml 的 <ReleaseFire>）。
 -- 回滚：放开 Lua/Autorun/init.lua 里那行 dofile，并把 Item.xml 单轨的 <ReleaseFire> 换回 Holdable 下的 LuaHook。以下为原文。
 
 --[[单轨蓄力，服务端说了算：按住左键蓄、松开打，伤害和穿甲随蓄力时间涨。

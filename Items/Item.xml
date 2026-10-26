@@ -346,7 +346,7 @@
             </Button>
         </CustomInterface>
 
-      <!-- maxchargetime 仅用于驱动原生蓄力音效/粒子（音调随蓄力上扬）；实际蓄力进度、松手发射与过蓄自爆由插件控制（CSharp/Shared/ReleaseFire.cs，参数见下面的 <ReleaseFire>）——插件会挡掉原生"蓄满自动开火"，所以原生 8 秒自动开火永远不会触发 -->
+      <!-- maxchargetime 仅用于驱动原生蓄力音效/粒子（音调随蓄力上扬）；实际蓄力进度、松手发射与过蓄自爆由插件控制（CSharp/Shared/Combat/Weapons/ReleaseFire.cs，参数见下面的 <ReleaseFire>）——插件会挡掉原生"蓄满自动开火"，所以原生 8 秒自动开火永远不会触发 -->
       <RangedWeapon barrelpos="80,0" reload="2" drawhudwhenequipped="true" crosshairscale="0.15" maxchargetime="8" chargesoundwinduppitchslide="0.5,2.0">
         <Crosshair texture="Content/Items/Weapons/Crosshairs.png" sourcerect="0,256,256,256" />
         <CrosshairPointer texture="Content/Items/Weapons/Crosshairs.png" sourcerect="256,256,256,256" />
@@ -367,7 +367,7 @@
           </Explosion>
         </StatusEffect>
 
-        <!-- ========== 松手开火（通用机制，插件 CSharp/Shared/ReleaseFire.cs 读取） ==========
+        <!-- ========== 松手开火（通用机制，插件 CSharp/Shared/Combat/Weapons/ReleaseFire.cs 读取） ==========
              按住左键蓄力（蓄力音/粒子/音调上扬仍由原生的 maxchargetime 驱动），松手（仍在瞄准）时按蓄力
              比例打出去。原版 RangedWeapon 只认自己认识的名字，这个子元素会被直接忽略；
              插件靠它判断"这把枪是松手开火武器"并取参数。别的武器想用同一套机制，把这一整段抄进它的
@@ -392,7 +392,7 @@
              其它行为：松手（松开左键但还在瞄准）那一刻开火，蓄多少打多少；没瞄准就直接松开 = 取消本次蓄力；
                       装填期间不蓄力；蓄力/音效/枪口闪光/弹药消耗/装填/联机同步全走原版路径；
                       只有过蓄自爆的掷骰在服务端/单人端做，Condition 变化自动同步（联机能看到爆炸画面和伤害）。
-             调试：CSharp/Shared/ReleaseFire.cs 里把 ReleaseFireLog.Verbose 改成 true，
+             调试：CSharp/Shared/Combat/Weapons/ReleaseFire.cs 里把 ReleaseFireLog.Verbose 改成 true，
                    开始蓄力 / 每次开火（蓄力百分比、实际伤害倍率、穿甲）/ 过蓄自爆都会打一行日志。 -->
         <ReleaseFire chargetime="3" hardcap="6" damagemultiplier="1,10" penetration="0,0.9"
                      crittime="3" explodechance="0.10" explodegrowth="0.20" explodechancemax="0.95">
@@ -444,7 +444,7 @@
       </Projectile>
     </Item>、
     
-    <!--散射符卡发射器：短暂蓄力后一次性喷射多枚连射炮弹药（扇形齐射）。齐射/弹药倍率参数由插件读取，见 CSharp/Shared/ChargedSpellCard.cs-->
+    <!--散射符卡发射器：短暂蓄力后一次性喷射多枚连射炮弹药（扇形齐射）。齐射/弹药倍率参数由插件读取，见 CSharp/Shared/Combat/Weapons/ChargedSpellCard.cs-->
     <Item name="散射符卡发射器"
           identifier="Touhou_Scatter_Spell_Card_Cannon"
           Tags="turret,Spell_Card_Cannon"
@@ -525,7 +525,7 @@
                 MaxAngleOffset="5"
                 AICurrentTargetPriorityMultiplier="1">
 
-            <!-- ========== 齐射参数（插件 CSharp/Shared/ChargedSpellCard.cs 读取） ==========
+            <!-- ========== 齐射参数（插件 CSharp/Shared/Combat/Weapons/ChargedSpellCard.cs 读取） ==========
                  原版 Turret 构造函数只认自己认识的名字，这个子元素会被直接忽略；
                  插件靠它判断"这台是齐射炮"并取参数。别的炮塔想用同一套齐射，把这一行抄进它的 <Turret> 里即可。
                  注意：必须放在 <Turret> 里面；放到 <Item> 下面会被当成组件名去找类型，报红字。
@@ -556,7 +556,7 @@
                            同一帧只齐射一次；补射用当前装填弹种的 prefab（弹药自动适配，不用逐种配置）；
                            补射吃 DamageMultiplier 与 launchimpulse，但不吃机修的 +20%；
                            弹药不够时自动少打几发，不会先扣耐久再打空炮。
-                 调试：CSharp/Shared/ChargedSpellCard.cs 里把 ChargedLog.Verbose 改成 true，
+                 调试：CSharp/Shared/Combat/Weapons/ChargedSpellCard.cs 里把 ChargedLog.Verbose 改成 true，
                        每轮齐射 / 每组连打结束都会打一行日志（发数 / 扇形 / 出膛点 / 弹药盒剩余耐久 / 装弹）。
                  速查（当前数值 = 蓄力 0.8、连打 3 轮 × 5 发、轮间隔 0.5、装弹 1.0、倍率 1.8、弹药 ×1.5）：
                        一组 15 发 / 2.8 秒 → 5.4 发/秒；每秒伤害 ≈ 5.4 × 1.8 ≈ 9.7

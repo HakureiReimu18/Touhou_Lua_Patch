@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="Simplified Chinese" translatedname="中文(简体)" nowhitespace="true">
+  <JobName.engineer_arcane>电荷工程师</JobName.engineer_arcane>
+  <JobDescription.engineer_arcane>把符咒当电路图，把反应堆当魔导炉。保留工程师天赋树，并拥有额外的电荷分支。</JobDescription.engineer_arcane>
+  <JobName.engineer_mystic>放射工程师</JobName.engineer_mystic>
+  <JobDescription.engineer_mystic>反应堆里住着东西，而你和它签了合同。保留工程师天赋树，并拥有额外的放射分支。</JobDescription.engineer_mystic>
+  <talenttree.arcane_engineer>符能工程</talenttree.arcane_engineer>
+  <talenttree.mystic_engineer>炉心契约</talenttree.mystic_engineer>
+  <entityname.Touhou_Engineer_Arcane_Book>电荷异传书</entityname.Touhou_Engineer_Arcane_Book>
+  <entitydescription.Touhou_Engineer_Arcane_Book>双手拿起后按使用键或瞄准键研读。需要原版工程师、完成基础树两个阶段、魔法技能至少80。成功后消耗，登记电荷工程师异传；下个巡回，或死亡后新生成的工程师身体生效。每名玩家每个战役限完成一次。</entitydescription.Touhou_Engineer_Arcane_Book>
+  <entityname.Touhou_Engineer_Mystic_Book>放射异传书</entityname.Touhou_Engineer_Mystic_Book>
+  <entitydescription.Touhou_Engineer_Mystic_Book>双手拿起后按使用键或瞄准键研读。需要原版工程师、完成基础树两个阶段；医疗技能至少60。成功后消耗，登记放射工程师异传；下个巡回，或死亡后新生成的工程师身体生效。每名玩家每个战役限完成一次。</entitydescription.Touhou_Engineer_Mystic_Book>
+  <talentdescription.Touhou_EngineerTransition_Placeholder>无效果占位天赋。仅用于验证转职、天赋树、点数和存档；当前不提供任何属性、配方或主动能力。</talentdescription.Touhou_EngineerTransition_Placeholder>
+  <talentname.Touhou_ArcaneEngineer_RuneCircuit>符能回路</talentname.Touhou_ArcaneEngineer_RuneCircuit>
+  <talentname.Touhou_ArcaneEngineer_OverloadGlyph>过载铭文</talentname.Touhou_ArcaneEngineer_OverloadGlyph>
+  <talentname.Touhou_ArcaneEngineer_RuneAmmo>雷纹弹药</talentname.Touhou_ArcaneEngineer_RuneAmmo>
+  <talentname.Touhou_ArcaneEngineer_MagicGrid>魔网接线</talentname.Touhou_ArcaneEngineer_MagicGrid>
+  <talentname.Touhou_ArcaneEngineer_EtherCapacitor>以太电容</talentname.Touhou_ArcaneEngineer_EtherCapacitor>
+  <talentname.Touhou_ArcaneEngineer_EnchantedReactor>咒装反应堆</talentname.Touhou_ArcaneEngineer_EnchantedReactor>
+  <talentname.Touhou_ArcaneEngineer_ThunderGod>雷神降临</talentname.Touhou_ArcaneEngineer_ThunderGod>
+  <talentname.Touhou_ArcaneEngineer_Resonance>符能共鸣</talentname.Touhou_ArcaneEngineer_Resonance>
+  <talentname.Touhou_MysticEngineer_CoreWhisper>炉心低语</talentname.Touhou_MysticEngineer_CoreWhisper>
+  <talentname.Touhou_MysticEngineer_BloodTempering>血锈淬火</talentname.Touhou_MysticEngineer_BloodTempering>
+  <talentname.Touhou_MysticEngineer_SacrificialFurnace>献祭熔炉</talentname.Touhou_MysticEngineer_SacrificialFurnace>
+  <talentname.Touhou_MysticEngineer_ForbiddenBlueprints>禁忌图纸</talentname.Touhou_MysticEngineer_ForbiddenBlueprints>
+  <talentname.Touhou_MysticEngineer_Tsukumogami>机械付丧神</talentname.Touhou_MysticEngineer_Tsukumogami>
+  <talentname.Touhou_MysticEngineer_CorePact>炉心契约</talentname.Touhou_MysticEngineer_CorePact>
+  <talentname.Touhou_MysticEngineer_AbyssalCore>深渊炉心</talentname.Touhou_MysticEngineer_AbyssalCore>
+  <talentname.Touhou_MysticEngineer_BloodFuel>以血为薪</talentname.Touhou_MysticEngineer_BloodFuel>
+
+  <talentname.Touhou_ArcaneEngineer_Talent01>符文解明</talentname.Touhou_ArcaneEngineer_Talent01>
+  <talentdescription.Touhou_ArcaneEngineer_Talent01>制作的物品质量 +1，修理速度 +20%。</talentdescription.Touhou_ArcaneEngineer_Talent01>
+  <talentname.Touhou_ArcaneEngineer_Talent02>精心设计</talentname.Touhou_ArcaneEngineer_Talent02>
+  <talentdescription.Touhou_ArcaneEngineer_Talent02>你修理过的电器，老化速度减半。</talentdescription.Touhou_ArcaneEngineer_Talent02>
+  <talentname.Touhou_ArcaneEngineer_Talent03>紧急处理</talentname.Touhou_ArcaneEngineer_Talent03>
+  <talentdescription.Touhou_ArcaneEngineer_Talent03>修理速度 +20%，船壳修理速度 +20%，经验获取速度 +20%。</talentdescription.Touhou_ArcaneEngineer_Talent03>
+  <talentname.Touhou_ArcaneEngineer_Talent04>电动力学</talentname.Touhou_ArcaneEngineer_Talent04>
+  <talentdescription.Touhou_ArcaneEngineer_Talent04>弹幕攻击有概率附加电击和烧伤。</talentdescription.Touhou_ArcaneEngineer_Talent04>
+  <talentname.Touhou_ArcaneEngineer_Talent05>电流相生</talentname.Touhou_ArcaneEngineer_Talent05>
+  <talentdescription.Touhou_ArcaneEngineer_Talent05>攻击时有概率造成额外眩晕和电击。</talentdescription.Touhou_ArcaneEngineer_Talent05>
+  <talentname.Touhou_Special_Engineer_Talent_Completed>大工程师</talentname.Touhou_Special_Engineer_Talent_Completed>
+  <talentdescription.Touhou_ArcaneEngineer_Talent06>最大生命值 +10%。每 1 点电气技能提供 0.05% 所有攻击伤害，最多 +10%。</talentdescription.Touhou_ArcaneEngineer_Talent06>
+
+  <talentname.Touhou_MysticJob_Talent01>彼岸低语</talentname.Touhou_MysticJob_Talent01>
+  <talentdescription.Touhou_MysticEngineer_Talent01>攻击伤害 +10%。</talentdescription.Touhou_MysticEngineer_Talent01>
+  <talentname.Touhou_MysticEngineer_Talent02>淬炼</talentname.Touhou_MysticEngineer_Talent02>
+  <talentdescription.Touhou_MysticEngineer_Talent02>船体炮塔耗电 -15%，你操作的炮塔伤害 +5%。</talentdescription.Touhou_MysticEngineer_Talent02>
+  <talentname.Touhou_MysticEngineer_Talent03>放射增压</talentname.Touhou_MysticEngineer_Talent03>
+  <talentdescription.Touhou_MysticEngineer_Talent03>远程攻击有概率附加少量辐射病和烧伤。</talentdescription.Touhou_MysticEngineer_Talent03>
+  <talentname.Touhou_MysticEngineer_Talent04>淬炼二度</talentname.Touhou_MysticEngineer_Talent04>
+  <talentdescription.Touhou_MysticEngineer_Talent04>制作物品的质量 +1；生命值高于 50% 时，缓慢恢复部分伤势。</talentdescription.Touhou_MysticEngineer_Talent04>
+  <talentname.Touhou_MysticEngineer_Talent05>伽马重铸</talentname.Touhou_MysticEngineer_Talent05>
+  <talentdescription.Touhou_MysticEngineer_Talent05>对带有辐射病的敌人伤害提高；辐射病越高加成越高，最高 +15%。</talentdescription.Touhou_MysticEngineer_Talent05>
+</infotexts>

@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Talents>
+    <!--附魔枪膛：弹幕伤害增加10%-->
+    <Talent identifier="Touhou_MagicBulletHunter_Talent01">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Ranged.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MagicBulletHunter_Talent01"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData tags="Touhou_Magic_Danmu" weapontype="Ranged" ignorenonharmfulattacks="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--元素弹头：远程攻击有概率附加烧伤或冻结，且有概率不消耗弹匣类物品的弹药-->
+    <Talent identifier="Touhou_MagicBulletHunter_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Indirect_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MagicBulletHunter_Talent02"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilitySecurityMagazineSave chance="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData weapontype="Ranged" ignorenonharmfulattacks="true"/>
+                <AbilityConditionServerRandom randomchance="0.3"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityHitAffliction affliction="burn" strength="6.5" cooldown="0.2" onceperattack="true" dividebylimbcount="true"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData weapontype="Ranged" ignorenonharmfulattacks="true"/>
+                <AbilityConditionServerRandom randomchance="0.3"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityHitAffliction affliction="Touhou_Freeze" strength="2.0" cooldown="0.2" onceperattack="true" dividebylimbcount="true"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--精确打击：远程攻击有概率造成额外20%的伤害-->
+    <Talent identifier="Touhou_MagicBulletHunter_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MagicBulletHunter_Talent03"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData weapontype="Ranged" ignorenonharmfulattacks="true"/>
+                <AbilityConditionServerRandom randomchance="0.4"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--魔力护盾：血量高于95%时，持续获得魔力护盾效果，效果存在期间，减少15%受到的伤害。受击会减少魔力护盾。-->
+    <Talent identifier="Touhou_MagicBulletHunter_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MagicBulletHunter_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttacked">
+            <Conditions>
+                <AbilityConditionHasAffliction afflictionidentifier="Touhou_Security_MagicShield"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="-0.15"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--魔力肌肤：增加10%物理伤害抗性和烧伤抗性，增加10%最大生命值-->
+    <Talent identifier="Touhou_MagicBulletHunter_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_MagicBulletHunter_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MaximumHealthMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <!-- 原版同类 GiveResistance 会相加成承伤倍率，这里用独立状态，避免和装束抗性相撞。 -->
+        <AbilityGroupInterval interval="4.9">
+            <Abilities>
+                <CharacterAbilityModifyResistance resistanceid="damage" multiplier="0.9"/>
+                <CharacterAbilityModifyResistance resistanceid="burn" multiplier="0.9"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+
+    <!-- 彼岸低语直接引用 Touhou_MysticJob_Talent01，不再定义一份。 -->
+    
+    
+    
+    <!--撕裂：攻击时额外附加撕裂伤和出血-->
+    <Talent identifier="Touhou_AbyssHunter_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Indirect_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AbyssHunter_Talent02"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityHitAffliction affliction="lacerations" strength="3" onceperattack="true" dividebylimbcount="true" cooldown="0.2"/>
+                <CharacterAbilityHitAffliction affliction="bleeding" strength="3" onceperattack="true" dividebylimbcount="true" cooldown="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--残暴天性：所有攻击伤害+10%，友军伤害+20%-->
+    <Talent identifier="Touhou_AbyssHunter_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AbyssHunter_Talent03"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="AttackMultiplier" value="0.1"/>
+                <CharacterAbilityGiveStat stattype="TeamAttackMultiplier" value="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--处决：对生命值低于50%的敌人造成额外15%的伤害，并有概率附加出血-->
+    <Talent identifier="Touhou_AbyssHunter_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Indirect_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AbyssHunter_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+                <AbilityConditionCharacter targetabilitytarget="true" targettypes="Enemy,Alive">
+                    <Conditional healthpercentage="lt 50"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.15"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+                <AbilityConditionCharacter targetabilitytarget="true" targettypes="Enemy,Alive">
+                    <Conditional healthpercentage="lt 50"/>
+                </AbilityConditionCharacter>
+                <AbilityConditionServerRandom randomchance="0.3"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityHitAffliction affliction="bleeding" strength="3" onceperattack="true" dividebylimbcount="true" cooldown="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--冷静头脑：增加5%最大生命值，增加15%出血抗性-->
+    <Talent identifier="Touhou_AbyssHunter_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_AbyssHunter_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MaximumHealthMultiplier" value="0.05"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="0.5">
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true" setvalue="true">
+                            <Affliction identifier="Touhou_Security_CoolHead" amount="1"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+
+    <!--大战术师：技能水平+10%，近战伤害+20%-->
+    <Talent identifier="Touhou_Special_Security_Talent_Completed">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_Special_Security_Talent_Completed"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MeleeAttackMultiplier" value="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="1">
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true" setvalue="true">
+                            <Affliction identifier="Touhou_Security_Tactician" amount="1"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AddedRecipe itemidentifier="hmg"/>
+        <AddedRecipe itemidentifier="hmgmagazine"/>
+    </Talent>
+</Talents>

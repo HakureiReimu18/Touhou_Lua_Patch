@@ -1,9 +1,12 @@
 --[[因幡天为天赋的随机效果（幸运白兔 TewiTalent 的攻击/治疗抽奖 + 出血效应 MRE_Tewi）。
-原实现：Talents/TalentsTewi.xml、Talents/Talents_MRE.xml 的能力组触发
+原实现：Talents/TalentsTewi.xml、Talents/Talents_MRE.xml 的能力组触发，
 Events/Touhou_Special_Events.xml 里的三段 RNG 事件（旧 XML 只注释未删，事件块留着备查）。
 抽到哪一项、给哪个 affliction、持续多久全部照原事件搬；只有冷却按新数值（攻击 12 秒、治疗 120 秒）。
 出血效应保留原事件 33.4% 之后那层 50/50：一半抽幸运眷顾、一半抽幸运庇护。
-门槛只认装束给的常驻 aff，不认装束本体。]]
+门槛只认装束给的常驻 aff，不认装束本体。
+天赋的两个抽奖只认玩家自己的主动动作：攻击只认手持武器/近战（炮塔、炮弹爆炸不算），
+治疗只认健康界面里主动用的魔法药物；出血效应是天赋自带的每分钟自动抽，只认真正持有 MRE_Tewi 的角色
+（老版本漏了这条，所有装束+角色挂机一分钟都白拿一次）。]]
 
 -- 服务端权威：联机客户端不执行；单机和开房主机照常执行
 if CLIENT and not Game.IsSingleplayer then return end
@@ -60,6 +63,8 @@ local THINK_STEP_FALLBACK = 1.0 / 60.0
 local fallback_clock = 0
 
 local GATE_ID = TT.id(GATE_AFFLICTION)
+-- 出血效应是 MRE_Tewi 天赋里的能力组，必须真的持有这条天赋
+local MRE_TALENT_ID = TT.id("MRE_Tewi")
 
 math.randomseed(os.time())
 
@@ -84,6 +89,11 @@ end
 
 local function has_gate(character)
     return character ~= nil and TT.get_strength(character, GATE_ID) > 0
+end
+
+-- 只认玩家自己：NPC/机器人就算穿了同款装束也不抽
+local function is_player(character)
+    return character ~= nil and character.IsPlayer == true
 end
 
 -- 冷却没到点（只读判定；起算放 start_cooldown，没抽中不起算，跟原 XML 一样）
@@ -133,10 +143,14 @@ local function grant_blessing(character, entries)
 end
 
 -- 攻击：原 XML 的 OnAttack 就是引擎在 AbilityAttackData 构造函数里查天赋（魔理沙同款挂法）。
+-- 只认玩家手持武器/近战：炮塔射击、炮弹爆炸（SourceItem 为空）、怪物攻击都不算；
 -- 爆炸/多肢体命中会各建一次，抽中后起的冷却会挡掉同一瞬间的后续掷骰，跟原 CD affliction 一致。
 Hook.Patch("Barotrauma.AbilityAttackData", ".ctor", function(instance, ptable)
     local attacker = ptable["attacker"]
-    if not has_gate(attacker) or attacker.IsDead or attacker.Removed then
+    if not is_player(attacker) or attacker.IsDead or attacker.Removed or not has_gate(attacker) then
+        return
+    end
+    if not TT.is_handheld_or_melee_attack(ptable["sourceAttack"]) then
         return
     end
 
@@ -156,12 +170,16 @@ end, Hook.HookMethodType.After)
 
 -- 治疗：引擎的 OnApplyTreatment 是在 Item.ApplyTreatment 末尾查天赋（LuaCs 没有对应钩子，只能补方法）。
 -- 原组是 applytoself，所以抽中后给的是使用者自己，被治疗的队友不受影响。
+-- 只认健康界面里主动用的药：护符这类被动回血不是"用药"，别让它顶掉 2 分钟冷却。
 Hook.Patch("Barotrauma.Item", "ApplyTreatment", function(instance, ptable)
     local user = ptable["user"]
-    if not has_gate(user) or user.IsDead or user.Removed then
+    if not is_player(user) or user.IsDead or user.Removed or not has_gate(user) then
         return
     end
     if instance == nil or not instance.HasTag(MAGIC_MEDICAL_TAG) then
+        return
+    end
+    if not instance.UseInHealthInterface then
         return
     end
 
@@ -178,13 +196,24 @@ Hook.Patch("Barotrauma.Item", "ApplyTreatment", function(instance, ptable)
     grant_blessing(user, LUCKY_PROTECTION)
 end, Hook.HookMethodType.After)
 
--- 出血效应：原 XML 是 60 秒的 interval 组，这里按角色自己记到点时刻
+-- 是否真的持有 MRE_Tewi：HasTalent 有的版本只吃 Identifier、有的直接吃字符串，两种都喂
+local function has_bleed_talent(character)
+    local ok, result = pcall(function() return character.HasTalent(MRE_TALENT_ID) end)
+    if ok and result then
+        return true
+    end
+    local ok2, result2 = pcall(function() return character.HasTalent("MRE_Tewi") end)
+    return ok2 and result2 == true
+end
+
+-- 出血效应：原 XML 是 MRE_Tewi 天赋里的 60 秒 interval 组，这里按角色自己记到点时刻。
+-- 天赋条件必须查：老版本只查装束 aff，所有装束+角色挂机一分钟都会白抽一次。
 local function update_bleed(character, now)
     if character == nil or character.Removed or character.IsDead or not character.IsHuman then
         return
     end
-    if not has_gate(character) then
-        -- 脱下装束/失去门槛：重新起算
+    if not has_gate(character) or not has_bleed_talent(character) then
+        -- 脱下装束/没这条天赋：重新起算
         bleed_next[character] = nil
         return
     end

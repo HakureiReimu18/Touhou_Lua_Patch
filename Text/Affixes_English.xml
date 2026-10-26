@@ -129,7 +129,7 @@
 	<affix.prefix.miracle>‖color:255,64,64,255‖Miracle‖color:end‖‖color:255,255,255,255‖</affix.prefix.miracle>
 	<affix.desc.miracle>Allows the item to hold one extra affix of Epic-or-lower tier and one extra affix of any tier (applied via enchantment stone transfer); run the enchanting station with no material to strip the extra affixes</affix.desc.miracle>
 	<affix.prefix.salvage>‖color:192,64,255,255‖Salvage‖color:end‖‖color:255,255,255,255‖</affix.prefix.salvage>
-	<affix.desc.salvage>Grants the weapon one extra affix slot (any affix except Salvage). The extra affix must be applied via an enchantment stone transfer; use a blank enchantment stone at the enchanting station to detach and keep it</affix.desc.salvage>
+	<affix.desc.salvage>Grants the weapon one extra affix slot (any affix except Salvage). The extra affix must be applied via an enchantment stone transfer; use a blank enchantment stone at the enchanting station to detach and keep it. Salvage itself can be detached the same way</affix.desc.salvage>
 	<affix.prefix.overdrive>‖color:74,144,255,255‖Overdrive‖color:end‖‖color:255,255,255,255‖</affix.prefix.overdrive>
 	<affix.desc.overdrive>Hull repair speed +40%, device repair speed +30%, fuel consumption +20%</affix.desc.overdrive>
 	<affix.prefix.rhythm>‖color:74,144,255,255‖Rhythm‖color:end‖‖color:255,255,255,255‖</affix.prefix.rhythm>

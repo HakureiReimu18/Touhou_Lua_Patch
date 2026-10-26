@@ -95,6 +95,7 @@
     <!-- 只留不死之烟和弑星者的艺术特效；其余先注释，取消下面外层注释即可恢复。
          五级其余武器会回落到上面的 Touhou_Weapon_Level05 等级扫光。 -->
     <Rule identifier="Immortal_Moon_Smoke" priority="100" profile="artFlameAura" />
+    <Rule identifier="Touhou_Laevatein" priority="100" profile="artFlameAura" />
     <Rule identifier="Touhou_Starkiller" priority="100" profile="artEchoCyanRose" />
     <!--
     <Rule identifier="Hisou_Sword" priority="50" profile="artSolarViolet" />

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TalentTrees>
+    <TalentTree jobidentifier="captain_arcane">
+        <SubTree identifier="captain_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="logisticsexpert"/>
+                <TalentOption identifier="prodigy"/>
+                <TalentOption identifier="inspirationalleader"/>
+                <TalentOption identifier="travelingtradesman"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="5">
+                <TalentOption identifier="sailorwithnoname"/>
+                <TalentOption identifier="camaraderie"/>
+                <TalentOption identifier="downwiththeship"/>
+                <TalentOption identifier="gunsmith"/>
+                <TalentOption identifier="steadytune"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="gunslinger" type="specialization" requires="captain_primary" blocks="skipper,politician">
+            <TalentOptions>
+                <TalentOption identifier="Talents_Magician_Primary01"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Traveling_Magician"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="drunkensailor"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="bigguns"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="skipper" type="specialization" requires="captain_primary" blocks="gunslinger,politician">
+            <TalentOptions>
+                <TalentOption identifier="leadingbyexample"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="helmsman"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="inspiringpresence"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="family"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="politician" type="specialization" requires="captain_primary" blocks="gunslinger,skipper">
+            <TalentOptions>
+                <TalentOption identifier="commendations"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="yourreputation"/>
+                <TalentOption identifier="affiliation"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="campaigning"/>
+                <TalentOption identifier="networking"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="figurehead"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="astral_captain" type="specialization" requires="captain_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_AstralCaptain_Talent01"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_AstralCaptain_Talent02"/>
+                <TalentOption identifier="Touhou_AstralCaptain_Talent03"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_AstralCaptain_Talent04"/>
+                <TalentOption identifier="Touhou_AstralCaptain_Talent05"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Captain_Talent_Completed"/>
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+
+    <TalentTree jobidentifier="captain_mystic">
+        <SubTree identifier="captain_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="logisticsexpert"/>
+                <TalentOption identifier="prodigy"/>
+                <TalentOption identifier="inspirationalleader"/>
+                <TalentOption identifier="travelingtradesman"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="5">
+                <TalentOption identifier="sailorwithnoname"/>
+                <TalentOption identifier="camaraderie"/>
+                <TalentOption identifier="downwiththeship"/>
+                <TalentOption identifier="gunsmith"/>
+                <TalentOption identifier="steadytune"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="gunslinger" type="specialization" requires="captain_primary" blocks="skipper,politician">
+            <TalentOptions>
+                <TalentOption identifier="Talents_Magician_Primary01"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Traveling_Magician"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="drunkensailor"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="bigguns"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="skipper" type="specialization" requires="captain_primary" blocks="gunslinger,politician">
+            <TalentOptions>
+                <TalentOption identifier="leadingbyexample"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="helmsman"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="inspiringpresence"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="family"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="politician" type="specialization" requires="captain_primary" blocks="gunslinger,skipper">
+            <TalentOptions>
+                <TalentOption identifier="commendations"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="yourreputation"/>
+                <TalentOption identifier="affiliation"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="campaigning"/>
+                <TalentOption identifier="networking"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="figurehead"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="abyssal_captain" type="specialization" requires="captain_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_MysticJob_Talent01"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_AbyssalCaptain_Talent02"/>
+                <TalentOption identifier="Touhou_AbyssalCaptain_Talent03"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_AbyssalCaptain_Talent04"/>
+                <TalentOption identifier="Touhou_AbyssalCaptain_Talent05"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Captain_Talent_Completed"/>
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+</TalentTrees>

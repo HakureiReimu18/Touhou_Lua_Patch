@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--⚠ 封存（2026-10）：弹药袋系统暂停，本配置当前不会被读取（C# 插件已封存）；
-    重做时可直接沿用这份配置。恢复办法：CSharp/Shared/AmmoStorage.cs 的 SEALED 常量改 false
+    重做时可直接沿用这份配置。恢复办法：CSharp/Shared/Legacy/AmmoStorage.cs 的 SEALED 常量改 false
     + filelist.xml 与 Lua/Autorun/init.lua 对应的注释放开。-->
 <!--
   ============================================================
-  弹药袋体系 v5 · 配置（CSharp/Shared/AmmoStorage.cs 读取）
+  弹药袋体系 v5 · 配置（CSharp/Shared/Legacy/AmmoStorage.cs 读取）
   ============================================================
   文件缺失时插件会自动生成同样的模板；下面每一项在代码里都有同等默认值，
   文件删掉/写坏也能跑（只是退回代码默认表）。改完在游戏控制台执行 mag_reload 即时生效，

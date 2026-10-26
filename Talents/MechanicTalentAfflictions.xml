@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Afflictions>
+    <!-- 旧存档兼容占位：狂怒已换成属性能力，这个状态不能再提供第二份增伤。 -->
+    <Affliction identifier="Touhou_FracturedMechanic_Rage" type="talentbuff" isbuff="true"
+                limbspecific="false" maxstrength="100" activationthreshold="0.000001"
+                showiconthreshold="101" showinhealthscannerthreshold="101">
+        <Effect minstrength="0" maxstrength="100"/>
+    </Affliction>
+    <Affliction identifier="Touhou_MasterArtisan_SkillBoost" type="talentbuff" isbuff="true"
+                limbspecific="false" maxstrength="1" duration="2" activationthreshold="0"
+                showiconthreshold="2" showinhealthscannerthreshold="2">
+        <Effect minstrength="0" maxstrength="1" minskillmultiplier="1.1" maxskillmultiplier="1.1"/>
+    </Affliction>
+</Afflictions>

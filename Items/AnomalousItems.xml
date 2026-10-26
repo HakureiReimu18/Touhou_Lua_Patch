@@ -2,9 +2,9 @@
 <Override>
   <!--
     异常物品系统（当前在跑）：TH-01 会回来的货箱 + TH-02 比里面大的柜子 + TH-03「五十米」样本
-    + TH-08 点名喇叭 + 铅封收容箱。
-    一件物品一条规则；逻辑在 CSharp/Shared/AnomalousItems.cs，旧 Lua 已停载。
-    休眠的 4 件在 _Archive/AnomalousItems_v1_全8件.xml，放出时搬回来配 Lua。
+    + TH-05 潮汐碎片 + TH-06 延迟伤势 + TH-07 深渊接收机 + TH-08 点名喇叭 + TH-09 异常灯。
+    逻辑在 AnomalousItems.cs / AnomalyExpansions.cs / RestlessLight.cs，旧 Lua 已停载。
+    TH-04 仍休眠，_Archive 只作历史参考。
 
     机构命名（已定案，写档案/新物品时沿用）：
       - 中文：异常封锁局（日常简称就用这个）
@@ -23,16 +23,6 @@
     贴图说明：水晶/喇叭用原版图调色（占位），收容箱用原版密封箱调色；正式美术后补。
   -->
   <Items>
-    <!--普通容器遮不住；收容由组件检查整条父链-->
-    <Item name="" identifier="Touhou_Anomaly_Restless_Light" tags="smallitem,alienartifact,Touhou_Anomalous"
-          subcategory="Touhou" category="Alien" scale="0.35" maxstacksize="1" hideinmenus="true"
-          cargocontaineridentifier="metalcrate" fireproof="true" impactsoundtag="impact_metal_light">
-      <Sprite texture="Content/Items/Electricity/signalcomp.png" sourcerect="304,528,64,96" depth="0.55" origin="0.5,0.5"/>
-      <InventoryIcon texture="Content/Items/Electricity/signalcomp.png" sourcerect="304,528,64,96" origin="0.5,0.5"/>
-      <Body width="40" height="60" density="12"/>
-      <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
-      <TouhouRestlessLight canbeselected="false" allowingameediting="false" updatewhenbroken="true"/>
-    </Item>
 
     <!-- ========== 铅封收容箱：异常物品的"安全状态" ========== -->
     <Item name="重型封锁收容箱" identifier="Touhou_Containment_Crate" tags="crate,cabinet,container,Touhou_Containment,artifactcontainer,tsm_danger_box" subcategory="Touhou"
@@ -65,6 +55,7 @@
       </Holdable>
       <!-- 收容范围：本补丁收容物 + 原版异星遗物；内容物变化时点亮紫灯 -->
       <ItemContainer autofill="False" capacity="12" slotsperrow="4" maxstacksize="1" canbeselected="true" hideitems="true" >
+        <GuiFrame relativesize="0.2,0.3" anchor="Center" style="ItemUI"/>
         <Containable items="Touhou_Anomalous,alienartifact,tsm_danger_item,tsm_danger_bloack" />
       </ItemContainer>
       <LightComponent range="90" lightcolor="170,90,255,255" powerconsumption="0" IsOn="false" castshadows="false"
@@ -108,7 +99,7 @@
     <Item name="「比里面大的柜子」" identifier="Touhou_Anomaly_Bigger_Cabinet" tags="Touhou_Anomalous" subcategory="Touhou"
           category="Misc" scale="0.28" maxstacksize="1"
           description="【异常封锁局·证物登记 TH-02｜流拍】外观：双门铁柜，外尺寸 0.9×1.8m。内容积测量记录：第 4 次评估申请被驳回。驳回理由：评估员拒绝再次打开柜门。备注：柜门从内侧反锁过三次。回收：潜渊行动组。">
-      <Price baseprice="1" canbespecial="false">
+      <Price baseprice="100" canbespecial="false">
         <Price storeidentifier="merchantresearch" multiplier="1" sold="false" maxavailable="1" />
         <Price storeidentifier="merchantoutpost" sold="false" />
         <Price storeidentifier="merchantcity" sold="false" />
@@ -134,8 +125,8 @@
     <!-- ========== TH-03「五十米」样本 ========== -->
     <Item name="「五十米」样本" identifier="Touhou_Anomaly_Repulse_Stone" tags="Touhou_Anomalous" subcategory="Touhou"
           category="Misc" scale="0.2" maxstacksize="1"
-          description="【异常封锁局·证物登记 TH-03】来源：鸟船遗迹核心舱段外缘，采集距离 50.2m（再靠近一米都没有人愿意试）。效应：活体靠近者出现恶心、眩晕与战栗，越近越重；死者会被送出圈外——评估员备注：样本不收藏死者，样本认识死者。回收：潜渊行动组。">
-      <Price baseprice="1" canbespecial="false">
+          description="【异常封锁局·证物登记 TH-03】来源：鸟船遗迹核心舱段外缘，采集距离 50.2m。六米内减速并积累精神症状，三米内开始器官损伤，两米内伤害明显加快。装箱只停止新增暴露，不治疗已经造成的损伤。死者会被送出圈外——样本不收藏死者，样本认识死者。回收：潜渊行动组。">
+      <Price baseprice="100" canbespecial="false">
         <Price storeidentifier="merchantresearch" multiplier="1" sold="false" maxavailable="1" />
         <Price storeidentifier="merchantoutpost" sold="false" />
         <Price storeidentifier="merchantcity" sold="false" />
@@ -160,11 +151,75 @@
       </LightComponent>
     </Item>
 
+    <!-- ========== TH-05 假月球碎片：它不排水，只决定哪里涨潮 ========== -->
+    <Item name="假月球碎片" identifier="Touhou_Anomaly_Fake_Moon_Shard" tags="Touhou_Anomalous"
+          subcategory="Touhou" category="Misc" scale="0.7" maxstacksize="1"
+          description="【异常封锁局·证物登记 TH-05】喇叭圣殿光膜边缘的剥落物。手持，在舱门两米内使用：将本舱积水等量转移到门另一侧，闭门也有效。先显示目标舱名，准备五秒；每秒转移较小舱室容积的2.5%，每次最多25%。放下、离开来源舱或收容中止，停用后冷却30秒。不造氧气，也不凭空排水。影子比人数多一个。">
+      <Price baseprice="3800" canbespecial="false">
+        <Price storeidentifier="merchantresearch" sold="true" maxavailable="1"/>
+        <Price storeidentifier="merchantoutpost" sold="false"/>
+        <Price storeidentifier="merchantcity" sold="false"/>
+        <Price storeidentifier="merchantmilitary" sold="false"/>
+        <Price storeidentifier="merchantmine" sold="false"/>
+      </Price>
+      <Sprite texture="%ModDir:2941124988%/Images/Alchemical/Seven_Elements_Alchemical_Fake.png" sourcerect="0,0,72,84" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon texture="%ModDir:2941124988%/Images/Alchemical/Seven_Elements_Alchemical_Fake.png" sourcerect="0,0,72,84" origin="0.5,0.5"/>
+      <Body width="50" height="58" density="15"/>
+      <Holdable slots="Any,RightHand,LeftHand" holdpos="0,-50" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect"/>
+      <LightComponent range="250" lightcolor="215,225,255,255" powerconsumption="0" IsOn="false" castshadows="false"/>
+      <TouhouAnomalyInstrument canbeselected="false" allowingameediting="false" updatewhenbroken="true">
+        <Sound file="Content/Items/Alien/AlienArtifactLoop1.ogg" type="OnActive" range="400" volume="0.35" loop="true"/>
+      </TouhouAnomalyInstrument>
+    </Item>
+
+    <!-- ========== TH-06 灵异珠残响：伤已经记上，只是还没轮到现在 ========== -->
+    <Item name="灵异珠残响" identifier="Touhou_Anomaly_Orb_Echo" tags="Touhou_Anomalous"
+          subcategory="Touhou" category="Misc" scale="1.6" maxstacksize="1"
+          description="【异常封锁局·证物登记 TH-06】携带时，将一次攻击造成的指定外伤的一半延迟十秒兑现，最多延迟30点已结算强度，冷却120秒；不处理窒息、水压死亡及爆炸。伤势属于原角色、原健康部位，丢弃或装箱不能取消。存档和结束巡回前提前兑现。持续听到关于自己的、尚未发生的描述。">
+      <Price baseprice="5000" canbespecial="false">
+        <Price storeidentifier="merchantresearch" sold="true" maxavailable="1"/>
+        <Price storeidentifier="merchantoutpost" sold="false"/>
+        <Price storeidentifier="merchantcity" sold="false"/>
+        <Price storeidentifier="merchantmilitary" sold="false"/>
+        <Price storeidentifier="merchantmine" sold="false"/>
+      </Price>
+      <Sprite texture="%ModDir:2941124988%/Images/Divinggear/Yin_Yang_Orb.png" sourcerect="0,0,32,32" depth="0.55" origin="0.5,0.5" color="190,150,220,255"/>
+      <InventoryIcon texture="%ModDir:2941124988%/Images/Divinggear/Yin_Yang_Orb.png" sourcerect="0,0,32,32" origin="0.5,0.5"/>
+      <Body width="30" height="30" density="20"/>
+      <Holdable slots="Any,RightHand,LeftHand" holdpos="0,-40" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect"/>
+      <LightComponent range="80" lightcolor="150,90,200,255" powerconsumption="0" IsOn="false" castshadows="false"/>
+      <TouhouAnomalyInstrument canbeselected="false" allowingameediting="false" updatewhenbroken="true">
+        <Sound file="Content/Items/Alien/ALIEN_ruinsLoop.ogg" type="OnActive" range="350" volume="0.25" loop="true"/>
+      </TouhouAnomalyInstrument>
+    </Item>
+
+    <!-- ========== TH-07 深渊信号收音机：接收的时候也在报出自己 ========== -->
+    <Item name="深渊信号收音机" identifier="Touhou_Anomaly_Abyss_Radio" tags="Touhou_Anomalous,sonar"
+          subcategory="Touhou" category="Misc" scale="0.55" maxstacksize="1"
+          description="【异常封锁局·证物登记 TH-07】手持使用开始监听，放下或收容停止。六秒辨认附近现有沉船或遗迹；十八秒给出粗略方位距离，三十秒给出较准确距离，同时播报本机坐标。向外暴露的声源由15米逐渐扩大到180米，不保证所有生物响应。停用后冷却30秒。没有目标时不编造求救坐标，也不生成奖励。">
+      <Price baseprice="3200" canbespecial="false">
+        <Price storeidentifier="merchantresearch" sold="true" maxavailable="1"/>
+        <Price storeidentifier="merchantoutpost" sold="false"/>
+        <Price storeidentifier="merchantcity" sold="false"/>
+        <Price storeidentifier="merchantmilitary" sold="false"/>
+        <Price storeidentifier="merchantmine" sold="false"/>
+      </Price>
+      <Sprite texture="%ModDir%/Images/General_Items/Touhou_Anomaly_Radio.png" sourcerect="0,0,96,96" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon texture="%ModDir%/Images/General_Items/Touhou_Anomaly_Radio.png" sourcerect="0,0,96,96" origin="0.5,0.5"/>
+      <Body width="52" height="52" density="18"/>
+      <Holdable slots="Any,RightHand,LeftHand" holdpos="0,-45" handle1="0,0" aimable="false" msg="ItemMsgPickUpSelect"/>
+      <LightComponent range="60" lightcolor="230,180,90,255" powerconsumption="0" IsOn="false" castshadows="false"/>
+      <aitarget soundrange="0" maxsoundrange="18000" fadeouttime="2"/>
+      <TouhouAnomalyInstrument canbeselected="false" allowingameediting="false" updatewhenbroken="true">
+        <Sound file="Content/Sounds/RadioStatic.ogg" type="OnActive" range="450" volume="0.4" loop="true"/>
+      </TouhouAnomalyInstrument>
+    </Item>
+
     <!-- ========== TH-08 喇叭圣母的呼唤 ========== -->
     <Item name="喇叭圣母的呼唤" identifier="Touhou_Anomaly_Laugh_Trumpet" tags="Touhou_Anomalous" subcategory="Touhou"
           category="Misc" scale="1" maxstacksize="1"
           description="【异常封锁局·证物登记 TH-08】来源：小丑教派集会现场。黄铜喇叭，吹不响——除了在某些时刻。吹响时，圣母会随机点名在场的一位，与吹响者交换位置。吹之前想清楚：你不知道会换到谁，也不知道谁会觉得你的位置不错。注：小丑教徒似乎不受影响。回收：潜渊行动组。">
-      <Price baseprice="1" canbespecial="false">
+      <Price baseprice="100" canbespecial="false">
         <Price storeidentifier="merchantresearch" multiplier="1" sold="false" maxavailable="1" />
         <Price storeidentifier="merchantoutpost" sold="false" />
         <Price storeidentifier="merchantcity" sold="false" />
@@ -184,6 +239,18 @@
       <!-- 声音大得离谱，AI 听得见 -->
       <aitarget soundrange="1200" fadeouttime="5" />
     </Item>
+
+    <!-- ========== TH-09 不肯熄灭的灯 ========== -->
+    <Item name="" identifier="Touhou_Anomaly_Restless_Light" tags="smallitem,alienartifact,Touhou_Anomalous"
+          subcategory="Touhou" category="Alien" scale="0.35" maxstacksize="1" hideinmenus="true"
+          cargocontaineridentifier="metalcrate" fireproof="true" impactsoundtag="impact_metal_light">
+      <Sprite texture="Content/Items/Electricity/signalcomp.png" sourcerect="304,528,64,96" depth="0.55" origin="0.5,0.5"/>
+      <InventoryIcon texture="Content/Items/Electricity/signalcomp.png" sourcerect="304,528,64,96" origin="0.5,0.5"/>
+      <Body width="40" height="60" density="12"/>
+      <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
+      <TouhouRestlessLight canbeselected="false" allowingameediting="false" updatewhenbroken="true"/>
+    </Item>
+
 
   </Items>
 </Override>

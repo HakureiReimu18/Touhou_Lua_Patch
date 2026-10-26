@@ -3,7 +3,7 @@
 --   1. 认领：魔导书召唤按钮触发 LuaHook 立标记，characterCreated 捕获人偶并记录主人
 --   2. 指令：move / hold / follow，写入桥接文件由 C# 侧轮询执行
 --      （LuaCs 对 AIObjectiveGoTo 重载构造器绑定有缺陷且注册不到本模组程序集类型，
---        目标创建只能在 C# 侧做，见 CSharp/Shared/AliceDollCommand.cs）
+--        目标创建只能在 C# 侧做，见 CSharp/Shared/Legacy/AliceDollCommand.cs）
 --   3. 联机收网络消息；单机等价于客户端直接调 AliceDollCommand.Execute
 
 TLE = TLE or {}

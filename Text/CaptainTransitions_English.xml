@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="English" translatedname="English" nowhitespace="false">
+  <JobName.captain_arcane>Astral Captain</JobName.captain_arcane>
+  <JobDescription.captain_arcane>Reads star charts like navigation maps and treats fate as a current. Keeps the captain talent tree and gains an additional astral branch.</JobDescription.captain_arcane>
+  <JobName.captain_mystic>Abyssal Captain</JobName.captain_mystic>
+  <JobDescription.captain_mystic>The deep answers every name, as long as you can pay. Keeps the captain talent tree and gains an additional abyssal branch.</JobDescription.captain_mystic>
+  <talenttree.astral_captain>Astral Navigation</talenttree.astral_captain>
+  <talenttree.abyssal_captain>Abyssal Covenant</talenttree.abyssal_captain>
+
+  <entityname.Touhou_Captain_Arcane_Book>Star Chart Legacy Tome</entityname.Touhou_Captain_Arcane_Book>
+  <entitydescription.Touhou_Captain_Arcane_Book>Hold in both hands and press Use or Aim. Requires a vanilla captain with both primary talent stages completed, Helm skill 80, and Magic skill 60. Consumed only on success. Registers the Astral Captain transition. Applies next round, or to a newly spawned captain body after death. One completed transition per player per campaign.</entitydescription.Touhou_Captain_Arcane_Book>
+  <entityname.Touhou_Captain_Mystic_Book>Abyssal Legacy Tome</entityname.Touhou_Captain_Mystic_Book>
+  <entitydescription.Touhou_Captain_Mystic_Book>Hold in both hands and press Use or Aim. Requires a vanilla captain with both primary talent stages completed, Helm skill 80, and Weapons skill 60. Consumed only on success. Registers the Abyssal Captain transition. Applies next round, or to a newly spawned captain body after death. One completed transition per player per campaign.</entitydescription.Touhou_Captain_Mystic_Book>
+
+  <talentname.Touhou_AstralCaptain_Talent01>Star Sequence</talentname.Touhou_AstralCaptain_Talent01>
+  <talentdescription.Touhou_AstralCaptain_Talent01>Skill cap increased to 120.</talentdescription.Touhou_AstralCaptain_Talent01>
+  <talentname.Touhou_AstralCaptain_Talent02>Route Correction</talentname.Touhou_AstralCaptain_Talent02>
+  <talentdescription.Touhou_AstralCaptain_Talent02>Pump and engine efficiency +15%.</talentdescription.Touhou_AstralCaptain_Talent02>
+  <talentname.Touhou_AstralCaptain_Talent03>Crisis Omen</talentname.Touhou_AstralCaptain_Talent03>
+  <talentdescription.Touhou_AstralCaptain_Talent03>Turret power consumption -10%; turrets you operate deal +10% damage.</talentdescription.Touhou_AstralCaptain_Talent03>
+  <talentname.Touhou_AstralCaptain_Talent04>Star Chart Guidance</talentname.Touhou_AstralCaptain_Talent04>
+  <talentdescription.Touhou_AstralCaptain_Talent04>When you give an order to another crew member, gain 30 Helm skill for 10 seconds.</talentdescription.Touhou_AstralCaptain_Talent04>
+  <talentname.Touhou_AstralCaptain_Talent05>Stellar Resonance</talentname.Touhou_AstralCaptain_Talent05>
+  <talentdescription.Touhou_AstralCaptain_Talent05>When all missions are completed with no crew deaths, all crew gain +0.5 to all six skills, including Magic.</talentdescription.Touhou_AstralCaptain_Talent05>
+
+  <talentname.Touhou_AbyssalCaptain_Talent01>Whispers of the Beyond</talentname.Touhou_AbyssalCaptain_Talent01>
+  <talentdescription.Touhou_AbyssalCaptain_Talent01>Ranged and melee attack damage +10%.</talentdescription.Touhou_AbyssalCaptain_Talent01>
+  <talentname.Touhou_AbyssalCaptain_Talent02>Bloodletting</talentname.Touhou_AbyssalCaptain_Talent02>
+  <talentdescription.Touhou_AbyssalCaptain_Talent02>+15% damage to monsters; damaging humans inflicts bleeding.</talentdescription.Touhou_AbyssalCaptain_Talent02>
+  <talentname.Touhou_AbyssalCaptain_Talent03>Tide Hunt</talentname.Touhou_AbyssalCaptain_Talent03>
+  <talentdescription.Touhou_AbyssalCaptain_Talent03>+15% damage with hand cannons and pistols.</talentdescription.Touhou_AbyssalCaptain_Talent03>
+  <talentname.Touhou_AbyssalCaptain_Talent04>Abyssal Boon</talentname.Touhou_AbyssalCaptain_Talent04>
+  <talentdescription.Touhou_AbyssalCaptain_Talent04>25% chance to gain a commendation on kill, up to 4 per round.</talentdescription.Touhou_AbyssalCaptain_Talent04>
+  <talentname.Touhou_AbyssalCaptain_Talent05>Abyssal Dominion</talentname.Touhou_AbyssalCaptain_Talent05>
+  <talentdescription.Touhou_AbyssalCaptain_Talent05>Crafted items gain +1 quality; skill gain speed +30%.</talentdescription.Touhou_AbyssalCaptain_Talent05>
+
+  <talentname.Touhou_Special_Captain_Talent_Completed>Great Navigator</talentname.Touhou_Special_Captain_Talent_Completed>
+  <talentdescription.Touhou_Captain_Talent06>+5% all attack damage, and you can drag creatures at full speed. Each point of Helm skill grants 0.1% max health, up to +20%.</talentdescription.Touhou_Captain_Talent06>
+
+  <afflictiondescription.Touhou_AstralCaptain_OrderHelm>Star Chart Guidance: Helm skill +30.</afflictiondescription.Touhou_AstralCaptain_OrderHelm>
+  <afflictiondescription.Touhou_AbyssalCaptain_SkillBoost>Abyssal Dominion: skill gain speed +30%.</afflictiondescription.Touhou_AbyssalCaptain_SkillBoost>
+</infotexts>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="Simplified Chinese" translatedname="中文(简体)" nowhitespace="true">
+  <JobName.captain_arcane>星图舰长</JobName.captain_arcane>
+  <JobDescription.captain_arcane>把星图当航海图，把命运当洋流。保留舰长天赋树，并拥有额外的星航分支。</JobDescription.captain_arcane>
+  <JobName.captain_mystic>深渊船长</JobName.captain_mystic>
+  <JobDescription.captain_mystic>深海会回应每一个名字，只要你付得起代价。保留舰长天赋树，并拥有额外的深渊分支。</JobDescription.captain_mystic>
+  <talenttree.astral_captain>星航</talenttree.astral_captain>
+  <talenttree.abyssal_captain>深渊契约</talenttree.abyssal_captain>
+
+  <entityname.Touhou_Captain_Arcane_Book>星图异传书</entityname.Touhou_Captain_Arcane_Book>
+  <entitydescription.Touhou_Captain_Arcane_Book>双手拿起后按使用键或瞄准键研读。需要原版舰长、完成基础树两个阶段、驾驶技能至少80、魔法技能至少60。成功后消耗，登记星詠船长异传；下个巡回，或死亡后新生成的舰长身体生效。每名玩家每个战役限完成一次。</entitydescription.Touhou_Captain_Arcane_Book>
+  <entityname.Touhou_Captain_Mystic_Book>深渊异传书</entityname.Touhou_Captain_Mystic_Book>
+  <entitydescription.Touhou_Captain_Mystic_Book>双手拿起后按使用键或瞄准键研读。需要原版舰长、完成基础树两个阶段、驾驶技能至少80、武器技能至少60。成功后消耗，登记深渊船长异传；下个巡回，或死亡后新生成的舰长身体生效。每名玩家每个战役限完成一次。</entitydescription.Touhou_Captain_Mystic_Book>
+
+  <talentname.Touhou_AstralCaptain_Talent01>星位序列</talentname.Touhou_AstralCaptain_Talent01>
+  <talentdescription.Touhou_AstralCaptain_Talent01>技能水平上限提高到 120。</talentdescription.Touhou_AstralCaptain_Talent01>
+  <talentname.Touhou_AstralCaptain_Talent02>航路校正</talentname.Touhou_AstralCaptain_Talent02>
+  <talentdescription.Touhou_AstralCaptain_Talent02>泵和引擎效率 +15%。</talentdescription.Touhou_AstralCaptain_Talent02>
+  <talentname.Touhou_AstralCaptain_Talent03>危机预兆</talentname.Touhou_AstralCaptain_Talent03>
+  <talentdescription.Touhou_AstralCaptain_Talent03>炮塔耗电 -10%，你操作的炮塔伤害 +10%。</talentdescription.Touhou_AstralCaptain_Talent03>
+  <talentname.Touhou_AstralCaptain_Talent04>星图指引</talentname.Touhou_AstralCaptain_Talent04>
+  <talentdescription.Touhou_AstralCaptain_Talent04>给其他船员下达命令时，自己获得 30 点驾驶水平，持续 10 秒。</talentdescription.Touhou_AstralCaptain_Talent04>
+  <talentname.Touhou_AstralCaptain_Talent05>星图共鸣</talentname.Touhou_AstralCaptain_Talent05>
+  <talentdescription.Touhou_AstralCaptain_Talent05>完成所有任务且无人死亡时，所有船员六项技能和魔法能力各 +0.5。</talentdescription.Touhou_AstralCaptain_Talent05>
+
+  <talentname.Touhou_AbyssalCaptain_Talent01>彼岸低语</talentname.Touhou_AbyssalCaptain_Talent01>
+  <talentdescription.Touhou_AbyssalCaptain_Talent01>远程与近战攻击伤害 +10%。</talentdescription.Touhou_AbyssalCaptain_Talent01>
+  <talentname.Touhou_AbyssalCaptain_Talent02>放血</talentname.Touhou_AbyssalCaptain_Talent02>
+  <talentdescription.Touhou_AbyssalCaptain_Talent02>对怪物造成的伤害 +15%；对人类造成伤害时附加出血。</talentdescription.Touhou_AbyssalCaptain_Talent02>
+  <talentname.Touhou_AbyssalCaptain_Talent03>猎潮</talentname.Touhou_AbyssalCaptain_Talent03>
+  <talentdescription.Touhou_AbyssalCaptain_Talent03>手炮/手枪造成的伤害 +15%。</talentdescription.Touhou_AbyssalCaptain_Talent03>
+  <talentname.Touhou_AbyssalCaptain_Talent04>深渊馈赠</talentname.Touhou_AbyssalCaptain_Talent04>
+  <talentdescription.Touhou_AbyssalCaptain_Talent04>击杀敌人时 25% 概率获得一枚奖章，一巡回最多 4 枚。</talentdescription.Touhou_AbyssalCaptain_Talent04>
+  <talentname.Touhou_AbyssalCaptain_Talent05>深渊统治</talentname.Touhou_AbyssalCaptain_Talent05>
+  <talentdescription.Touhou_AbyssalCaptain_Talent05>制作物品质量 +1，技能获取速度 +30%。</talentdescription.Touhou_AbyssalCaptain_Talent05>
+
+  <talentname.Touhou_Special_Captain_Talent_Completed>大航海家</talentname.Touhou_Special_Captain_Talent_Completed>
+  <talentdescription.Touhou_Captain_Talent06>所有攻击伤害 +5%，可以全速拖动生物；每 1 点驾驶技能提供 0.1% 最大生命值，最多 +20%。</talentdescription.Touhou_Captain_Talent06>
+
+  <afflictiondescription.Touhou_AstralCaptain_OrderHelm>星图指引：驾驶水平 +30。</afflictiondescription.Touhou_AstralCaptain_OrderHelm>
+  <afflictiondescription.Touhou_AbyssalCaptain_SkillBoost>深渊统治：技能获取速度 +30%。</afflictiondescription.Touhou_AbyssalCaptain_SkillBoost>
+</infotexts>

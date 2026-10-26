@@ -39,8 +39,8 @@
       <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
     </Affliction>
 
-    <!-- 异常物品系统（CSharp/Shared/AnomalousItems.cs）：
-         排斥不适用 Slow 类压速度 + 高 strength 时色差，进场有 Lua 提示。
+    <!-- 异常物品系统（CSharp/Shared/Anomalies/AnomalousItems.cs）：
+         排斥不适维持 Slow 档位，精神症状与器官损伤由 C# 按最近样本距离累计。
          ⚠ 休眠：失笑（TH-08 已改为点名换位，不再用眩晕；要恢复感染笑方案时从 _Archive 旧脚本搬回）
     <Stun name="失笑" identifier="Touhou_Anomaly_Forced_Laugh" description="你止不住地笑，笑得弯下腰，笑得丢掉了手里的东西。" type="stun"
           limbspecific="false" indicatorlimb="Head" activationthreshold="0" showiconthreshold="0" maxstrength="12">
@@ -48,13 +48,27 @@
       <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
     </Stun>
     -->
-    <Slow name="排斥不适" identifier="Touhou_Anomaly_Repulse" description="恶心、眩晕、无法抑制的战栗——有什么东西不希望任何活人靠近，也不许死者留下。" type="slow"
+    <Slow name="排斥不适" identifier="Touhou_Anomaly_Repulse" description="六米内逐渐积累精神症状，三米内开始器官损伤，两米内明显加重。远离或收容只停止新增暴露，已有损伤仍需治疗。这里不许活人靠近，也不许死者留下。" type="slow"
           limbspecific="false" indicatorlimb="Torso" activationthreshold="1" showiconthreshold="1" maxstrength="100">
       <!-- 档位由领域统一维持，离圈或装箱归零，不能再边维持边自然衰减 -->
       <Effect minstrength="0" maxstrength="100" strengthchange="0" minspeedmultiplier="1" maxspeedmultiplier="0.45"
-              minchromaticaberration="0" maxchromaticaberration="3" />
+              minchromaticaberration="0" maxchromaticaberration="6" />
       <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
     </Slow>
+    <Affliction name="尚未发生的伤" identifier="Touhou_Anomaly_Deferred_Wound"
+                description="残响替你推迟了一笔外伤。强度表示剩余秒数；归零时原部位兑现。丢弃、收容和治疗本图标不能取消欠账；存档或结束巡回前提前兑现。"
+                type="Touhou_Anomaly_Deferred_Wound" limbspecific="false" indicatorlimb="Torso"
+                activationthreshold="0" showiconthreshold="0.1" maxstrength="10" resetbetweenrounds="true">
+      <Effect minstrength="0" maxstrength="10" strengthchange="-1"/>
+      <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" origin="0,0"/>
+    </Affliction>
+    <Affliction name="监听深渊信号" identifier="Touhou_Anomaly_Radio_Listener"
+                description="正在监听。随着内容逐渐清晰，本机向外暴露的声源也越来越强。放下接收机或将其收容可停止。"
+                type="Touhou_Anomaly_Radio_Listener" limbspecific="false" indicatorlimb="Head"
+                activationthreshold="0" showiconthreshold="0.1" maxstrength="1" resetbetweenrounds="true">
+      <Effect minstrength="0" maxstrength="1" strengthchange="0"/>
+      <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" origin="0,0"/>
+    </Affliction>
     <!-- ⚠ 休眠：信号听众（TH-07 深渊信号收音机未放出）。
          恢复时连同 _Archive/AnomalousItems_v1_全8件.xml 里对应物品与 Lua updater 一起搬回。
     <Slow name="信号听众" identifier="Touhou_Anomaly_Signal_Listener" description="信号的内容是对未来的描述。听完的人干活更快，也更频繁地回头看。" type="slow" isbuff="true"
@@ -63,5 +77,15 @@
       <icon texture="%ModDir:2941124988%/Images/Afflictions/Touhou_Never_Give_Up_Effect.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
     </Slow>
     -->
+    <!--星图指引：下达命令后，船长短暂获得 30 点驾驶水平-->
+    <Affliction identifier="Touhou_AstralCaptain_OrderHelm" isbuff="true" type="resistance" limbspecific="false"
+                indicatorlimb="Head" maxstrength="1" affectmachines="true" resetbetweenrounds="true">
+      <Effect minstrength="0" maxstrength="1">
+        <StatValue stattype="HelmSkillBonus" value="30" />
+      </Effect>
+      <Description textidentifier="afflictiondescription.Touhou_AstralCaptain_OrderHelm" minstrength="0" maxstrength="1" />
+      <icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sourcerect="0,0,128,128" color="255,255,255,255" origin="0,0" />
+    </Affliction>
+    
   </Afflictions>
 </Override>

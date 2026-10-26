@@ -138,7 +138,7 @@
 	<affix.prefix.miracle>‖color:255,64,64,255‖奇迹‖color:end‖‖color:255,255,255,255‖</affix.prefix.miracle>
 	<affix.desc.miracle>允许物品额外再拥有一个史诗及以下词缀和一个任意稀有度词缀（需用附魔石转移附上）；不放置材料进行附魔可去除额外词缀</affix.desc.miracle>
 	<affix.prefix.salvage>‖color:192,64,255,255‖回收‖color:end‖‖color:255,255,255,255‖</affix.prefix.salvage>
-	<affix.desc.salvage>武器额外获得一个词缀槽（任意词缀，不能是回收）；额外词缀必须用附魔石转移附上，可在附魔台用空白附魔石把该词缀取下保存</affix.desc.salvage>
+	<affix.desc.salvage>武器额外获得一个词缀槽（任意词缀，不能是回收）；额外词缀必须用附魔石转移附上，可在附魔台用空白附魔石把该词缀取下保存，回收本身也能这样取下</affix.desc.salvage>
 	<affix.prefix.overdrive>‖color:74,144,255,255‖过载焊接‖color:end‖‖color:255,255,255,255‖</affix.prefix.overdrive>
 	<affix.desc.overdrive>船体修复速度 +40%，设备修理速度 +30%，耗材消耗 +20%</affix.desc.overdrive>
 	<affix.prefix.rhythm>‖color:74,144,255,255‖匠人节奏‖color:end‖‖color:255,255,255,255‖</affix.prefix.rhythm>

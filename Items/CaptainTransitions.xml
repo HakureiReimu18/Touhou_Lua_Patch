@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Items>
+  <!--沿用原版技能书的握持方式；资格校验和消耗由服务器拦截，失败不扣书。-->
+  <Item name="" identifier="Touhou_Captain_Arcane_Book" category="Misc" subcategory="Touhou"
+        tags="smallitem,Touhou_Captain_Arcane_Book" maxstacksize="1" scale="0.1" impactsoundtag="impact_soft">
+    <Fabricate suitablefabricators="Magic_Altar" requiredtime="10">
+      <RequiredSkill identifier="helm" level="80"/>
+      <RequiredItem identifier="fpgacircuit"/>
+      <RequiredItem identifier="Magic_Material" amount="3"/>
+      <RequiredItem identifier="Touhou_Base_Metal" amount="2"/>
+      <RequiredItem identifier="Power_Point" />
+    </Fabricate>
+    <InventoryIcon texture="%ModDir%/Images/Touhou_Engineer_Job_Book.png" sourcerect="0,0,128,200" origin="0.5,0.5" />
+    <Sprite texture="%ModDir%/Images/Touhou_Engineer_Job_Book.png" sourcerect="0,0,128,200" depth="0.6" origin="0.5,0.5" />
+    <Body width="128" height="200" density="10"/>
+    <MeleeWeapon slots="Any,RightHand+LeftHand" aimable="false" aimpos="40,-20" handle1="5,0" holdangle="80"
+                 swingamount="0,3" swingspeed="0.5" swingwhenaiming="true" msg="ItemMsgPickUpSelect"/>
+  </Item>
+  <Item name="" identifier="Touhou_Captain_Mystic_Book" category="Misc" subcategory="Touhou"
+        tags="smallitem,Touhou_Captain_Mystic_Book" maxstacksize="1" scale="0.1" impactsoundtag="impact_soft">
+    <Fabricate suitablefabricators="Magic_Altar" requiredtime="10">
+      <RequiredSkill identifier="helm" level="80"/>
+      <RequiredItem identifier="uranium" amount="2"/>
+      <RequiredItem identifier="Touhou_Bottle_Element"/>
+      <RequiredItem identifier="Touhou_Base_Metal" amount="2"/>
+      <RequiredItem identifier="Power_Point" />
+    </Fabricate>
+    <InventoryIcon texture="%ModDir%/Images/Touhou_Engineer_Job_Book.png" sourcerect="136,0,128,200" origin="0.5,0.5" />
+    <Sprite texture="%ModDir%/Images/Touhou_Engineer_Job_Book.png" sourcerect="136,0,128,200" depth="0.6" origin="0.5,0.5" />
+    <Body width="128" height="200" density="10"/>
+    <MeleeWeapon slots="Any,RightHand+LeftHand" aimable="false" aimpos="40,-20" handle1="5,0" holdangle="80"
+                 swingamount="0,3" swingspeed="0.5" swingwhenaiming="true" msg="ItemMsgPickUpSelect"/>
+  </Item>
+</Items>

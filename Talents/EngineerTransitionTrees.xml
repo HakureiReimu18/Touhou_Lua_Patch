@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TalentTrees>
+    <!--本文件就是最终自定义职业树；插件不再从原版复制或拼接，选项和前置可直接在这里调整。-->
+    <TalentTree jobidentifier="engineer_arcane">
+        <SubTree identifier="engineer_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="stationengineer"/>
+                <TalentOption identifier="junctionjunkie"/>
+                <TalentOption identifier="grounded"/>
+                <TalentOption identifier="remotemonitor"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="funwithfission"/>
+                <TalentOption identifier="submarineofthings"/>
+                <TalentOption identifier="Talents_Magician_Primary08"/>
+                <TalentOption identifier="samplecollection"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="weaponsengineer" type="specialization" requires="engineer_primary" blocks="electrician,physicist">
+            <TalentOptions>
+                <TalentOption identifier="militaryapplications"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="heavyhitter"/>
+                <TalentOption identifier="armsrace"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Enter_Gensokyo"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="nuclearoption"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="electrician" type="specialization" requires="engineer_primary" blocks="weaponsengineer,physicist">
+            <TalentOptions>
+                <TalentOption identifier="gridmaintainer"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="pyromaniac"/>
+                <TalentOption identifier="unlimitedpower"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Buff"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="lightningwizard"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="physicist" type="specialization" requires="engineer_primary" blocks="weaponsengineer,electrician">
+            <TalentOptions>
+                <TalentOption identifier="unstoppablecuriosity"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="cruising"/>
+                <TalentOption identifier="buzzing"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="dangerzone"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="phdinnuclearphysics"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="arcane_engineer" type="specialization" requires="engineer_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_ArcaneEngineer_Talent01"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_ArcaneEngineer_Talent02"/>
+                <TalentOption identifier="Touhou_ArcaneEngineer_Talent03"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_ArcaneEngineer_Talent04"/>
+                <TalentOption identifier="Touhou_ArcaneEngineer_Talent05"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Engineer_Talent_Completed"/>
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+    
+    <TalentTree jobidentifier="engineer_mystic">
+        <SubTree identifier="engineer_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="stationengineer"/>
+                <TalentOption identifier="junctionjunkie"/>
+                <TalentOption identifier="grounded"/>
+                <TalentOption identifier="remotemonitor"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="funwithfission"/>
+                <TalentOption identifier="submarineofthings"/>
+                <TalentOption identifier="Talents_Magician_Primary08"/>
+                <TalentOption identifier="samplecollection"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="weaponsengineer" type="specialization" requires="engineer_primary" blocks="electrician,physicist">
+            <TalentOptions>
+                <TalentOption identifier="militaryapplications"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="heavyhitter"/>
+                <TalentOption identifier="armsrace"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Enter_Gensokyo"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="nuclearoption"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="electrician" type="specialization" requires="engineer_primary" blocks="weaponsengineer,physicist">
+            <TalentOptions>
+                <TalentOption identifier="gridmaintainer"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="pyromaniac"/>
+                <TalentOption identifier="unlimitedpower"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Buff"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="lightningwizard"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="physicist" type="specialization" requires="engineer_primary" blocks="weaponsengineer,electrician">
+            <TalentOptions>
+                <TalentOption identifier="unstoppablecuriosity"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="cruising"/>
+                <TalentOption identifier="buzzing"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="dangerzone"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="phdinnuclearphysics"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="mystic_engineer" type="specialization" requires="engineer_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_MysticJob_Talent01"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_MysticEngineer_Talent02"/>
+                <TalentOption identifier="Touhou_MysticEngineer_Talent03"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_MysticEngineer_Talent04"/>
+                <TalentOption identifier="Touhou_MysticEngineer_Talent05"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Engineer_Talent_Completed"/>
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+</TalentTrees>

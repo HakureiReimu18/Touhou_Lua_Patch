@@ -1,10 +1,12 @@
 using Barotrauma;
+using Barotrauma.Items.Components;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 
@@ -148,8 +150,6 @@ namespace Touhou.Affixes
             typeof(Item).Assembly.GetType("Barotrauma.Items.Components.RangedWeapon");
         public static readonly PropertyInfo MeleeWeaponReloadProp =
             MeleeWeaponType?.GetProperty("Reload", BindingFlags.Public | BindingFlags.Instance);
-        public static readonly PropertyInfo RangedWeaponReloadProp =
-            RangedWeaponType?.GetProperty("Reload", BindingFlags.Public | BindingFlags.Instance);
         public static readonly PropertyInfo RangedWeaponSpreadProp =
             RangedWeaponType?.GetProperty("Spread", BindingFlags.Public | BindingFlags.Instance);
         public static readonly PropertyInfo RangedWeaponUnskilledSpreadProp =
@@ -1824,8 +1824,9 @@ namespace Touhou.Affixes
             return false;
         }
 
-        /// 回收取词缀：把武器额外槽里的词缀转到空白附魔石上，武器只留回收；两件都退回输出栏。
-        /// 输出空间不足整单取消，零消耗
+        /// 回收取词缀：把武器额外槽里的词缀转到空白附魔石上，武器只留回收；
+        /// extraId 就是回收本身时，武器被完全清空（回收也能取下来）。
+        /// 两件都退回输出栏，输出空间不足整单取消，零消耗
         static bool ExtractSalvageAffix(object __instance, Inventory inputInventory, Item weapon, Item stone, string extraId)
         {
             if (!Mod.AffixDefs.ContainsKey(extraId))
@@ -1833,6 +1834,7 @@ namespace Touhou.Affixes
                 Mod.Log($"EnchantingStation: salvage extraction cancelled, unknown affix {extraId}");
                 return false;
             }
+            bool extractingSelf = extraId == Mod.SALVAGE_AFFIX_ID;
             var outputContainer = Traverse.Create(__instance).Field("outputContainer").GetValue<Barotrauma.Items.Components.ItemContainer>();
             if (outputContainer == null) return false;
             var output = outputContainer.Inventory;
@@ -1856,11 +1858,22 @@ namespace Touhou.Affixes
             }
 
             Mod.SetAffixes(stone, new List<string> { extraId });
-            Mod.SetAffixes(weapon, new List<string> { Mod.SALVAGE_AFFIX_ID });
+            if (extractingSelf)
+            {
+                // 回收自己上石头后武器就是白板，不能留下一个空壳宿主
+                Mod.SetAffixes(weapon, new List<string>());
+                Mod.BroadcastAffixRemoved(weapon);
+            }
+            else
+            {
+                Mod.SetAffixes(weapon, new List<string> { Mod.SALVAGE_AFFIX_ID });
+                if (Mod.AffixDefs.TryGetValue(Mod.SALVAGE_AFFIX_ID, out var salvageDef)) Mod.BroadcastAffixApplied(weapon, salvageDef);
+            }
             if (Mod.AffixDefs.TryGetValue(extraId, out var extraDef)) Mod.BroadcastAffixApplied(stone, extraDef);
-            if (Mod.AffixDefs.TryGetValue(Mod.SALVAGE_AFFIX_ID, out var salvageDef)) Mod.BroadcastAffixApplied(weapon, salvageDef);
             Mod.SaveAffixData();
-            Mod.Log($"EnchantingStation: extracted [{extraId}] from {weapon.Name} onto {stone.Name}");
+            Mod.Log(extractingSelf
+                ? $"EnchantingStation: extracted [salvage] from {weapon.Name} onto {stone.Name}, weapon is now clean"
+                : $"EnchantingStation: extracted [{extraId}] from {weapon.Name} onto {stone.Name}");
             return false;
         }
 
@@ -2017,30 +2030,154 @@ namespace Touhou.Affixes
         }
     }
 
-    /// 紧张/等候：蓄力倍率打在 MaxChargeTime 的 getter 上实时乘，这值会被别的系统改写，写实例只生效一次。
-    /// 但装弹等状态会写 999 再用 eq 999 找恢复点，乘了就永远失配卡装弹——原始值超 5 秒的一律不碰
+    /// 紧张/等候：蓄力倍率不能挂在 MaxChargeTime 的 getter 上——自动属性 getter 会被 JIT 内联，
+    /// Update 可能把 currentChargeTime 夹在原始值、Use 却按乘过的值判定，武器就永远打不出去。
+    /// 这里改用 transpiler 把 Update/Use/UpdateProjSpecific 里的 getter 调用整体换成 GetMaxChargeTime，
+    /// 每个读取点都在同一次调用里算倍率，不存在两处看到不同值的可能。
     [HarmonyPatch]
     public static class ChargeTimePatch
     {
         /// <summary>超过这秒数就当是装弹标记（999 那种），不乘</summary>
         const float MaxNormalChargeSeconds = 5f;
 
-        static MethodBase TargetMethod()
+        static IEnumerable<MethodBase> TargetMethods()
         {
-            var m = ReflectionCache.RangedWeaponMaxChargeTimeProp?.GetGetMethod();
-            if (m == null) Mod.Warning("ChargeTimePatch: RangedWeapon.MaxChargeTime getter NOT FOUND");
-            return m;
+            var t = ReflectionCache.RangedWeaponType;
+            if (t == null)
+            {
+                Mod.Warning("ChargeTimePatch: RangedWeapon type NOT FOUND");
+                yield break;
+            }
+            var update = t.GetMethod("Update", new[] { typeof(float), typeof(Camera) });
+            var use = t.GetMethod("Use", new[] { typeof(float), typeof(Character) });
+            var updateProj = t.GetMethod("UpdateProjSpecific",
+                BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { typeof(float) }, null);
+            if (update == null) Mod.Warning("ChargeTimePatch: RangedWeapon.Update NOT FOUND");
+            else yield return update;
+            if (use == null) Mod.Warning("ChargeTimePatch: RangedWeapon.Use NOT FOUND");
+            else yield return use;
+            // 蓄力条/音调也按乘过的上限画，不然进度条会在原始值处提前满格
+            if (updateProj != null) yield return updateProj;
         }
 
-        static void Postfix(object __instance, ref float __result)
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            if (!Mod.AnyChargeTimeAffixes) return; // 全局快速退出
-            if (!Mod.IsGameplayAuthority) return; // 单上下文执行：双上下文会让倍率平方
-            if (__result > MaxNormalChargeSeconds) return; // 装弹标记等大值不乘算（否则 eq 999 条件失配卡死）
-            var item = ReflectionCache.GetItem(__instance);
-            if (item == null || !Helpers.TryGetAffix(item, out var def)) return;
-            if (Math.Abs(def.ChargeTimeMult - 1f) > 0.0001f)
-                __result *= def.ChargeTimeMult;
+            var getter = ReflectionCache.RangedWeaponMaxChargeTimeProp?.GetGetMethod();
+            var helper = typeof(ChargeTimePatch).GetMethod(
+                nameof(GetMaxChargeTime), BindingFlags.Public | BindingFlags.Static);
+            if (getter == null || helper == null)
+            {
+                Mod.Warning("ChargeTimePatch: getter/helper NOT FOUND, charge-time affix disabled");
+                return instructions;
+            }
+            var result = new List<CodeInstruction>();
+            foreach (var instr in instructions)
+            {
+                if ((instr.opcode == OpCodes.Call || instr.opcode == OpCodes.Callvirt)
+                    && instr.operand is MethodInfo mi
+                    && (mi == getter
+                        || (mi.MetadataToken == getter.MetadataToken && mi.Module == getter.Module)))
+                {
+                    var replacement = new CodeInstruction(OpCodes.Call, helper);
+                    replacement.labels.AddRange(instr.labels);
+                    result.Add(replacement);
+                }
+                else
+                {
+                    result.Add(instr);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>给 Update/Use 用的统一读取口：原始值、标记值不乘，只有真蓄力武器才乘倍率</summary>
+        public static float GetMaxChargeTime(RangedWeapon weapon)
+        {
+            if (weapon == null) return 0f;
+            float value = weapon.MaxChargeTime; // 这里读的是没被替换的原 getter
+            if (!Mod.AnyChargeTimeAffixes) return value;
+            if (!Mod.IsGameplayAuthority) return value; // 单上下文算倍率，双上下文不会平方
+            if (value <= 0f || value > MaxNormalChargeSeconds) return value;
+            var item = ReflectionCache.GetItem(weapon);
+            if (item == null || !Helpers.TryGetAffix(item, out var def)) return value;
+            if (Math.Abs(def.ChargeTimeMult - 1f) < 0.0001f) return value;
+            return value * def.ChargeTimeMult;
+        }
+    }
+
+    /// 深渊/迅捷等射速词条：RangedWeapon 的 reload 是私有字段，Use/Equip 直接读字段，
+    /// 而 tag/StatusEffect（幻胧月睨瞄具）又会直接把 reload 改写成 3 或 1.0——
+    /// 静态在附魔时除一次会被这些运行时写入覆盖。这里改成 transpiler 把读字段换成 GetReload，
+    /// 每次开火/装备都按当前字段值现算倍率，tag 怎么改都能吃到。
+    [HarmonyPatch]
+    public static class FireRatePatch
+    {
+        static readonly FieldInfo ReloadField =
+            ReflectionCache.RangedWeaponType?.GetField("reload", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            var t = ReflectionCache.RangedWeaponType;
+            if (t == null)
+            {
+                Mod.Warning("FireRatePatch: RangedWeapon type NOT FOUND");
+                yield break;
+            }
+            var use = t.GetMethod("Use", new[] { typeof(float), typeof(Character) });
+            var equip = t.GetMethod("Equip", new[] { typeof(Character) });
+            if (use == null) Mod.Warning("FireRatePatch: RangedWeapon.Use NOT FOUND");
+            else yield return use;
+            if (equip == null) Mod.Warning("FireRatePatch: RangedWeapon.Equip NOT FOUND");
+            else yield return equip;
+        }
+
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var helper = typeof(FireRatePatch).GetMethod(
+                nameof(GetReload), BindingFlags.Public | BindingFlags.Static);
+            if (ReloadField == null || helper == null)
+            {
+                Mod.Warning("FireRatePatch: reload field/helper NOT FOUND, ranged fire-rate affix disabled");
+                return instructions;
+            }
+            var result = new List<CodeInstruction>();
+            foreach (var instr in instructions)
+            {
+                if (instr.opcode == OpCodes.Ldfld && instr.operand is FieldInfo fi
+                    && (fi == ReloadField
+                        || (fi.MetadataToken == ReloadField.MetadataToken && fi.Module == ReloadField.Module)))
+                {
+                    var replacement = new CodeInstruction(OpCodes.Call, helper);
+                    replacement.labels.AddRange(instr.labels);
+                    result.Add(replacement);
+                }
+                else
+                {
+                    result.Add(instr);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Use/Equip 的统一读取口：按当前字段值除倍率，tag 改写后的值也能吃到</summary>
+        public static float GetReload(RangedWeapon weapon)
+        {
+            if (weapon == null) return 0f;
+            float value = weapon.Reload; // 原 getter，读的就是 reload 字段
+            if (!Mod.AnyFireRateAffixes) return value;
+            if (!Mod.IsGameplayAuthority) return value;
+            var item = ReflectionCache.GetItem(weapon);
+            if (item == null || !Helpers.TryGetAffix(item, out var def)) return value;
+            float mult = def.FireRateMult;
+            // 优先（1 号槽）的射速也走同一读取口：槽位状态机只翻 SlotBonusActive，不再静态改 reload，
+            // 这样进出槽位/被 tag 改写 reload 都不会把加成冲掉
+            if (Math.Abs(def.SlotOneFireRateMult - 1f) > 0.0001f
+                && Mod.TryGetAffixData(item, out var data) && data.SlotBonusActive)
+            {
+                mult *= def.SlotOneFireRateMult;
+            }
+            if (Math.Abs(mult - 1f) < 0.0001f) return value;
+            return value / mult;
         }
     }
 }
