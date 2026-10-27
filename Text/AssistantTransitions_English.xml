@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="English" translatedname="English" nowhitespace="false">
+    <JobName.assistant_arcane>Spell Scribe</JobName.assistant_arcane>
+    <JobDescription.assistant_arcane>An assistant who learns, copies, and shares magical knowledge.</JobDescription.assistant_arcane>
+    <JobName.assistant_mystic>Spirit Channeler</JobName.assistant_mystic>
+    <JobDescription.assistant_mystic>An assistant who channels possessed spirits at a price.</JobDescription.assistant_mystic>
+    <talenttree.spell_scribe>Spell Scribe</talenttree.spell_scribe>
+    <talenttree.spirit_channeler>Spirit Channeler</talenttree.spirit_channeler>
+    <talenttree.Magic_Assistant>Apprentice Magician</talenttree.Magic_Assistant>
+    <entityname.Touhou_Assistant_Arcane_Book>Spell Transition Book</entityname.Touhou_Assistant_Arcane_Book>
+    <entitydescription.Touhou_Assistant_Arcane_Book>Hold in both hands and use or aim. Requires Assistant, both primary talent stages completed, and 60 base Magic. Consumed to register a transition, applied next round or to a newly spawned body after death. Lose 40% total experience; clear the old job tree and its permanent records. Keep external talents, skills, and equipment.</entitydescription.Touhou_Assistant_Arcane_Book>
+    <entityname.Touhou_Assistant_Mystic_Book>Channeling Transition Book</entityname.Touhou_Assistant_Mystic_Book>
+    <entitydescription.Touhou_Assistant_Mystic_Book>Hold in both hands and use or aim. Requires Assistant, both primary talent stages completed, and 60 base Weapons. Consumed to register a transition, applied next round or to a newly spawned body after death. Lose 40% total experience; clear the old job tree and its permanent records. Keep external talents, skills, and equipment.</entitydescription.Touhou_Assistant_Mystic_Book>
+    <talentname.Touhou_ScribeAssistant_Talent01>Magical Initiation</talentname.Touhou_ScribeAssistant_Talent01>
+    <talentdescription.Touhou_ScribeAssistant_Talent01>+10 Magic and +5% danmaku damage. The flat bonus does not alter base skill or accumulate through respecs.</talentdescription.Touhou_ScribeAssistant_Talent01>
+    <talentname.Touhou_ScribeAssistant_Talent02>Ascetic Practice</talentname.Touhou_ScribeAssistant_Talent02>
+    <talentdescription.Touhou_ScribeAssistant_Talent02>+20% Reiki Disorder resistance. Allows skills to reach 120.</talentdescription.Touhou_ScribeAssistant_Talent02>
+    <talentname.Touhou_ScribeAssistant_Talent03>Trance</talentname.Touhou_ScribeAssistant_Talent03>
+    <talentdescription.Touhou_ScribeAssistant_Talent03>+10% effective skill levels. Allows skills to reach 120.</talentdescription.Touhou_ScribeAssistant_Talent03>
+    <talentname.Touhou_ScribeAssistant_Talent04>Transcription</talentname.Touhou_ScribeAssistant_Talent04>
+    <talentdescription.Touhou_ScribeAssistant_Talent04>When you complete any mission in a round, gain a Magic Tutorial and a 30% chance of an additional Spell Book.</talentdescription.Touhou_ScribeAssistant_Talent04>
+    <talentname.Touhou_ScribeAssistant_Talent05>Open Knowledge</talentname.Touhou_ScribeAssistant_Talent05>
+    <talentdescription.Touhou_ScribeAssistant_Talent05>All crew, including yourself, gain +10% mission experience. You gain +10% maximum health.</talentdescription.Touhou_ScribeAssistant_Talent05>
+    <talentname.Touhou_SpiritAssistant_Talent02>Unstable Possession</talentname.Touhou_SpiritAssistant_Talent02>
+    <talentdescription.Touhou_SpiritAssistant_Talent02>+10% maximum health while possessed; an additional +10% while also fully possessed.</talentdescription.Touhou_SpiritAssistant_Talent02>
+    <talentname.Touhou_SpiritAssistant_Talent03>Channel Spirit</talentname.Touhou_SpiritAssistant_Talent03>
+    <talentdescription.Touhou_SpiritAssistant_Talent03>While possessed, gain the corresponding Costume+ character effects and associated talent, including drawbacks. Does not replace equipped clothes or grant their physical armor, containers, scanners, or item-use buttons. The same costume talent is not granted twice.</talentdescription.Touhou_SpiritAssistant_Talent03>
+    <talentname.Touhou_SpiritAssistant_Talent04>Qualitative Change</talentname.Touhou_SpiritAssistant_Talent04>
+    <talentdescription.Touhou_SpiritAssistant_Talent04>+10% danmaku damage below 130 maximum health; otherwise gain 10% physical damage resistance. Checks maximum health, not remaining health.</talentdescription.Touhou_SpiritAssistant_Talent04>
+    <talentname.Touhou_SpiritAssistant_Talent05>Compensation</talentname.Touhou_SpiritAssistant_Talent05>
+    <talentdescription.Touhou_SpiritAssistant_Talent05>Each +1% maximum-health stat bonus grants +0.5% all attack damage, capped at +10%.</talentdescription.Touhou_SpiritAssistant_Talent05>
+    <talentname.Touhou_Special_Assistant_Talent_Completed>Great Adventurer</talentname.Touhou_Special_Assistant_Talent_Completed>
+    <talentdescription.Touhou_Special_Assistant_Talent_Completed>+10% maximum health. Each +1% generic movement-speed stat bonus grants +0.5% attack damage, capped at +15%. Does not use instantaneous velocity. Negative bonuses do not reduce damage.</talentdescription.Touhou_Special_Assistant_Talent_Completed>
+    <afflictionname.Touhou_Assistant_Trance>Trance</afflictionname.Touhou_Assistant_Trance>
+    <afflictiondescription.Touhou_Assistant_Trance>+10% effective skill levels.</afflictiondescription.Touhou_Assistant_Trance>
+</infotexts>

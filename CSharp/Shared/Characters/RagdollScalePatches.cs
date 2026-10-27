@@ -795,9 +795,17 @@ namespace Touhou.RagdollScale
     // 旋转变速补偿：SmoothRotate 力矩 ∝ 系数² 而角惯量 ∝ 系数⁴，缩放角色的角加速度被放大
     // 1/系数² 倍（0.8 倍体型 ≈ 1.56 倍），头部这种轻肢体在动画驱动下过冲抖动（爬梯/转向点头）。
     // 把 force 乘 系数² 正好补回来。仅客户端：listen server 双上下文各补一次会叠乘（0.64²=0.41，过头了）。
+    //
+    // 例外是腿：FootIK 传进来的 force 是 limb.Mass × legTorque，力里已经带了质量（∝系数²），
+    // 再统一乘系数² 等于把腿的支撑力矩多压一档——站着时膝盖/髋被重力压得比原尺寸更弯。
+    // 所以腿只乘 系数^LegNetComp，头/躯干/碰撞体的常量力矩照旧乘系数²。
     [HarmonyPatch]
     public static class SmoothRotateScalePatch
     {
+        // 腿的净补偿指数。0 = 回到原版缩放（跟踪响应对齐，静垂仍多 1/系数）；
+        // -1 = 静垂也对齐（跟踪响应慢 1/系数）。重力不跟着缩，两条通道没法同时对齐，先取 0。
+        const float LegNetComp = 0f;
+
         static MethodBase TargetMethod()
         {
             var m = typeof(PhysicsBody).GetMethod("SmoothRotate", BindingFlags.Public | BindingFlags.Instance);
@@ -808,10 +816,33 @@ namespace Touhou.RagdollScale
         static void Prefix(PhysicsBody __instance, ref float force)
         {
             if (__instance.FarseerBody?.BodyType == FarseerPhysics.BodyType.Kinematic) return;
-            Character c = (__instance.UserData as Limb)?.character ?? __instance.UserData as Character;
+            var limb = __instance.UserData as Limb;
+            Character c = limb?.character ?? __instance.UserData as Character;
             if (c == null) return;
             float f = RagdollScaleManager.GetAppliedFactor(c);
-            if (Math.Abs(f - 1f) > 0.001f) force *= f * f;
+            if (Math.Abs(f - 1f) <= 0.001f) return;
+            // 水下是浮力平衡 + ApplyWaterForces 的质量型角阻尼，缩放关系跟陆上不一样，先不套用
+            if (limb != null && IsLegGroup(limb.type) && c.AnimController?.InWater != true)
+                force *= LegNetComp == 0f ? 1f : (float)Math.Pow(f, LegNetComp);
+            else
+                force *= f * f;
+        }
+
+        // 大腿/小腿/脚：1.13.4 里腿部只有 FootIK 走 SmoothRotate，force 已含 Mass
+        static bool IsLegGroup(LimbType t)
+        {
+            switch (t)
+            {
+                case LimbType.LeftThigh:
+                case LimbType.RightThigh:
+                case LimbType.LeftLeg:
+                case LimbType.RightLeg:
+                case LimbType.LeftFoot:
+                case LimbType.RightFoot:
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 #endif

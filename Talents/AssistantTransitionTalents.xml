@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Talents>
+    <!--魔法启蒙：魔法能力+10，弹幕伤害+5%。-->
+    <Talent identifier="Touhou_ScribeAssistant_Talent01">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Buff.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ScribeAssistant_Talent01"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveSkillBonus skillidentifier="Touhou_Magic" value="10"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData tags="Touhou_Magic_Danmu" weapontype="Ranged" ignorenonharmfulattacks="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.05"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    <!--苦修：灵气紊乱抗性+20%。允许技能水平上限达到120。-->
+    <Talent identifier="Touhou_ScribeAssistant_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Defense.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ScribeAssistant_Talent02"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveResistance resistanceid="Reiki_Side_Effect" multiplier="0.8"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="4.9">
+            <Abilities>
+                <CharacterAbilitySkillCap maxskill="120"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    <!--入神：技能水平+10%。允许技能水平上限达到120。-->
+    <Talent identifier="Touhou_ScribeAssistant_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Buff.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ScribeAssistant_Talent03"/>
+        <AbilityGroupInterval interval="0.5">
+            <Abilities>
+                <CharacterAbilitySkillCap maxskill="120"/>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true" setvalue="true" multiplyafflictionsbymaxvitality="true">
+                            <Affliction identifier="Touhou_Assistant_Trance" amount="1"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    <!--抄写：巡回完成任意任务时，获得一本《魔法教学》，并有30%概率额外获得一本《魔法书》。-->
+    <Talent identifier="Touhou_ScribeAssistant_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Production.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ScribeAssistant_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="OnAnyMissionCompleted">
+            <Abilities>
+                <CharacterAbilityPutItem itemidentifier="Touhou_Spell_Tutorial" amount="1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAnyMissionCompleted">
+            <Conditions>
+                <AbilityConditionServerRandom randomchance="0.3"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityPutItem itemidentifier="Touhou_Spell_Book" amount="1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    <!--开源：所有船员（包括自己）完成任务获得的经验+10%。自己的最大生命值+10%。-->
+    <Talent identifier="Touhou_ScribeAssistant_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_ScribeAssistant_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MaximumHealthMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAllyGainMissionExperience">
+            <Abilities>
+                <CharacterAbilityModifyValue multiplyvalue="1.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnGainMissionExperience">
+            <Abilities>
+                <CharacterAbilityModifyValue multiplyvalue="1.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!-- 彼岸咆哮直接引用医生的 Touhou_NetherDoctor_Talent01。 -->
+    <!--不稳定凭依：拥有凭依时，最大生命值+10%；同时拥有完全凭依时，再增加10%最大生命值。-->
+    <Talent identifier="Touhou_SpiritAssistant_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Buff.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_SpiritAssistant_Talent02"/>
+        <AbilityGroupInterval interval="0.5">
+            <Conditions>
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="MaximumHealthMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="0.5">
+            <Conditions>
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag"/>
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Prefect"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="MaximumHealthMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    <!-- 降灵的对应表在 AssistantChannelingTalents.xml，沿用装束+原本的效果。 -->
+    <!--质变：最大生命值低于130时，弹幕伤害+10%；否则获得10%物理伤害抗性。-->
+    <Talent identifier="Touhou_SpiritAssistant_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Defense.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_SpiritAssistant_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionCharacter targetabilitytarget="false">
+                    <Conditional MaxVitality="lt 130"/>
+                </AbilityConditionCharacter>
+                <AbilityConditionAttackData tags="Touhou_Magic_Danmu" weapontype="Ranged" ignorenonharmfulattacks="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="0.5">
+            <Conditions>
+                <AbilityConditionCharacter targetabilitytarget="false">
+                    <Conditional MaxVitality="gte 130"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyResistance resistanceid="damage" multiplier="0.9"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    <!--代偿：每有1%最大生命值属性加成，增加0.5%所有攻击伤害，最多10%。-->
+    <Talent identifier="Touhou_SpiritAssistant_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_SpiritAssistant_Talent05"/>
+        <AbilityGroupInterval interval="0.5">
+            <Abilities>
+                <CharacterAbilityModifyStatToStat stattype="AttackMultiplier" sourcestats="MaximumHealthMultiplier" multiplier="0.5" maxvalue="0.1"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    <!--大冒险家：最大生命值+10%。每有1%移动速度属性加成，增加0.5%所有攻击伤害，最多15%。-->
+    <Talent identifier="Touhou_Special_Assistant_Talent_Completed">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Buff.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_Special_Assistant_Talent_Completed"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MaximumHealthMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="0.5">
+            <Abilities>
+                <CharacterAbilityModifyStatToStat stattype="AttackMultiplier" sourcestats="MovementSpeed" multiplier="0.5" maxvalue="0.15"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+</Talents>

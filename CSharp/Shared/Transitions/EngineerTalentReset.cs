@@ -20,6 +20,7 @@ namespace Touhou.EngineerTransitions
         private readonly Dictionary<StatTypes, float> subtract = new();
         private readonly List<(StatTypes Type, SavedStatValue Value)> permanent = new();
         private readonly List<(Item Item, Dictionary<TalentStatIdentifier, float> Stats, TalentStatIdentifier Key)> itemStats = new();
+        private AbilityFlags removeFlags = AbilityFlags.None;
         internal readonly HashSet<Identifier> Removed;
         internal bool HasChanges { get; }
 
@@ -39,7 +40,14 @@ namespace Touhou.EngineerTransitions
             "CharacterAbilityByTheBook", "CharacterAbilityReduceAffliction",
             "CharacterAbilityRegenerateLoot", "CharacterAbilityTandemFire", "CharacterAbilityWarStories",
             // 已经完成的制作、战利品和战役升级不倒退；只停机修工旧天赋的处理器。
-            "CharacterAbilitySetMetadataInt", "CharacterAbilitySpawnItemsToContainer", "CharacterAbilityRemoveRandomIngredient"
+            "CharacterAbilitySetMetadataInt", "CharacterAbilitySpawnItemsToContainer", "CharacterAbilityRemoveRandomIngredient",
+            // 医生停止发放临时状态与搜刮标记，不清空其他角色已经得到的治疗结果。
+            "CharacterAbilityGiveAffliction", "CharacterAbilityMarkAsLooted",
+            // 技能上限与奇迹守护都是注册型处理器；换树时停掉注册即可，不追缴已发生的效果。
+            "CharacterAbilitySkillCap", "CharacterAbilityMiracleGuardian",
+            // 毕业给的树外天赋仍保留；这里只停止旧助手的事件处理器，不追缴奖励。
+            "CharacterAbilityInsurancePolicy", "CharacterAbilityApplyStatusEffectsToApprenticeship",
+            "CharacterAbilityApplyStatusEffectToNonHumans", "CharacterAbilityUnlockApprenticeshipTalentTree"
         };
 
         // 旧树是唯一边界，不能因隐藏标记或装备授予同 ID 而把职业天赋当成额外天赋。
@@ -54,6 +62,13 @@ namespace Touhou.EngineerTransitions
             resistances = Read<Dictionary<TalentResistanceIdentifier, float>>(character, "abilityResistances");
             foreach (var talent in live.Where(talent => Removed.Contains(talent.Prefab.Identifier)))
                 InspectAbilities(talent);
+            // 同一个全局标记没有引用计数，树外天赋也声明它时不能一起摘掉。
+            foreach (var talent in live.Where(talent => !Removed.Contains(talent.Prefab.Identifier)))
+                foreach (var element in talent.Prefab.ConfigElement.Element.Descendants().Where(e =>
+                    e.Name.LocalName.Equals("CharacterAbilityGiveFlag", StringComparison.OrdinalIgnoreCase) ||
+                    e.Name.LocalName.Equals("CharacterAbilityModifyFlag", StringComparison.OrdinalIgnoreCase)))
+                    if (Enum.TryParse(Attribute(element, "flagtype"), true, out AbilityFlags retainedFlag))
+                        removeFlags &= ~retainedFlag;
             InspectPermanentStats();
             foreach (var item in Item.ItemList)
             {
@@ -73,7 +88,8 @@ namespace Touhou.EngineerTransitions
                 character.Info.ResettableExtraTalents.Overlaps(Removed) ||
                 live.Any(talent => Removed.Contains(talent.Prefab.Identifier)) ||
                 resistances.Keys.Any(key => Removed.Contains(key.TalentIdentifier)) ||
-                permanent.Count > 0 || itemStats.Count > 0 || subtract.Count > 0;
+                permanent.Count > 0 || itemStats.Count > 0 || subtract.Count > 0 ||
+                (removeFlags != AbilityFlags.None && (Read<AbilityFlags>(character, "abilityFlags") & removeFlags) != AbilityFlags.None);
         }
 
         private void InspectAbilities(CharacterTalent talent)
@@ -105,6 +121,16 @@ namespace Touhou.EngineerTransitions
                     }
                     else if (type == "CharacterAbilityModifyStatToSkill")
                         Subtract(Read<StatTypes>(ability, "statType"), Read<float>(ability, "lastValue"));
+                    else if (type == "CharacterAbilityPsychoClown")
+                        Subtract(Read<StatTypes>(ability, "statType"), Read<float>(ability, "lastValue"));
+                    else if (type == "CharacterAbilityModifyFlag" && ability.GetType().Assembly == typeof(Character).Assembly)
+                    {
+                        if (Read<bool>(ability, "lastState")) removeFlags |= Read<AbilityFlags>(ability, "abilityFlag");
+                    }
+                    else if (type == "CharacterAbilityGiveFlag" && ability.GetType().Assembly == typeof(Character).Assembly)
+                    {
+                        if (entry.Activated) removeFlags |= Read<AbilityFlags>(ability, "abilityFlag");
+                    }
                     else if (ability is Touhou.StatScaling.CharacterAbilityModifyStatToStat scaling)
                         Subtract(scaling.StatType, scaling.LastValue);
                     else if (ability is Touhou.StatScaling.CharacterAbilityModifyStatToVitality vitalityScaling)
@@ -181,6 +207,7 @@ namespace Touhou.EngineerTransitions
                 resistances.Remove(key);
             foreach (var row in permanent) character.Info.SavedStatValues[row.Type].Remove(row.Value);
             foreach (var row in itemStats) row.Stats.Remove(row.Key);
+            if (removeFlags != AbilityFlags.None) character.RemoveAbilityFlag(removeFlags);
             live.RemoveAll(talent => Removed.Contains(talent.Prefab.Identifier));
             character.Info.UnlockedTalents.ExceptWith(Removed);
             character.Info.ResettableExtraTalents.ExceptWith(Removed);

@@ -60,6 +60,7 @@ namespace Touhou.WeaponEnergy
         private double lastHitRecharge = double.NegativeInfinity;
         private float sentEnergy = -1f;
         private bool sentActive;
+        private bool sentCanActivate;
         internal bool SnapshotReady { get; private set; }
         internal WeaponEnergySettings Settings { get; }
         public float MaxEnergy => Settings?.MaxEnergy ?? 100f;
@@ -105,14 +106,20 @@ namespace Touhou.WeaponEnergy
         internal Character Holder()
         {
             var owner = Item.ParentInventory?.Owner as Character;
-            return owner != null && !owner.Removed && !owner.IsDead && !owner.IsUnconscious &&
-                owner.Stun <= 0f && owner.HeldItems.Contains(Item) ? owner : null;
+            // 倒地不等于收枪，模式只看武器是否还在活人的手槽里。
+            return owner != null && !owner.Removed && !owner.IsDead && owner.HeldItems.Contains(Item) ? owner : null;
+        }
+
+        private Character Operator()
+        {
+            var holder = Holder();
+            return holder != null && !holder.IsUnconscious && holder.Stun <= 0f ? holder : null;
         }
 
         // 按钮门禁：只有真正开启时才让原生 XML 链（姿态/音效/粒子）继续跑。
-        internal bool Toggle()
+        internal bool Toggle(int activationButton = -1)
         {
-            if (!WeaponEnergyRuntime.Authority || Holder() == null || Timing.TotalTime - lastToggle < Settings.ToggleCooldown) return false;
+            if (!WeaponEnergyRuntime.Authority || Operator() == null || Timing.TotalTime - lastToggle < Settings.ToggleCooldown) return false;
             if (ControlActive)
             {
                 if (!Settings.ToggleOff) return false;
@@ -129,13 +136,13 @@ namespace Touhou.WeaponEnergy
             activeUntil = Settings.ActivationDuration > 0f ? ModeTime + Settings.ActivationDuration : double.PositiveInfinity;
             holderApplyAt = ModeTime + Settings.HolderDelay;
             RunHooks(Settings.OnActivateEffects, Holder());
-            SendState();
+            SendState(activationButton);
             return true;
         }
 
         internal bool PayShot()
         {
-            if (!WeaponEnergyRuntime.Authority || Holder() == null) return false;
+            if (!WeaponEnergyRuntime.Authority || Operator() == null) return false;
             bool wasActive = ControlActive;
             bool enhanced = State.PayShot();
             if (wasActive) SendState();
@@ -212,9 +219,10 @@ namespace Touhou.WeaponEnergy
             }
 
             syncTimer += deltaTime;
-            bool changed = Math.Abs(Energy - sentEnergy) >= 0.5f || ControlActive != sentActive;
+            bool boundaryChanged = ControlActive != sentActive || State.CanActivate != sentCanActivate;
+            bool changed = Math.Abs(Energy - sentEnergy) >= 0.5f;
             // 手持时也低频补一次满电快照，方便中途加入的客户端。
-            if ((changed && syncTimer >= 0.2f) || (held && syncTimer >= 2f)) SendState();
+            if (boundaryChanged || (changed && syncTimer >= 0.2f) || (held && syncTimer >= 2f)) SendState();
         }
 
         public override void UpdateBroken(float deltaTime, Camera cam) => Update(deltaTime, cam);
@@ -320,13 +328,28 @@ namespace Touhou.WeaponEnergy
             damageMultiplier = Math.Clamp(damageMultiplier, 0f, 5f);
         }
 
-        private void SendState()
+#if SERVER
+        private sealed class ActivationEventData : ItemComponent.IEventData
+        {
+            internal readonly ushort Button;
+            internal ActivationEventData(ushort button) { Button = button; }
+        }
+#endif
+
+        private void SendState(int activationButton = -1)
         {
             sentEnergy = Energy;
             sentActive = ControlActive;
+            sentCanActivate = State.CanActivate;
             syncTimer = 0f;
 #if SERVER
-            if (WeaponEnergyRuntime.Authority) Item.CreateServerEvent(this);
+            if (WeaponEnergyRuntime.Authority)
+            {
+                // 启动表现跟随这次成功确认，不能靠客户端猜模式变化，更不能重放失败点击。
+                ItemComponent.IEventData action = activationButton >= 0 && activationButton < ushort.MaxValue
+                    ? new ActivationEventData((ushort)(activationButton + 1)) : null;
+                Item.CreateServerEvent(this, action);
+            }
 #endif
         }
 
@@ -335,15 +358,20 @@ namespace Touhou.WeaponEnergy
         {
             msg.WriteSingle(Energy);
             msg.WriteBoolean(ControlActive);
+            msg.WriteUInt16(extraData is Item.ComponentStateEventData data &&
+                data.ComponentData is ActivationEventData action ? action.Button : (ushort)0);
         }
 #else
         public void ClientEventRead(IReadMessage msg, float sendingTime)
         {
             float energy = msg.ReadSingle();
             bool active = msg.ReadBoolean();
+            ushort activationButton = msg.ReadUInt16();
             if (!float.IsFinite(energy)) return;
             State.Snapshot(energy, active);
             SnapshotReady = true;
+            if (activationButton > 0 && !WeaponEnergyRuntime.Authority)
+                WeaponEnergyButtonPatch.ReplayPresentation(Item, activationButton - 1);
         }
 #endif
     }

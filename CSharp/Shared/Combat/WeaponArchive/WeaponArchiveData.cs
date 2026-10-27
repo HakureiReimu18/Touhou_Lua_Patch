@@ -16,6 +16,7 @@ namespace Touhou.WeaponArchive
         internal int TotalsVersion { get; private set; }
         private readonly Dictionary<string, Dictionary<Guid, int>> records;
         private Dictionary<string, int> cachedTotals;
+        private int cachedUniqueSpecies;
         private readonly object gate = new object();
 
         internal ArchiveLedger(string model, Guid? source = null)
@@ -50,7 +51,10 @@ namespace Touhou.WeaponArchive
                 if (count == int.MaxValue) return false;
                 sources[Source] = count + 1;
                 if (cachedTotals != null)
+                {
+                    if (cachedTotals[species] == 0) cachedUniqueSpecies++;
                     cachedTotals[species] = (int)Math.Min(int.MaxValue, (long)cachedTotals[species] + 1);
+                }
                 TotalsVersion++;
                 Revision++;
                 return true;
@@ -74,8 +78,16 @@ namespace Touhou.WeaponArchive
         private void EnsureTotals()
         {
             if (cachedTotals == null)
+            {
                 cachedTotals = records.ToDictionary(pair => pair.Key,
                     pair => (int)Math.Min(int.MaxValue, pair.Value.Values.Sum(value => (long)value)), StringComparer.Ordinal);
+                cachedUniqueSpecies = cachedTotals.Values.Count(value => value > 0);
+            }
+        }
+
+        internal int UniqueSpeciesCount
+        {
+            get { lock (gate) { EnsureTotals(); return cachedUniqueSpecies; } }
         }
 
         internal int Count(string species)
@@ -173,11 +185,31 @@ namespace Touhou.WeaponArchive
 
     internal enum ArchiveBonusKind { Damage, Affliction, Sedation, StunDuration }
 
+    internal sealed class ArchiveCondition
+    {
+        internal string Species;
+        internal int MinSpeciesDefeats, MinUniqueSpecies;
+        internal bool Matches(ArchiveLedger ledger, string targetSpecies)
+            => (Species == null || Species == targetSpecies) &&
+                (MinSpeciesDefeats == 0 || ledger.Count(targetSpecies) >= MinSpeciesDefeats) &&
+                (MinUniqueSpecies == 0 || ledger.UniqueSpeciesCount >= MinUniqueSpecies);
+    }
+
     internal sealed class ArchiveBonus
     {
         internal ArchiveBonusKind Kind;
-        internal string Identifier, Species;
+        internal string Identifier;
+        internal ArchiveCondition Condition;
+        internal float FixedMultiplier = 1f;
         internal float PerDefeat, Maximum;
-        internal float Multiplier(int count) => 1f + Math.Min(Maximum, count * PerDefeat);
+        internal float Multiplier(int count) => FixedMultiplier * (1f + Math.Min(Maximum, count * PerDefeat));
+    }
+
+    internal sealed class ArchiveAttackAffliction
+    {
+        internal string Identifier;
+        internal ArchiveCondition Condition;
+        internal float Strength, Probability;
+        internal bool IgnoreArmor, Stack, HardControl, HostileOnly;
     }
 }

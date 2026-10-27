@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Jobs>
+    <Job identifier="medicaldoctor_arcane" hiddenjob="true" initialcount="0" minnumber="0" maxnumber="0" allowalways="false"
+         onlyjobspecificdialog="false" minkarma="0" uicolor="0.45,0.65,0.95" vitalitymodifier="0" pricemultiplier="1.15" idlebehavior="Active">
+        <Jobicon>
+            <sprite texture="Content/UI/MainIconsAtlas.png" sourcerect="512,256,128,128" origin="0.5,0.5"/>
+        </Jobicon>
+        <JobiconSmall>
+            <sprite texture="Content/UI/CommandUIAtlas.png" sourcerect="612,698,28,28" origin="0.5,0.5"/>
+        </JobiconSmall>
+        <Skills>
+            <Skill identifier="medical" level="40,50" primary="true" pvplevel="70" pricemultiplier="20"/>
+            <Skill identifier="weapons" level="15,25" pvplevel="50"/>
+            <Skill identifier="mechanical" level="15,25" pvplevel="50"/>
+            <Skill identifier="electrical" level="15,25" pvplevel="50"/>
+            <Skill identifier="helm" level="5,10" pvplevel="50" pricemultiplier="10"/>
+            <Skill identifier="Touhou_Magic" level="20,30" pvplevel="60"/>
+        </Skills>
+        <ItemSet>
+            <Item identifier="idcard" equip="true" showpreview="false"/>
+            <Item identifier="doctorsuniform1" identifierteam2="medicseparatistsuniform1" equip="true" outfit="true"/>
+            <Item identifier="headset" equip="true" showpreview="false"/>
+            <Item identifier="syringegun" GameMode="PvE"/>
+            <Item identifier="antibleeding1" GameMode="PvE"/>
+            <Item identifier="antidama1" GameMode="PvE"/>
+            <Item identifier="divingknife" equip="false" GameMode="PvP"/>
+            <Item identifier="revolver" GameMode="PvP" equip="false">
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+            </Item>
+        </ItemSet>
+        <ItemSet>
+            <Item identifier="idcard" equip="true" showpreview="false"/>
+            <Item identifier="doctorsuniform2" identifierteam2="medicseparatistsuniform2" equip="true" outfit="true"/>
+            <Item identifier="headset" equip="true" showpreview="false"/>
+            <Item identifier="syringegun" GameMode="PvE"/>
+            <Item identifier="antibleeding1" GameMode="PvE"/>
+            <Item identifier="antidama1" GameMode="PvE"/>
+            <Item identifier="divingknife" equip="false" GameMode="PvP"/>
+            <Item identifier="revolver" GameMode="PvP" equip="false">
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+            </Item>
+        </ItemSet>
+        <AutonomousObjectives>
+            <Order identifier="rescue" prioritymodifier="1"/>
+            <Order identifier="extinguishfires" prioritymodifier="0.5"/>
+            <Order identifier="operatereactor" option="powerup" prioritymodifier="0.2"/>
+            <Order identifier="fixleaks" prioritymodifier="0.1"/>
+        </AutonomousObjectives>
+        <AppropriateOrders>
+            <Order identifier="rescue"/>
+            <Order identifier="requestfirstaid"/>
+        </AppropriateOrders>
+    </Job>
+    <Job identifier="medicaldoctor_mystic" hiddenjob="true" initialcount="0" minnumber="0" maxnumber="0" allowalways="false"
+         onlyjobspecificdialog="false" minkarma="0" uicolor="0.8,0.35,0.6" vitalitymodifier="0" pricemultiplier="1.15" idlebehavior="Active">
+        <Jobicon>
+            <sprite texture="Content/UI/MainIconsAtlas.png" sourcerect="512,256,128,128" origin="0.5,0.5"/>
+        </Jobicon>
+        <JobiconSmall>
+            <sprite texture="Content/UI/CommandUIAtlas.png" sourcerect="612,698,28,28" origin="0.5,0.5"/>
+        </JobiconSmall>
+        <Skills>
+            <Skill identifier="medical" level="40,50" primary="true" pvplevel="70" pricemultiplier="20"/>
+            <Skill identifier="weapons" level="15,25" pvplevel="50"/>
+            <Skill identifier="mechanical" level="15,25" pvplevel="50"/>
+            <Skill identifier="electrical" level="15,25" pvplevel="50"/>
+            <Skill identifier="helm" level="5,10" pvplevel="50" pricemultiplier="10"/>
+            <Skill identifier="Touhou_Magic" level="20,30" pvplevel="60"/>
+        </Skills>
+        <ItemSet>
+            <Item identifier="idcard" equip="true" showpreview="false"/>
+            <Item identifier="doctorsuniform1" identifierteam2="medicseparatistsuniform1" equip="true" outfit="true"/>
+            <Item identifier="headset" equip="true" showpreview="false"/>
+            <Item identifier="syringegun" GameMode="PvE"/>
+            <Item identifier="antibleeding1" GameMode="PvE"/>
+            <Item identifier="antidama1" GameMode="PvE"/>
+            <Item identifier="divingknife" equip="false" GameMode="PvP"/>
+            <Item identifier="revolver" GameMode="PvP" equip="false">
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+            </Item>
+        </ItemSet>
+        <ItemSet>
+            <Item identifier="idcard" equip="true" showpreview="false"/>
+            <Item identifier="doctorsuniform2" identifierteam2="medicseparatistsuniform2" equip="true" outfit="true"/>
+            <Item identifier="headset" equip="true" showpreview="false"/>
+            <Item identifier="syringegun" GameMode="PvE"/>
+            <Item identifier="antibleeding1" GameMode="PvE"/>
+            <Item identifier="antidama1" GameMode="PvE"/>
+            <Item identifier="divingknife" equip="false" GameMode="PvP"/>
+            <Item identifier="revolver" GameMode="PvP" equip="false">
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+            </Item>
+        </ItemSet>
+        <AutonomousObjectives>
+            <Order identifier="rescue" prioritymodifier="1"/>
+            <Order identifier="extinguishfires" prioritymodifier="0.5"/>
+            <Order identifier="operatereactor" option="powerup" prioritymodifier="0.2"/>
+            <Order identifier="fixleaks" prioritymodifier="0.1"/>
+        </AutonomousObjectives>
+        <AppropriateOrders>
+            <Order identifier="rescue"/>
+            <Order identifier="requestfirstaid"/>
+        </AppropriateOrders>
+    </Job>
+</Jobs>

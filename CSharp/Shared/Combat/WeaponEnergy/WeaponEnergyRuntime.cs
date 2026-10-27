@@ -16,16 +16,57 @@ namespace Touhou.WeaponEnergy
     [HarmonyPatch(typeof(CustomInterface), "ButtonClicked")]
     internal static class WeaponEnergyButtonPatch
     {
-        private static bool Prefix(CustomInterface __instance)
+#if !SERVER
+        [ThreadStatic] private static CustomInterface presentationInterface;
+
+        internal static void ReplayPresentation(Item item, int index)
+        {
+            foreach (var component in item.Components)
+            {
+                if (component is not CustomInterface ui) continue;
+                foreach (var button in ui.customInterfaceElementList)
+                {
+                    if (index-- != 0) continue;
+                    var previous = presentationInterface;
+                    presentationInterface = ui;
+                    try { ui.ButtonClicked(button); }
+                    catch { /* 表现链出错不能破坏已经收到的能量快照。 */ }
+                    finally { presentationInterface = previous; }
+                    return;
+                }
+            }
+        }
+#endif
+
+        private static int PresentationIndex(CustomInterface ui, object button)
+        {
+            int index = 0;
+            foreach (var component in ui.Item.Components)
+            {
+                if (component is not CustomInterface other) continue;
+                foreach (var element in other.customInterfaceElementList)
+                {
+                    if (other == ui && ReferenceEquals(element, button)) return index;
+                    index++;
+                }
+            }
+            return -1;
+        }
+
+        private static bool Prefix(CustomInterface __instance, CustomInterface.CustomInterfaceElement __0)
         {
             if (!WeaponEnergyRuntime.OwnContext) return true;
             var control = __instance.Item.GetComponent<TouhouWeaponEnergy>();
             if (control == null) return true;
+            if (__0 == null) return false;
 #if SERVER
             if (WeaponEnergyRuntime.ButtonSender?.Character != control.Holder()) return false;
+#else
+            // 原生还会回放被拒绝的按钮请求，只允许成功确认专用的表现回放。
+            if (!WeaponEnergyRuntime.Authority) return presentationInterface == __instance;
 #endif
             // 返回 true 只在“成功开启”时：改装姿态/音效在 XML 按钮链里，关闭时不重放。
-            return control.Toggle();
+            return control.Toggle(PresentationIndex(__instance, __0));
         }
     }
 
@@ -102,7 +143,12 @@ namespace Touhou.WeaponEnergy
             // 生命值差值＝护甲、抗性、溢出都算完的“实际打掉的血”。
             float damage = Math.Max(0f, __state.VitalityBefore - __state.Target.Vitality);
             WeaponEnergyRuntime.AccountDamage(__instance, __state.Target, damage);
-            if (__result) WeaponEnergyRuntime.Hit(__instance, __state.Target, __state.WasAlive);
+            if (__result)
+            {
+                WeaponEnergyRuntime.Hit(__instance, __state.Target, __state.WasAlive);
+                // 档案追加效果在原有命中结算后执行，不能因 Harmony 顺序不同而重复返能或加伤。
+                ArchiveRuntime.ApplyHitEffects(__instance, __state.Target, __state.WasAlive);
+            }
         }
 
         private static Exception Finalizer(Projectile __instance, HitState __state, Exception __exception)
@@ -217,13 +263,16 @@ namespace Touhou.WeaponEnergy
         private static float Strength(Character target, Identifier id)
             => target.CharacterHealth.GetAffliction(id)?.Strength ?? 0f;
 
-        internal static void Apply(Character target, Identifier id, float strength, Character source, bool stack = false)
+        internal static void Apply(Character target, Identifier id, float strength, Character source,
+            bool stack = false, bool multiplyByMaxVitality = true)
         {
             var prefab = AfflictionPrefab.Prefabs.Find(candidate => candidate.Identifier == id);
             if (prefab == null) return;
-            // 原生入口会乘 100/最大生命；这里只抵消体力缩放，抗性和免疫仍交给原生。
+            // 原生入口会乘 100/最大生命；multiplyByMaxVitality 对应原版同名属性：
+            // true 先乘 MaxVitality/100 抵消（高血量目标吃固定强度），false 保留原版百分比语义。
+            float amount = multiplyByMaxVitality ? strength * target.MaxVitality / 100f : strength;
             target.CharacterHealth.ApplyAffliction(null,
-                prefab.Instantiate(strength * target.MaxVitality / 100f, source), allowStacking: stack);
+                prefab.Instantiate(amount, source), allowStacking: stack);
         }
 
         private static void Stun(Character target, float seconds)
@@ -264,12 +313,15 @@ namespace Touhou.WeaponEnergy
             {
                 if (!ModeMatches(affliction.Mode, shot.Enhanced)) continue;
                 if (affliction.Probability < 1f && Rand.Value() > affliction.Probability) continue;
+                float amount = affliction.Strength *
+                    ArchiveRuntime.Bonus(projectile.Launcher, target, ArchiveBonusKind.Affliction, affliction.Affliction);
+                bool allowStacking = !affliction.SetValue;
                 if (affliction.IgnoreArmor)
-                    Apply(target, affliction.Affliction, affliction.Strength *
-                        ArchiveRuntime.Bonus(projectile.Launcher, target, ArchiveBonusKind.Affliction, affliction.Affliction), source);
+                    Apply(target, affliction.Affliction, amount, source, allowStacking,
+                        affliction.MultiplyByMaxVitality);
                 else
-                    ApplyThroughArmor(target, affliction.Affliction, affliction.Strength *
-                        ArchiveRuntime.Bonus(projectile.Launcher, target, ArchiveBonusKind.Affliction, affliction.Affliction), source);
+                    ApplyThroughArmor(target, affliction.Affliction, amount, source, allowStacking,
+                        affliction.MultiplyByMaxVitality);
             }
 
             bool protect = WeaponEnergyRules.ProtectFromHardControl(target.IsHuman, target.IsHumanoid, target.IsPlayer);
@@ -314,19 +366,22 @@ namespace Touhou.WeaponEnergy
 
         // 走引擎伤害入口：护甲、抗性、命中音效、技能经验都照常；
         // 直接 ApplyAffliction 的版本见 ignorearmor。
-        private static void ApplyThroughArmor(Character target, Identifier id, float strength, Character source)
+        private static void ApplyThroughArmor(Character target, Identifier id, float strength, Character source,
+            bool allowStacking = true, bool multiplyByMaxVitality = true)
         {
             var limb = target.AnimController?.MainLimb;
             var prefab = AfflictionPrefab.Prefabs.Find(candidate => candidate.Identifier == id);
             if (prefab == null) return;
-            var affliction = prefab.Instantiate(strength * target.MaxVitality / 100f, source);
+            float amount = multiplyByMaxVitality ? strength * target.MaxVitality / 100f : strength;
+            var affliction = prefab.Instantiate(amount, source);
             if (limb == null)
             {
-                target.CharacterHealth.ApplyAffliction(null, affliction, allowStacking: false);
+                target.CharacterHealth.ApplyAffliction(null, affliction, allowStacking: allowStacking);
                 return;
             }
             target.DamageLimb(limb.WorldPosition, limb, new List<Affliction> { affliction },
-                stun: 0f, playSound: false, attackImpulse: Vector2.Zero, attacker: source, allowStacking: false);
+                stun: 0f, playSound: false, attackImpulse: Vector2.Zero, attacker: source,
+                allowStacking: allowStacking);
         }
     }
 }

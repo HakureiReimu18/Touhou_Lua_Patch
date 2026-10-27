@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Afflictions>
+    <Affliction identifier="Touhou_Assistant_Trance" type="talentbuff" isbuff="true" limbspecific="false"
+                maxstrength="1" duration="2" activationthreshold="0.000001" showiconthreshold="2" showinhealthscannerthreshold="2">
+        <Effect minstrength="0" maxstrength="1" minskillmultiplier="1.1" maxskillmultiplier="1.1"/>
+    </Affliction>
+</Afflictions>

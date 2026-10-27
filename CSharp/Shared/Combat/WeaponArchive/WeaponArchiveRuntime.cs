@@ -8,6 +8,7 @@ using Barotrauma.Items.Components;
 using Barotrauma.LuaCs;
 using FarseerPhysics.Dynamics;
 using HarmonyLib;
+using Microsoft.Xna.Framework;
 using Touhou.WeaponEnergy;
 
 namespace Touhou.WeaponArchive
@@ -89,17 +90,23 @@ namespace Touhou.WeaponArchive
         private static void Prefix(Projectile __instance, Fixture target, out State __state)
         {
             __state = null;
-            if (!ArchiveRuntime.Authority || target?.Body?.UserData is not Limb limb || limb.character == null ||
-                !ArchiveRuntime.TryShot(__instance, out var archive)) return;
-            var context = new ArchiveRuntime.AttackContext { Archive = archive, Target = limb.character, Attacker = __instance.User };
-            __state = new State { Previous = ArchiveRuntime.Context, Current = context, WasAlive = !limb.character.IsDead };
+            if (!ArchiveRuntime.Authority || !ArchiveRuntime.TryShot(__instance, out var archive)) return;
+            var limb = target?.Body?.UserData as Limb;
+            var character = limb?.character;
+            bool handleDamage = __instance.Attack != null && (character == null || !WeaponEnergyRuntime.HasShot(__instance));
+            float multiplier = handleDamage
+                ? archive.Multiplier(character == null ? null : character.SpeciesName.Value, ArchiveBonusKind.Damage) : 1f;
+            if (character == null && (!handleDamage || multiplier == 1f)) return;
+            var context = new ArchiveRuntime.AttackContext { Archive = archive, Target = character, Attacker = __instance.User };
+            __state = new State { Previous = ArchiveRuntime.Context, Current = context, WasAlive = character != null && !character.IsDead };
             ArchiveRuntime.Context = context;
+            if (character != null) ArchiveRuntime.PrepareHit(__instance, archive, character, __instance.User, limb);
             // 能量武器在原有伤害补丁中统一保存/恢复倍率，避免两套补丁互相覆盖恢复值。
-            if (!WeaponEnergyRuntime.HasShot(__instance) && __instance.Attack != null)
+            if (handleDamage)
             {
                 __state.ChangedDamage = true;
                 __state.Damage = __instance.Attack.DamageMultiplier;
-                __instance.Attack.DamageMultiplier *= archive.Multiplier(limb.character.SpeciesName.Value, ArchiveBonusKind.Damage);
+                __instance.Attack.DamageMultiplier *= multiplier;
             }
         }
         private static void Restore(Projectile projectile, State state)
@@ -110,12 +117,16 @@ namespace Touhou.WeaponArchive
         }
         private static void Postfix(Projectile __instance, bool __result, State __state)
         {
+            if (!__result && __state != null) ArchiveRuntime.DiscardHit(__instance, __state.Current.Target);
+            if (__result && __state != null && !WeaponEnergyRuntime.HasShot(__instance))
+                ArchiveRuntime.ApplyHitEffects(__instance, __state.Current.Target, __state.WasAlive);
             if (__result && __state?.WasAlive == true && __state.Current.Target.IsDead)
                 ArchiveRuntime.Record(__state.Current.Archive, __state.Current.Target, __state.Current.Attacker, false);
             Restore(__instance, __state);
         }
         private static Exception Finalizer(Projectile __instance, State __state, Exception __exception)
         {
+            if (__exception != null && __state != null) ArchiveRuntime.DiscardHit(__instance, __state.Current.Target);
             Restore(__instance, __state);
             return __exception;
         }
@@ -174,8 +185,28 @@ namespace Touhou.WeaponArchive
             internal TouhouWeaponArchive Archive;
             internal Character Target, Attacker;
         }
+        private sealed class Shot
+        {
+            internal TouhouWeaponArchive Archive;
+            internal Dictionary<Character, HitPlan> Pending;
+            internal HashSet<Character> Applied;
+        }
+        private sealed class HitPlan
+        {
+            internal TouhouWeaponArchive Archive;
+            internal Character Target, Attacker;
+            internal Limb Limb;
+            internal List<ResolvedAffliction> Effects;
+        }
+        private readonly struct ResolvedAffliction
+        {
+            internal readonly ArchiveAttackAffliction Rule;
+            internal readonly float Strength;
+            internal ResolvedAffliction(ArchiveAttackAffliction rule, float strength) { Rule = rule; Strength = strength; }
+        }
         [ThreadStatic] internal static AttackContext Context;
-        private static ConditionalWeakTable<Projectile, TouhouWeaponArchive> shots = new();
+        private static readonly Identifier sleepRecovery = "Touhou_Silence_SleepRecovery".ToIdentifier();
+        private static ConditionalWeakTable<Projectile, Shot> shots = new();
         private static ConditionalWeakTable<Character, HashSet<string>> victims = new();
         internal static bool OwnContext =>
 #if SERVER
@@ -194,10 +225,93 @@ namespace Touhou.WeaponArchive
         internal static void Stamp(Projectile projectile, TouhouWeaponArchive archive)
         {
             shots.Remove(projectile);
-            shots.Add(projectile, archive);
+            shots.Add(projectile, new Shot { Archive = archive });
         }
         internal static bool TryShot(Projectile projectile, out TouhouWeaponArchive archive)
-            => shots.TryGetValue(projectile, out archive);
+        {
+            bool found = shots.TryGetValue(projectile, out var shot);
+            archive = shot?.Archive;
+            return found;
+        }
+
+        internal static void PrepareHit(Projectile projectile, TouhouWeaponArchive archive, Character target,
+            Character attacker, Limb limb)
+        {
+            if (!Authority || !archive.DataValid || archive.AttackAfflictions.Count == 0 ||
+                target.IsDead || target.Removed || attacker == null || attacker == target ||
+                !shots.TryGetValue(projectile, out var shot) || shot.Applied?.Contains(target) == true) return;
+            // 门槛和强度在命中前拍下，不能让这一击刚解锁的档案反过来加强自己。
+            List<ResolvedAffliction> effects = null;
+            string species = ArchiveLedger.Key(target.SpeciesName.Value);
+            foreach (var rule in archive.AttackAfflictions)
+            {
+                if (rule.Strength <= 0f || rule.Probability <= 0f ||
+                    !rule.Condition.Matches(archive.Ledger, species)) continue;
+                float strength = rule.Strength * archive.Multiplier(species, ArchiveBonusKind.Affliction, rule.Identifier);
+                if (!float.IsFinite(strength) || strength <= 0f) continue;
+                (effects ??= new List<ResolvedAffliction>()).Add(new ResolvedAffliction(rule, strength));
+            }
+            if (effects == null)
+            {
+                shot.Pending?.Remove(target);
+                return;
+            }
+            shot.Pending ??= new Dictionary<Character, HitPlan>();
+            shot.Pending[target] = new HitPlan { Archive = archive, Target = target, Attacker = attacker, Limb = limb, Effects = effects };
+        }
+
+        internal static void DiscardHit(Projectile projectile, Character target)
+        {
+            if (target != null && shots.TryGetValue(projectile, out var shot)) shot.Pending?.Remove(target);
+        }
+
+        internal static void ApplyHitEffects(Projectile projectile, Character target, bool wasAlive)
+        {
+            if (!Authority || target == null || !shots.TryGetValue(projectile, out var shot) ||
+                shot.Pending == null || !shot.Pending.Remove(target, out var plan)) return;
+            if (!wasAlive || target.IsDead || target.Removed || target.CharacterHealth == null ||
+                !plan.Archive.DataValid || plan.Archive.Item.Removed) return;
+            shot.Applied ??= new HashSet<Character>();
+            if (!shot.Applied.Add(target)) return;
+            var previous = Context;
+            Context = new AttackContext { Archive = plan.Archive, Target = target, Attacker = plan.Attacker };
+            try
+            {
+                foreach (var effect in plan.Effects)
+                {
+                    if (target.IsDead || target.Removed) break;
+                    var rule = effect.Rule;
+                    if (rule.HostileOnly && target.IsFriendly(plan.Attacker)) continue;
+                    if (rule.Probability < 1f && Rand.Value() >= rule.Probability) continue;
+                    var identifier = rule.Identifier.ToIdentifier();
+                    var prefab = AfflictionPrefab.Prefabs.Find(candidate => candidate.Identifier == identifier);
+                    if (prefab == null) continue;
+                    bool hardControl = rule.HardControl || prefab.Identifier == AfflictionPrefab.StunType ||
+                        prefab.Identifier == AfflictionPrefab.ParalysisType || prefab.AfflictionType == AfflictionPrefab.StunType ||
+                        prefab.AfflictionType == AfflictionPrefab.ParalysisType;
+                    if (hardControl)
+                    {
+                        bool protect = WeaponEnergyRules.ProtectFromHardControl(target.IsHuman, target.IsHumanoid, target.IsPlayer);
+                        if (!WeaponEnergyRules.AllowHardControl(protect, target.Params.IsMachine,
+                            target.Params.UseBossHealthBar, target.Params.Health.StunImmunity) ||
+                            target.IsUnconscious || target.CharacterHealth.GetAffliction(sleepRecovery)?.Strength > 0f)
+                            continue;
+                    }
+                    if (!float.IsFinite(effect.Strength) || !float.IsFinite(target.MaxVitality) || target.MaxVitality <= 0f) continue;
+                    var affliction = prefab.Instantiate(effect.Strength * target.MaxVitality / 100f, plan.Attacker);
+                    var limb = plan.Limb;
+                    if (limb == null || limb.character != target || limb.IsSevered) limb = target.AnimController?.MainLimb;
+                    if (rule.IgnoreArmor || limb == null)
+                        target.CharacterHealth.ApplyAffliction(limb, affliction, allowStacking: rule.Stack);
+                    else
+                        target.DamageLimb(limb.WorldPosition, limb, new List<Affliction> { affliction }, stun: 0f,
+                            playSound: false, attackImpulse: Vector2.Zero, attacker: plan.Attacker, allowStacking: rule.Stack);
+                    target.HealthUpdateInterval = 0f;
+                }
+                if (target.IsDead) Record(plan.Archive, target, plan.Attacker, false);
+            }
+            finally { Context = previous; }
+        }
 
         internal static float Bonus(Item weapon, Character target, ArchiveBonusKind kind, Identifier identifier = default)
             => weapon?.GetComponent<TouhouWeaponArchive>()?.Multiplier(target.SpeciesName.Value, kind, identifier.Value) ?? 1f;

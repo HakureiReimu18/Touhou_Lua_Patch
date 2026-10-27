@@ -13,6 +13,7 @@ namespace Touhou.WeaponArchive
     {
         internal ArchiveLedger Ledger { get; private set; }
         internal readonly List<ArchiveBonus> Bonuses = new List<ArchiveBonus>();
+        internal readonly List<ArchiveAttackAffliction> AttackAfflictions = new List<ArchiveAttackAffliction>();
         internal readonly bool RecordKills, RecordSedation, HostileOnly;
         internal bool DataValid { get; private set; } = true;
         private XElement quarantined;
@@ -32,17 +33,64 @@ namespace Touhou.WeaponArchive
             HostileOnly = element.GetAttributeBool("hostileonly", true);
             foreach (var child in element.Elements())
             {
-                if (!string.Equals(child.Name.ToString(), "Bonus", StringComparison.OrdinalIgnoreCase)) continue;
-                if (!Enum.TryParse(child.GetAttributeString("type", ""), true, out ArchiveBonusKind kind)) continue;
-                float per = child.GetAttributeFloat("perdefeat", 0f), maximum = child.GetAttributeFloat("maxbonus", 0f);
-                if (!float.IsFinite(per) || !float.IsFinite(maximum) || per < 0f || maximum < 0f) continue;
-                Bonuses.Add(new ArchiveBonus { Kind = kind, PerDefeat = Math.Min(per, 10f), Maximum = Math.Min(maximum, 10f),
-                    Identifier = ArchiveLedger.Key(child.GetAttributeString("identifier", "")),
-                    Species = ArchiveLedger.Key(child.GetAttributeString("species", "")) });
+                if (!TryCondition(child, out var condition)) continue;
+                if (string.Equals(child.Name.ToString(), "Bonus", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!Enum.TryParse(child.GetAttributeString("type", ""), true, out ArchiveBonusKind kind) ||
+                        !Enum.IsDefined(typeof(ArchiveBonusKind), kind) ||
+                        !TryNumber(child, "perdefeat", 0f, out float per) ||
+                        !TryNumber(child, "maxbonus", 0f, out float maximum) ||
+                        !TryNumber(child, "multiplier", 1f, out float multiplier)) continue;
+                    string rawIdentifier = child.GetAttributeString("identifier", "").Trim();
+                    string identifier = ArchiveLedger.Key(rawIdentifier);
+                    if (rawIdentifier.Length > 0 && identifier == null) continue;
+                    Bonuses.Add(new ArchiveBonus { Kind = kind, PerDefeat = Math.Min(per, 10f), Maximum = Math.Min(maximum, 10f),
+                        FixedMultiplier = Math.Min(multiplier, 11f), Condition = condition,
+                        Identifier = identifier });
+                }
+                else if (string.Equals(child.Name.ToString(), "AttackAffliction", StringComparison.OrdinalIgnoreCase))
+                {
+                    string identifier = ArchiveLedger.Key(child.GetAttributeString("identifier", ""));
+                    if (identifier == null || !TryNumber(child, "strength", 100f, out float strength) ||
+                        !TryNumber(child, "probability", 1f, out float probability)) continue;
+                    AttackAfflictions.Add(new ArchiveAttackAffliction { Identifier = identifier, Condition = condition,
+                        Strength = Math.Min(strength, 1000000f), Probability = Math.Min(probability, 1f),
+                        IgnoreArmor = child.GetAttributeBool("ignorearmor", false),
+                        Stack = child.GetAttributeBool("stack", true),
+                        HardControl = child.GetAttributeBool("hardcontrol", true),
+                        HostileOnly = child.GetAttributeBool("hostileonly", true) });
+                }
             }
             IsActive = true;
         }
         public override bool UpdateWhenInactive => true;
+
+        private static bool TryNumber(ContentXElement element, string name, float fallback, out float value)
+        {
+            string raw = element.GetAttributeString(name, null);
+            value = fallback;
+            return (raw == null || float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value)) &&
+                float.IsFinite(value) && value >= 0f;
+        }
+
+        private static bool TryMinimum(ContentXElement element, string name, out int value)
+        {
+            string raw = element.GetAttributeString(name, null);
+            value = 0;
+            return (raw == null || int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out value)) && value >= 0;
+        }
+
+        private static bool TryCondition(ContentXElement element, out ArchiveCondition condition)
+        {
+            condition = null;
+            if (!TryMinimum(element, "minspeciesdefeats", out int defeats) ||
+                !TryMinimum(element, "minuniquespecies", out int unique)) return false;
+            string species = element.GetAttributeString("species", "").Trim();
+            string key = ArchiveLedger.Key(species);
+            if (species.Length > 0 && key == null) return false;
+            condition = new ArchiveCondition { Species = key, MinSpeciesDefeats = defeats, MinUniqueSpecies = unique };
+            return true;
+        }
 
         public override XElement Save(XElement parentElement)
         {
@@ -100,11 +148,13 @@ namespace Touhou.WeaponArchive
             int count = -1;
             float result = 1f;
             foreach (var bonus in Bonuses)
-                if (bonus.Kind == kind && (bonus.Species == null || bonus.Species == speciesKey) &&
-                    (bonus.Identifier == null || bonus.Identifier == effectKey))
+                if (bonus.Kind == kind && (bonus.Identifier == null || bonus.Identifier == effectKey) &&
+                    bonus.Condition.Matches(Ledger, speciesKey))
                 {
-                    if (count < 0) count = Ledger.Count(speciesKey);
-                    result *= bonus.Multiplier(count);
+                    if (bonus.PerDefeat > 0f && bonus.Maximum > 0f && count < 0) count = Ledger.Count(speciesKey);
+                    float factor = bonus.Multiplier(Math.Max(count, 0));
+                    if (factor == 0f) return 0f;
+                    result *= factor;
                 }
             return Math.Min(result, 11f);
         }

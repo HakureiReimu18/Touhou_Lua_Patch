@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Talents>
+    <!--净化之触：药物使用效果+10%。使用药物时，额外治疗少量出血、辐射病和中毒。-->
+    <Talent identifier="Touhou_WhiteDoctor_Talent01">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_WhiteDoctor_Talent01"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MedicalItemApplyingMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnApplyTreatment">
+            <Conditions>
+                <AbilityConditionItem tags="medical"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityReduceAffliction afflictionid="bleeding" amount="6"/>
+                <CharacterAbilityReduceAffliction afflictionid="radiationsickness" amount="6"/>
+                <CharacterAbilityReduceAffliction afflictionid="poison" amount="2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    <!--诊断学：使用药物治疗时，额外治疗10点缺氧，并给予患者15秒临时debuff抗性，并使自然衰减的负面状态持续时间-20%。-->
+    <Talent identifier="Touhou_WhiteDoctor_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_WhiteDoctor_Talent02"/>
+        <AbilityGroupEffect abilityeffecttype="OnApplyTreatment">
+            <Conditions>
+                <AbilityConditionItem tags="medical"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityReduceAffliction afflictionid="oxygenlow" amount="10"/>
+                <CharacterAbilityApplyStatusEffects setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true" setvalue="true" multiplyafflictionsbymaxvitality="true">
+                            <Affliction identifier="Touhou_WhiteDoctor_Diagnosis" amount="15"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    <!--预防针：自身生命值高于50%时，所有友方船员（包括自己）获得20%缺氧、阿片类药物成瘾和药物成瘾抗性。-->
+    <Talent identifier="Touhou_WhiteDoctor_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_WhiteDoctor_Talent03"/>
+        <AbilityGroupInterval interval="2.5">
+            <Conditions>
+                <AbilityConditionAboveVitality vitalitypercentage="0.5"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffectsToAllies allowself="true">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true" setvalue="true" multiplyafflictionsbymaxvitality="true">
+                            <Affliction identifier="Touhou_WhiteDoctor_Prevention" amount="1"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffectsToAllies>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    <!--守护之誓：受到的攻击伤害减少10%，最大生命值+10%，烧伤抗性+10%。-->
+    <Talent identifier="Touhou_WhiteDoctor_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_WhiteDoctor_Talent04"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MaximumHealthMultiplier" value="0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttacked">
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="-0.1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="9.9">
+            <Abilities>
+                <CharacterAbilityModifyResistance resistanceid="burn" multiplier="0.9"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    <!--妙手回春：使用魔法类药物治疗时，给予目标15点额外生命值，持续30秒。重复治疗刷新时长。-->
+    <Talent identifier="Touhou_WhiteDoctor_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_WhiteDoctor_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="OnApplyTreatment">
+            <Conditions>
+                <AbilityConditionItem tags="Touhou_Magic_Medical"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects setuser="false">
+                    <StatusEffects>
+                        <!-- 固定15点临时生命，不换算成最大生命百分比，也不按肢体发多份。 -->
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true" setvalue="true" multiplyafflictionsbymaxvitality="true">
+                            <Affliction identifier="Touhou_WhiteDoctor_ExtraVitality" amount="30"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    
+    <!--彼岸咆哮：最大生命值-5%，弹幕攻击伤害+15%。-->
+    <Talent identifier="Touhou_NetherDoctor_Talent01">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Ranged.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_NetherDoctor_Talent01"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MaximumHealthMultiplier" value="-0.05"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData tags="Touhou_Magic_Danmu" weapontype="Ranged" ignorenonharmfulattacks="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.15"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    <!--放血疗法：每秒治疗自身出血。弹幕命中额外附加出血。增加5%最大生命值-->
+    <Talent identifier="Touhou_NetherDoctor_Talent02">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Indirect_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_NetherDoctor_Talent02"/>
+        <AbilityGroupInterval interval="1">
+            <Abilities>
+                <CharacterAbilityReduceAffliction afflictionid="bleeding" amount="0.4"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities><CharacterAbilityGiveStat stattype="MaximumHealthMultiplier" value="0.05"/></Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData tags="Touhou_Magic_Danmu" weapontype="Ranged" ignorenonharmfulattacks="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityHitAffliction affliction="bleeding" strength="2" onceperattack="true" dividebylimbcount="true" cooldown="0.2"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="MaximumHealthMultiplier" value="0.05"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    <!--冥途搜集：搜刮怪物尸体时，有15%概率找到1个伊奘诺物质。人类、宠物和活物不计。增加5%所有攻击伤害-->
+    <Talent identifier="Touhou_NetherDoctor_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Production.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_NetherDoctor_Talent03"/>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities><CharacterAbilityGiveStat stattype="AttackMultiplier" value="0.05"/></Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="OnLootCharacter">
+            <Conditions>
+                <AbilityConditionCharacter targettype="Monster">
+                    <Conditional IsDead="true"/>
+                </AbilityConditionCharacter>
+                <AbilityConditionCharacterNotLooted identifier="Touhou_NetherDoctor_Collection"/>
+                <AbilityConditionServerRandom randomchance="0.15"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects>
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="UseTarget">
+                            <SpawnItem identifiers="Magic_Material" spawnposition="ThisInventory" count="1"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupEffect>
+        <!-- 失败也标记；不能反复开关同一具尸体刷15%的概率。 -->
+        <AbilityGroupEffect abilityeffecttype="OnLootCharacter">
+            <Conditions>
+                <AbilityConditionCharacter targettype="Monster">
+                    <Conditional IsDead="true"/>
+                </AbilityConditionCharacter>
+                <AbilityConditionCharacterNotLooted identifier="Touhou_NetherDoctor_Collection"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityMarkAsLooted identifier="Touhou_NetherDoctor_Collection"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="AttackMultiplier" value="0.05"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    <!--濒死回响：自身生命值低于40%时，失血抗性和缺氧抗性各增加30%。-->
+    <Talent identifier="Touhou_NetherDoctor_Talent04">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_NetherDoctor_Talent04"/>
+        <AbilityGroupInterval interval="2.5">
+            <Conditions>
+                <AbilityConditionAboveVitality vitalitypercentage="0.4" invert="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyResistance resistanceid="bloodloss" multiplier="0.7"/>
+                <CharacterAbilityModifyResistance resistanceid="oxygenlow" multiplier="0.7"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+    <!--预见死亡：对生命值高于30%的目标造成额外15%攻击伤害。-->
+    <Talent identifier="Touhou_NetherDoctor_Talent05">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Direct_Damage.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_NetherDoctor_Talent05"/>
+        <AbilityGroupEffect abilityeffecttype="OnAttack">
+            <Conditions>
+                <AbilityConditionAttackData ignorenonharmfulattacks="true"/>
+                <AbilityConditionCharacter targetabilitytarget="true">
+                    <Conditional healthpercentage="gt 30" IsDead="false"/>
+                </AbilityConditionCharacter>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyAttackData addeddamagemultiplier="0.15"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+    
+    <!--奇迹守护者：每巡回第一次治疗的目标获得10%物理伤害抗性，并分担其受到的50%伤害给你。-->
+    <Talent identifier="Touhou_Doctor_MiracleGuardian">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_Doctor_MiracleGuardian"/>
+        <AbilityGroupEffect abilityeffecttype="OnApplyTreatment">
+            <Abilities>
+                <CharacterAbilityMiracleGuardian resistance="0.1" share="0.5"/>
+            </Abilities>
+        </AbilityGroupEffect>
+    </Talent>
+
+    <!--大科学家：允许技能水平上限达到130。技能水平+15%。制作物品质量+1。每点医疗水平增加0.1%最大生命值和0.05%远程攻击速度，最高15%。-->
+    <Talent identifier="Touhou_Special_Doctor_Talent_Completed">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Production.png" sheetindex="0,0" sheetelementsize="400,400"/>
+        <Description tag="talentdescription.Touhou_Special_Doctor_Talent_Completed"/>
+        <AbilityGroupInterval interval="4.9">
+            <Abilities>
+                <CharacterAbilitySkillCap maxskill="130"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupEffect abilityeffecttype="None">
+            <Abilities>
+                <CharacterAbilityGiveStat stattype="IncreaseFabricationQuality" value="1"/>
+            </Abilities>
+        </AbilityGroupEffect>
+        <AbilityGroupInterval interval="0.5">
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" disabledeltatime="true" setvalue="true" multiplyafflictionsbymaxvitality="true">
+                            <Affliction identifier="Touhou_Doctor_Scientist" amount="1"/>
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="0.5">
+            <Conditions>
+                <AbilityConditionHasSkill skillidentifier="medical" minvalue="150" invert="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStatToSkill stattype="MaximumHealthMultiplier" skillidentifier="medical" maxvalue="0.1"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="0.5">
+            <Conditions>
+                <AbilityConditionHasSkill skillidentifier="medical" minvalue="150"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="MaximumHealthMultiplier" value="0.15"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="0.5">
+            <Conditions>
+                <AbilityConditionHasSkill skillidentifier="medical" minvalue="300" invert="true"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStatToSkill stattype="RangedAttackSpeed" skillidentifier="medical" maxvalue="0.05"/>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="0.5">
+            <Conditions>
+                <AbilityConditionHasSkill skillidentifier="medical" minvalue="300"/>
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityModifyStat stattype="RangedAttackSpeed" value="0.15"/>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+</Talents>

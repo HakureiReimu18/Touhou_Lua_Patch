@@ -1,0 +1,747 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Talents>
+    <!--降灵：凭依期间获得对应角色装束+的完整角色效果及配套天赋，沿用其增益与负面效果。不会替换实际装束，也不附送装束本体的护甲和物品使用按钮。同一装束天赋不重复授予。-->
+    <Talent identifier="Touhou_SpiritAssistant_Talent03">
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Buff.png" sheetindex="0,0" sheetelementsize="400,400" />
+        <Description tag="talentdescription.Touhou_SpiritAssistant_Talent03" />
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Aya" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="AyaTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true" multiplyafflictionsbymaxvitality="true">
+                            <Conditional IsBot="false" />
+                            <Affliction identifier="Touhou_Aya_Character_Effect" strength="50" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="5.0" disabledeltatime="true" multiplyafflictionsbymaxvitality="true">
+                            <Conditional IsBot="true" />
+                            <Affliction identifier="Touhou_Aya_Character_Effect_Bot" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Marisa" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="MarisaTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Marisa_Character_Effect" amount="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Mokou" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="MokouTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Mokou_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Remilia" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="RemiliaTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Remilia_Character_Effect" amount="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Youmu" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="YoumuTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Youmu_Character_Effect" amount="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Nitori" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="NitoriTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Nitori_Character_Effect" amount="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Patchouli" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="PatchouliTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Patchouli_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Tenshi" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="TenshiTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Tenshi_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Reimu" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="ReimuTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Reimu_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Momizi" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="MomiziTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Momizi_Character_Effect" strength="50" />
+                            <Affliction identifier="Momizi_Tail_Spawn" strength="10" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Yuka" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="YukaTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Yuka_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Aunn" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="AunnTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Aunn_Character_Effect" strength="50" />
+                            <Affliction identifier="Aunn_Tail_Spawn" strength="10" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" comparison="And" Interval="0.5" disabledeltatime="true">
+                            <Conditional Aunn_Koma_Inu="lt 1" />
+                            <Conditional Aunn_Lion="gt 1" />
+                            <Affliction identifier="Aunn_Lion" strength="10" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" comparison="And" Interval="0.5" disabledeltatime="true">
+                            <Conditional Aunn_Lion="lt 1" />
+                            <Conditional Aunn_Koma_Inu="gt 1" />
+                            <Affliction identifier="Aunn_Koma_Inu" strength="10" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Flandre" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="FlandreTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Flandre_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Nue" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="NueTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Nue_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Piece" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="PieceTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Piece_Character_Effect" strength="50" />
+                            <Affliction identifier="Piece_Wings_Spawn" strength="10" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Cirno" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="CirnoTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Cirno_Character_Effect" strength="50" />
+                            <Affliction identifier="Cirno_Wings_Spawn" strength="10" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Koishi" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="KoishiTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Koishi_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Alice" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="AliceTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Alice_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Sunny" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="SunnyTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Sunny_Character_Effect" strength="50" />
+                            <Affliction identifier="Sunny_Wings_Spawn" strength="10" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Luna" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="LunaTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Luna_Character_Effect" strength="50" />
+                            <Affliction identifier="Luna_Wings_Spawn" strength="10" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Star" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="StarTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Star_Character_Effect" strength="50" />
+                            <Affliction identifier="Star_Wings_Spawn" strength="10" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Sakuya" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="SakuyaTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Sakuya_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Sanae" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="SanaeTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Sanae_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Reisen" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="ReisenTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Reisen_Character_Effect" strength="50" />
+                            <Affliction identifier="Reisen_Ear_Spawn" strength="10" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Yukari" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="YukariTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Yukari_Character_Effect" strength="50" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" tags="YukariTalent_Effect_Self_False" Interval="10" disabledeltatime="true" />
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Merry" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="MerryTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Conditional IsBot="false" />
+                            <Affliction identifier="Touhou_Merry_Character_Effect" strength="50" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Conditional IsBot="false" />
+                            <Affliction identifier="Touhou_Merry_Character_Effect_Check" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Renko" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="RenkoTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Conditional IsBot="false" />
+                            <Affliction identifier="Touhou_Renko_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Kokoro" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="KokoroTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Kokoro_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Lilywhite" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="LilywhiteTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Lilywhite_Character_Effect" strength="50" />
+                            <Affliction identifier="Lilywhite_Wings_Spawn" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Satori" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="SatoriTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Satori_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Tewi" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="TewiTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Tewi_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Kaguya" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="KaguyaTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Kaguya_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Yuyuko" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="YuyukoTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Yuyuko_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Shinki" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="ShinkiTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="5.0" disabledeltatime="true">
+                            <Conditional IsBot="false" />
+                            <Affliction identifier="Touhou_Shinki_Character_Effect_Check" strength="50" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Shinki_Character_Effect" strength="50" />
+                            <Affliction identifier="Shinki_Wings_Spawn" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Koakuma" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="KoakumaTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Koakuma_Character_Effect" strength="50" />
+                            <Affliction identifier="Koakuma_Wings_Spawn" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Kagiyama_Hina" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="Kagiyama_HinaTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Kagiyama_Hina_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Shion" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="ShionTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Shion_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Jyoon" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="JyoonTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Jyoon_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+        <AbilityGroupInterval interval="10.0">
+            <Conditions>
+                <AbilityConditionHasTalent identifier="Hyouibana_Hong_Meirin" />
+                <AbilityConditionHasAffliction afflictionidentifier="Hyouibana_Effect_Flag" />
+            </Conditions>
+            <Abilities>
+                <CharacterAbilityApplyStatusEffects applytoself="true" setuser="false">
+                    <StatusEffects>
+                        <StatusEffect type="OnAbility" target="Character" interval="5">
+                            <GiveTalentInfo giverandom="false" talentidentifiers="Hong_MeirinTalent" />
+                        </StatusEffect>
+                        <StatusEffect type="OnAbility" target="Character" Interval="0.5" disabledeltatime="true">
+                            <Affliction identifier="Touhou_Hong_Meirin_Character_Effect" strength="50" />
+                        </StatusEffect>
+                    </StatusEffects>
+                </CharacterAbilityApplyStatusEffects>
+            </Abilities>
+        </AbilityGroupInterval>
+    </Talent>
+</Talents>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="Simplified Chinese" translatedname="中文(简体)" nowhitespace="true">
+    <JobName.medicaldoctor_arcane>白咒医师</JobName.medicaldoctor_arcane>
+    <JobDescription.medicaldoctor_arcane>以净化和预防守护船员的医生。拥有可编辑的医生底树与白咒分支。</JobDescription.medicaldoctor_arcane>
+    <JobName.medicaldoctor_mystic>冥途医师</JobName.medicaldoctor_mystic>
+    <JobDescription.medicaldoctor_mystic>从彼岸、血液与怪物遗骸中寻找答案的医生。拥有可编辑的医生底树与冥途分支。</JobDescription.medicaldoctor_mystic>
+    <talenttree.white_doctor>白咒医师</talenttree.white_doctor>
+    <talenttree.nether_doctor>冥途医师</talenttree.nether_doctor>
+    <entityname.Touhou_Doctor_Arcane_Book>白咒异传书</entityname.Touhou_Doctor_Arcane_Book>
+    <entitydescription.Touhou_Doctor_Arcane_Book>双手拿起后按使用或瞄准键研读。需要原版医生、完成基础树两个阶段、医疗水平达到80、魔法能力达到60。成功后消耗并登记白咒医师异传，下个巡回或死亡后新生成的医生身体生效。生效时总经验损失40%，旧职业天赋清除后重选，树外额外天赋、技能和装备保留。</entitydescription.Touhou_Doctor_Arcane_Book>
+    <entityname.Touhou_Doctor_Mystic_Book>冥途异传书</entityname.Touhou_Doctor_Mystic_Book>
+    <entitydescription.Touhou_Doctor_Mystic_Book>双手拿起后按使用或瞄准键研读。需要原版医生、完成基础树两个阶段、医疗水平达到80、武器操作达到60。成功后消耗并登记冥途医师异传，下个巡回或死亡后新生成的医生身体生效。生效时总经验损失40%，旧职业天赋清除后重选，树外额外天赋、技能和装备保留。</entitydescription.Touhou_Doctor_Mystic_Book>
+    <talentname.Touhou_WhiteDoctor_Talent01>净化之触</talentname.Touhou_WhiteDoctor_Talent01>
+    <talentdescription.Touhou_WhiteDoctor_Talent01>药物使用效果+10%。使用药物时，额外治疗少量出血、辐射病和中毒。</talentdescription.Touhou_WhiteDoctor_Talent01>
+    <talentname.Touhou_WhiteDoctor_Talent02>诊断学</talentname.Touhou_WhiteDoctor_Talent02>
+    <talentdescription.Touhou_WhiteDoctor_Talent02>使用药物治疗时，额外治疗10点缺氧，并给予患者15秒临时 debuff 抗性，并使自然衰减的负面状态持续时间 -20%。</talentdescription.Touhou_WhiteDoctor_Talent02>
+    <talentname.Touhou_WhiteDoctor_Talent03>预防针</talentname.Touhou_WhiteDoctor_Talent03>
+    <talentdescription.Touhou_WhiteDoctor_Talent03>自身生命值高于50%时，所有友方船员（包括自己）获得20%缺氧、阿片类药物成瘾和药物成瘾抗性。</talentdescription.Touhou_WhiteDoctor_Talent03>
+    <talentname.Touhou_WhiteDoctor_Talent04>守护之誓</talentname.Touhou_WhiteDoctor_Talent04>
+    <talentdescription.Touhou_WhiteDoctor_Talent04>受到的攻击伤害减少10%，最大生命值+10%，烧伤抗性+10%。</talentdescription.Touhou_WhiteDoctor_Talent04>
+    <talentname.Touhou_WhiteDoctor_Talent05>妙手回春</talentname.Touhou_WhiteDoctor_Talent05>
+    <talentdescription.Touhou_WhiteDoctor_Talent05>使用魔法类药物治疗时，给予目标15点额外生命值，持续30秒。重复治疗刷新时长</talentdescription.Touhou_WhiteDoctor_Talent05>
+    <talentname.Touhou_NetherDoctor_Talent01>彼岸咆哮</talentname.Touhou_NetherDoctor_Talent01>
+    <talentdescription.Touhou_NetherDoctor_Talent01>最大生命值-5%，弹幕攻击伤害+15%。</talentdescription.Touhou_NetherDoctor_Talent01>
+    <talentname.Touhou_NetherDoctor_Talent02>放血疗法</talentname.Touhou_NetherDoctor_Talent02>
+    <talentdescription.Touhou_NetherDoctor_Talent02>每秒治疗自身出血。弹幕命中额外附加出血。最大生命值 +5%。</talentdescription.Touhou_NetherDoctor_Talent02>
+    <talentname.Touhou_NetherDoctor_Talent03>冥途搜集</talentname.Touhou_NetherDoctor_Talent03>
+    <talentdescription.Touhou_NetherDoctor_Talent03>搜刮怪物尸体时，有15%概率找到1个伊奘诺物质。人类、宠物和活物不计。所有攻击伤害 +5%。</talentdescription.Touhou_NetherDoctor_Talent03>
+    <talentname.Touhou_NetherDoctor_Talent04>濒死回响</talentname.Touhou_NetherDoctor_Talent04>
+    <talentdescription.Touhou_NetherDoctor_Talent04>自身生命值低于40%时，失血抗性和缺氧抗性各增加30%。</talentdescription.Touhou_NetherDoctor_Talent04>
+    <talentname.Touhou_NetherDoctor_Talent05>预见死亡</talentname.Touhou_NetherDoctor_Talent05>
+    <talentdescription.Touhou_NetherDoctor_Talent05>对生命值高于30%的目标造成额外15%攻击伤害。</talentdescription.Touhou_NetherDoctor_Talent05>
+    <talentname.Touhou_Doctor_MiracleGuardian>奇迹守护者</talentname.Touhou_Doctor_MiracleGuardian>
+    <talentdescription.Touhou_Doctor_MiracleGuardian>每个巡回你第一次治疗的目标获得10%物理伤害抗性，并分担其受到的50%伤害给你。</talentdescription.Touhou_Doctor_MiracleGuardian>
+    <talentname.Touhou_Special_Doctor_Talent_Completed>大科学家</talentname.Touhou_Special_Doctor_Talent_Completed>
+    <talentdescription.Touhou_Special_Doctor_Talent_Completed>允许技能水平上限达到130。技能水平+15%。制作物品质量+1。每点医疗水平增加0.1%最大生命值和0.05%远程攻击速度，最高15%。</talentdescription.Touhou_Special_Doctor_Talent_Completed>
+    <afflictionname.Touhou_WhiteDoctor_Diagnosis>诊断学</afflictionname.Touhou_WhiteDoctor_Diagnosis>
+    <afflictiondescription.Touhou_WhiteDoctor_Diagnosis>自然衰减的负面状态持续时间-20%，持续15秒。</afflictiondescription.Touhou_WhiteDoctor_Diagnosis>
+    <afflictionname.Touhou_WhiteDoctor_Prevention>预防针</afflictionname.Touhou_WhiteDoctor_Prevention>
+    <afflictiondescription.Touhou_WhiteDoctor_Prevention>缺氧、阿片类药物成瘾、药物成瘾抗性+20%。</afflictiondescription.Touhou_WhiteDoctor_Prevention>
+    <afflictionname.Touhou_WhiteDoctor_ExtraVitality>妙手回春</afflictionname.Touhou_WhiteDoctor_ExtraVitality>
+    <afflictiondescription.Touhou_WhiteDoctor_ExtraVitality>额外生命+15，持续30秒，重复施用只刷新。</afflictiondescription.Touhou_WhiteDoctor_ExtraVitality>
+    <afflictionname.Touhou_Doctor_Scientist>大科学家</afflictionname.Touhou_Doctor_Scientist>
+    <afflictiondescription.Touhou_Doctor_Scientist>技能水平+15%。</afflictiondescription.Touhou_Doctor_Scientist>
+</infotexts>

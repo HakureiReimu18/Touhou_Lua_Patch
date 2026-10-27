@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TalentTrees>
+    <TalentTree jobidentifier="assistant_arcane">
+        <SubTree identifier="assistant_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="playingcatchup" />
+                <TalentOption identifier="mailman" />
+                <TalentOption identifier="skedaddle" />
+                <TalentOption identifier="starterquest" />
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="revengesquad" />
+                <TalentOption identifier="bagitup" />
+                <TalentOption identifier="peerlearning" />
+                <TalentOption identifier="jengamaster" />
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="grayshirt" type="specialization" requires="assistant_primary" blocks="apprentice,clown">
+            <TalentOptions>
+                <TalentOption identifier="thewaitinglist" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="tastytarget" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="anappleaday" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="thefriendswemade" />
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="apprentice" type="specialization" requires="assistant_primary" blocks="grayshirt,clown">
+            <TalentOptions>
+                <ShowCaseTalent identifier="apprenticeship">
+                    <TalentOption identifier="apprenticeship_captain" />
+                    <TalentOption identifier="apprenticeship_doctor" />
+                    <TalentOption identifier="apprenticeship_security" />
+                    <TalentOption identifier="apprenticeship_mechanic" />
+                    <TalentOption identifier="apprenticeship_engineer" />
+                </ShowCaseTalent>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="logisticssystems" />
+                <TalentOption identifier="journeyman" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="loyalassistant" />
+                <TalentOption identifier="disloyalscum" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="graduationceremony" />
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="Magic_Assistant" type="specialization" requires="assistant_primary" blocks="grayshirt,apprentice">
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Self_Made" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Emergency_Avoidance" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Buff" />
+                <TalentOption identifier="Foul_Potion_Unlocked" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Talents_Yokai_Primary16" />
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="spell_scribe" nameidentifier="talenttree.spell_scribe" type="specialization" requires="assistant_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_ScribeAssistant_Talent01" />
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_ScribeAssistant_Talent02" />
+                <TalentOption identifier="Touhou_ScribeAssistant_Talent03" />
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_ScribeAssistant_Talent04" />
+                <TalentOption identifier="Touhou_ScribeAssistant_Talent05" />
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Assistant_Talent_Completed" />
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+    
+    
+    <TalentTree jobidentifier="assistant_mystic">
+        <SubTree identifier="assistant_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="playingcatchup" />
+                <TalentOption identifier="mailman" />
+                <TalentOption identifier="skedaddle" />
+                <TalentOption identifier="starterquest" />
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="revengesquad" />
+                <TalentOption identifier="bagitup" />
+                <TalentOption identifier="peerlearning" />
+                <TalentOption identifier="jengamaster" />
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="grayshirt" type="specialization" requires="assistant_primary" blocks="apprentice,clown">
+            <TalentOptions>
+                <TalentOption identifier="thewaitinglist" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="tastytarget" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="anappleaday" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="thefriendswemade" />
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="apprentice" type="specialization" requires="assistant_primary" blocks="grayshirt,clown">
+            <TalentOptions>
+                <ShowCaseTalent identifier="apprenticeship">
+                    <TalentOption identifier="apprenticeship_captain" />
+                    <TalentOption identifier="apprenticeship_doctor" />
+                    <TalentOption identifier="apprenticeship_security" />
+                    <TalentOption identifier="apprenticeship_mechanic" />
+                    <TalentOption identifier="apprenticeship_engineer" />
+                </ShowCaseTalent>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="logisticssystems" />
+                <TalentOption identifier="journeyman" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="loyalassistant" />
+                <TalentOption identifier="disloyalscum" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="graduationceremony" />
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="Magic_Assistant" type="specialization" requires="assistant_primary" blocks="grayshirt,apprentice">
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Self_Made" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Emergency_Avoidance" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Buff" />
+                <TalentOption identifier="Foul_Potion_Unlocked" />
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Talents_Yokai_Primary16" />
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="spirit_channeler" nameidentifier="talenttree.spirit_channeler" type="specialization" requires="assistant_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_NetherDoctor_Talent01" />
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_SpiritAssistant_Talent02" />
+                <TalentOption identifier="Touhou_SpiritAssistant_Talent03" />
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_SpiritAssistant_Talent04" />
+                <TalentOption identifier="Touhou_SpiritAssistant_Talent05" />
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Assistant_Talent_Completed" />
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+</TalentTrees>

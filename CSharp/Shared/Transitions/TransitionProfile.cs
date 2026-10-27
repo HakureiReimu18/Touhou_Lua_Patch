@@ -157,7 +157,52 @@ namespace Touhou.EngineerTransitions
             SaveKey = "touhou.mechanictransitions.v1"
         };
 
-        public static readonly TransitionProfile[] All = { Engineer, Captain, Security, Mechanic };
+        public static readonly TransitionProfile Doctor = new TransitionProfile
+        {
+            Key = "medicaldoctor",
+            Name = "医生",
+            BaseJob = "medicaldoctor",
+            PrimarySubtree = "medical_primary",
+            ArcaneJob = "medicaldoctor_arcane",
+            MysticJob = "medicaldoctor_mystic",
+            ArcaneBranch = "white_doctor",
+            MysticBranch = "nether_doctor",
+            ArcaneBook = "Touhou_Doctor_Arcane_Book",
+            MysticBook = "Touhou_Doctor_Mystic_Book",
+            ArcaneBookName = "白咒异传书",
+            MysticBookName = "冥途异传书",
+            BaseSkill = "medical",
+            BaseSkillLevel = 80,
+            ArcaneSkill = "Touhou_Magic",
+            ArcaneSkillLevel = 60,
+            MysticSkill = "weapons",
+            MysticSkillLevel = 60,
+            SaveKey = "touhou.doctortransitions.v1"
+        };
+
+        public static readonly TransitionProfile Assistant = new TransitionProfile
+        {
+            Key = "assistant",
+            Name = "助手",
+            BaseJob = "assistant",
+            PrimarySubtree = "assistant_primary",
+            ArcaneJob = "assistant_arcane",
+            MysticJob = "assistant_mystic",
+            ArcaneBranch = "spell_scribe",
+            MysticBranch = "spirit_channeler",
+            ArcaneBook = "Touhou_Assistant_Arcane_Book",
+            MysticBook = "Touhou_Assistant_Mystic_Book",
+            ArcaneBookName = "魔咒异传书",
+            MysticBookName = "降灵异传书",
+            // 助手没有主技能，先沿用额外技能60的档位。
+            ArcaneSkill = "Touhou_Magic",
+            ArcaneSkillLevel = 60,
+            MysticSkill = "weapons",
+            MysticSkillLevel = 60,
+            SaveKey = "touhou.assistanttransitions.v1"
+        };
+
+        public static readonly TransitionProfile[] All = { Engineer, Captain, Security, Mechanic, Doctor, Assistant };
 
         public static TransitionProfile ForTarget(string target) =>
             target == null ? null : All.FirstOrDefault(profile => profile.IsTarget(target));

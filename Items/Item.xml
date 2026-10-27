@@ -619,5 +619,6 @@
         <SkillRequirementHint identifier="weapons" level="50"/>
     </Item>
 
+    
   </Items>
 </Override>

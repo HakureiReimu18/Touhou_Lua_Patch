@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="Simplified Chinese" translatedname="中文(简体)" nowhitespace="true">
+    <JobName.assistant_arcane>魔咒抄写员</JobName.assistant_arcane>
+    <JobDescription.assistant_arcane>以学习、抄写和分享魔法知识冒险的助手。</JobDescription.assistant_arcane>
+    <JobName.assistant_mystic>降灵术士</JobName.assistant_mystic>
+    <JobDescription.assistant_mystic>借凭依唤来他人的力量，在生命与代价之间寻找平衡的助手。</JobDescription.assistant_mystic>
+    <talenttree.spell_scribe>魔咒抄写员</talenttree.spell_scribe>
+    <talenttree.spirit_channeler>降灵术士</talenttree.spirit_channeler>
+    <talenttree.Magic_Assistant>见习魔法使</talenttree.Magic_Assistant>
+    <entityname.Touhou_Assistant_Arcane_Book>魔咒异传书</entityname.Touhou_Assistant_Arcane_Book>
+    <entitydescription.Touhou_Assistant_Arcane_Book>双手拿起后按使用或瞄准键研读。需要原版助手、完成基础树两个阶段、基础魔法能力达到60。成功后消耗并登记魔咒抄写员异传，下个巡回或死亡后新生成的助手身体生效。生效时总经验损失40%，旧职业天赋和所属永久计数清除后重选，树外额外天赋、技能和装备保留。</entitydescription.Touhou_Assistant_Arcane_Book>
+    <entityname.Touhou_Assistant_Mystic_Book>降灵异传书</entityname.Touhou_Assistant_Mystic_Book>
+    <entitydescription.Touhou_Assistant_Mystic_Book>双手拿起后按使用或瞄准键研读。需要原版助手、完成基础树两个阶段、基础武器操作达到60。成功后消耗并登记降灵术士异传，下个巡回或死亡后新生成的助手身体生效。生效时总经验损失40%，旧职业天赋和所属永久计数清除后重选，树外额外天赋、技能和装备保留。</entitydescription.Touhou_Assistant_Mystic_Book>
+    <talentname.Touhou_ScribeAssistant_Talent01>魔法启蒙</talentname.Touhou_ScribeAssistant_Talent01>
+    <talentdescription.Touhou_ScribeAssistant_Talent01>魔法能力+10，弹幕伤害+5%。</talentdescription.Touhou_ScribeAssistant_Talent01>
+    <talentname.Touhou_ScribeAssistant_Talent02>苦修</talentname.Touhou_ScribeAssistant_Talent02>
+    <talentdescription.Touhou_ScribeAssistant_Talent02>灵气紊乱抗性+20%。允许技能水平上限达到120。</talentdescription.Touhou_ScribeAssistant_Talent02>
+    <talentname.Touhou_ScribeAssistant_Talent03>入神</talentname.Touhou_ScribeAssistant_Talent03>
+    <talentdescription.Touhou_ScribeAssistant_Talent03>技能水平+10%。允许技能水平上限达到120。</talentdescription.Touhou_ScribeAssistant_Talent03>
+    <talentname.Touhou_ScribeAssistant_Talent04>抄写</talentname.Touhou_ScribeAssistant_Talent04>
+    <talentdescription.Touhou_ScribeAssistant_Talent04>巡回完成任意任务时，获得一本《魔法教学》，并有30%概率额外获得一本《魔法书》。</talentdescription.Touhou_ScribeAssistant_Talent04>
+    <talentname.Touhou_ScribeAssistant_Talent05>开源</talentname.Touhou_ScribeAssistant_Talent05>
+    <talentdescription.Touhou_ScribeAssistant_Talent05>所有船员（包括自己）完成任务获得的经验+10%。自己的最大生命值+10%。</talentdescription.Touhou_ScribeAssistant_Talent05>
+    <talentname.Touhou_SpiritAssistant_Talent02>不稳定凭依</talentname.Touhou_SpiritAssistant_Talent02>
+    <talentdescription.Touhou_SpiritAssistant_Talent02>拥有凭依时，最大生命值+10%；同时拥有完全凭依时，再增加10%最大生命值。</talentdescription.Touhou_SpiritAssistant_Talent02>
+    <talentname.Touhou_SpiritAssistant_Talent03>降灵</talentname.Touhou_SpiritAssistant_Talent03>
+    <talentdescription.Touhou_SpiritAssistant_Talent03>凭依期间获得对应角色装束+的完整角色效果及配套天赋，沿用其增益与负面效果。不会替换实际装束，也不附送装束本体的护甲和物品使用按钮。</talentdescription.Touhou_SpiritAssistant_Talent03>
+    <talentname.Touhou_SpiritAssistant_Talent04>质变</talentname.Touhou_SpiritAssistant_Talent04>
+    <talentdescription.Touhou_SpiritAssistant_Talent04>最大生命值低于130时，弹幕伤害+10%；否则获得10%物理伤害抗性。</talentdescription.Touhou_SpiritAssistant_Talent04>
+    <talentname.Touhou_SpiritAssistant_Talent05>代偿</talentname.Touhou_SpiritAssistant_Talent05>
+    <talentdescription.Touhou_SpiritAssistant_Talent05>每有1%最大生命值属性加成，增加0.5%所有攻击伤害，最多10%。</talentdescription.Touhou_SpiritAssistant_Talent05>
+    <talentname.Touhou_Special_Assistant_Talent_Completed>大冒险家</talentname.Touhou_Special_Assistant_Talent_Completed>
+    <talentdescription.Touhou_Special_Assistant_Talent_Completed>最大生命值+10%。每有1%移动速度属性加成，增加0.5%所有攻击伤害，最多15%。</talentdescription.Touhou_Special_Assistant_Talent_Completed>
+    <afflictionname.Touhou_Assistant_Trance>入神</afflictionname.Touhou_Assistant_Trance>
+    <afflictiondescription.Touhou_Assistant_Trance>技能水平+10%。</afflictiondescription.Touhou_Assistant_Trance>
+</infotexts>

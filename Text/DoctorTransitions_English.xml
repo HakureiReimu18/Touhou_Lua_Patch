@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="English" translatedname="English">
+    <JobName.medicaldoctor_arcane>White-Spell Physician</JobName.medicaldoctor_arcane>
+    <JobDescription.medicaldoctor_arcane>A physician specializing in purification and prevention.</JobDescription.medicaldoctor_arcane>
+    <JobName.medicaldoctor_mystic>Nether Physician</JobName.medicaldoctor_mystic>
+    <JobDescription.medicaldoctor_mystic>A physician studying blood, the beyond, and monster remains.</JobDescription.medicaldoctor_mystic>
+    <talenttree.white_doctor>White-Spell Physician</talenttree.white_doctor>
+    <talenttree.nether_doctor>Nether Physician</talenttree.nether_doctor>
+    <entityname.Touhou_Doctor_Arcane_Book>White-Spell Transition Book</entityname.Touhou_Doctor_Arcane_Book>
+    <entitydescription.Touhou_Doctor_Arcane_Book>Hold in both hands and use or aim. Requires a base doctor, both primary talent stages completed, Medical 80 and Magic 60. Consumed on registration. Activates next round or on a new doctor body after death. Lose 40% of total experience on activation and reselect profession talents; talents outside the old profession tree, skills and equipment remain.</entitydescription.Touhou_Doctor_Arcane_Book>
+    <entityname.Touhou_Doctor_Mystic_Book>Nether Transition Book</entityname.Touhou_Doctor_Mystic_Book>
+    <entitydescription.Touhou_Doctor_Mystic_Book>Hold in both hands and use or aim. Requires a base doctor, both primary talent stages completed, Medical 80 and Weapons 60. Consumed on registration. Activates next round or on a new doctor body after death. Lose 40% of total experience on activation and reselect profession talents; talents outside the old profession tree, skills and equipment remain.</entitydescription.Touhou_Doctor_Mystic_Book>
+    <talentname.Touhou_WhiteDoctor_Talent01>Purifying Touch</talentname.Touhou_WhiteDoctor_Talent01>
+    <talentdescription.Touhou_WhiteDoctor_Talent01>+10% medicine application effectiveness. Medicine treatment additionally reduces bleeding by 5, radiation sickness by 2 and poison by 2.</talentdescription.Touhou_WhiteDoctor_Talent01>
+    <talentname.Touhou_WhiteDoctor_Talent02>Diagnostics</talentname.Touhou_WhiteDoctor_Talent02>
+    <talentdescription.Touhou_WhiteDoctor_Talent02>Using medicine to treat additionally restores 10 oxygen and grants the patient 15 seconds of debuff resistance and -20% naturally decaying debuff duration.</talentdescription.Touhou_WhiteDoctor_Talent02>
+    <talentname.Touhou_WhiteDoctor_Talent03>Preventive Shot</talentname.Touhou_WhiteDoctor_Talent03>
+    <talentdescription.Touhou_WhiteDoctor_Talent03>While above 50% health, all friendly crew including yourself gain 20% resistance to oxygen deprivation, opiate addiction and chemical addiction. Fades within 2 seconds after losing coverage; identical auras do not stack.</talentdescription.Touhou_WhiteDoctor_Talent03>
+    <talentname.Touhou_WhiteDoctor_Talent04>Guardian Oath</talentname.Touhou_WhiteDoctor_Talent04>
+    <talentdescription.Touhou_WhiteDoctor_Talent04>Take 10% less attack damage; +10% maximum health and +10% burn resistance.</talentdescription.Touhou_WhiteDoctor_Talent04>
+    <talentname.Touhou_WhiteDoctor_Talent05>Restorative Hands</talentname.Touhou_WhiteDoctor_Talent05>
+    <talentdescription.Touhou_WhiteDoctor_Talent05>Treating with magical medicine grants the patient 15 flat extra vitality for 30 seconds. Reapplication refreshes duration without stacking. Expiration removes this temporary vitality, not permanent wounds.</talentdescription.Touhou_WhiteDoctor_Talent05>
+    <talentname.Touhou_NetherDoctor_Talent01>Roar from Beyond</talentname.Touhou_NetherDoctor_Talent01>
+    <talentdescription.Touhou_NetherDoctor_Talent01>-5% maximum health and +15% danmaku attack damage.</talentdescription.Touhou_NetherDoctor_Talent01>
+    <talentname.Touhou_NetherDoctor_Talent02>Bloodletting</talentname.Touhou_NetherDoctor_Talent02>
+    <talentdescription.Touhou_NetherDoctor_Talent02>Reduce your own bleeding each second. Danmaku hits inflict additional bleeding. +5% maximum health.</talentdescription.Touhou_NetherDoctor_Talent02>
+    <talentname.Touhou_NetherDoctor_Talent03>Nether Collection</talentname.Touhou_NetherDoctor_Talent03>
+    <talentdescription.Touhou_NetherDoctor_Talent03>Looting a monster corpse has a 15% chance to generate one Izanagi Material in its inventory. Each current corpse entity gets one attempt, including failures. Uses the native loot marker, which is not guaranteed to survive entity recreation after loading. Humans, pets and living targets do not count. +5% all attack damage.</talentdescription.Touhou_NetherDoctor_Talent03>
+    <talentname.Touhou_NetherDoctor_Talent04>Near-Death Echo</talentname.Touhou_NetherDoctor_Talent04>
+    <talentdescription.Touhou_NetherDoctor_Talent04>Below 40% health, gain 30% resistance to blood loss and oxygen deprivation.</talentdescription.Touhou_NetherDoctor_Talent04>
+    <talentname.Touhou_NetherDoctor_Talent05>Foresee Death</talentname.Touhou_NetherDoctor_Talent05>
+    <talentdescription.Touhou_NetherDoctor_Talent05>Deal 15% additional attack damage to living targets above 30% health.</talentdescription.Touhou_NetherDoctor_Talent05>
+    <talentname.Touhou_Doctor_MiracleGuardian>Miracle Guardian</talentname.Touhou_Doctor_MiracleGuardian>
+    <talentdescription.Touhou_Doctor_MiracleGuardian>The first target you treat each round gains 10% physical damage resistance and shares 50% of damage taken with you.</talentdescription.Touhou_Doctor_MiracleGuardian>
+    <talentname.Touhou_Special_Doctor_Talent_Completed>Great Scientist</talentname.Touhou_Special_Doctor_Talent_Completed>
+    <talentdescription.Touhou_Special_Doctor_Talent_Completed>Skill cap increased to 130. +15% effective skill levels. +1 crafted item quality. Each Medical point grants 0.1% maximum health and 0.05% ranged attack speed; each bonus is independently capped at 15%.</talentdescription.Touhou_Special_Doctor_Talent_Completed>
+    <afflictionname.Touhou_WhiteDoctor_Diagnosis>Diagnostics</afflictionname.Touhou_WhiteDoctor_Diagnosis>
+    <afflictiondescription.Touhou_WhiteDoctor_Diagnosis>-20% naturally decaying debuff duration for 15 seconds.</afflictiondescription.Touhou_WhiteDoctor_Diagnosis>
+    <afflictionname.Touhou_WhiteDoctor_Prevention>Preventive Shot</afflictionname.Touhou_WhiteDoctor_Prevention>
+    <afflictiondescription.Touhou_WhiteDoctor_Prevention>20% resistance to oxygen deprivation, opiate addiction and chemical addiction.</afflictiondescription.Touhou_WhiteDoctor_Prevention>
+    <afflictionname.Touhou_WhiteDoctor_ExtraVitality>Restorative Hands</afflictionname.Touhou_WhiteDoctor_ExtraVitality>
+    <afflictiondescription.Touhou_WhiteDoctor_ExtraVitality>15 flat extra vitality for 30 seconds. Reapplication refreshes duration.</afflictiondescription.Touhou_WhiteDoctor_ExtraVitality>
+    <afflictionname.Touhou_Doctor_Scientist>Great Scientist</afflictionname.Touhou_Doctor_Scientist>
+    <afflictiondescription.Touhou_Doctor_Scientist>+15% effective skill levels.</afflictiondescription.Touhou_Doctor_Scientist>
+</infotexts>

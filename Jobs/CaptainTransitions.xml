@@ -2,7 +2,7 @@
 <Jobs>
   <Job identifier="captain_arcane" hiddenjob="true" initialcount="0" minnumber="0" maxnumber="0" allowalways="false"
        onlyjobspecificdialog="false" pricemultiplier="1.3" vitalitymodifier="0" idlebehavior="StayInHull"
-       uicolor="0.55,0.7,0.95">
+       uicolor="0.45,0.65,0.95">
     <Jobicon>
       <sprite texture="Content/UI/MainIconsAtlas.png" sourcerect="384,256,128,128" origin="0.5,0.5"/>
     </Jobicon>
@@ -50,7 +50,7 @@
 
   <Job identifier="captain_mystic" hiddenjob="true" initialcount="0" minnumber="0" maxnumber="0" allowalways="false"
        onlyjobspecificdialog="false" pricemultiplier="1.3" vitalitymodifier="0" idlebehavior="StayInHull"
-       uicolor="0.55,0.3,0.45">
+       uicolor="0.8,0.35,0.6">
     <Jobicon>
       <sprite texture="Content/UI/MainIconsAtlas.png" sourcerect="384,256,128,128" origin="0.5,0.5"/>
     </Jobicon>

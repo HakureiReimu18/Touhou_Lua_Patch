@@ -1,5 +1,5 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<contentpackage name="东方潜渊行动组Lua补丁" modversion="1.1.1" corepackage="False" steamworkshopid="3578631758" gameversion="1.13.4.0">
+<?xml version="1.0" encoding="utf-8"?>
+<contentpackage name="东方潜渊行动组Lua补丁" modversion="1.1.0" corepackage="False" steamworkshopid="3578631758" gameversion="1.12.7.0">
   <Item file="%ModDir%/Items/Item.xml" />
   <Item file="%ModDir%/Items/Tools.xml" />
   <Item file="%ModDir%/Items/Cooktop.xml" />
@@ -12,20 +12,34 @@
   <Item file="%ModDir%/Items/CaptainTransitions.xml" />
   <Item file="%ModDir%/Items/SecurityTransitions.xml" />
   <Item file="%ModDir%/Items/MechanicTransitions.xml" />
+  <Item file="%ModDir%/Items/DoctorTransitions.xml" />
+  <Item file="%ModDir%/Items/AssistantTransitions.xml" />
   <Jobs file="%ModDir%/Jobs/EngineerTransitions.xml" />
   <Jobs file="%ModDir%/Jobs/CaptainTransitions.xml" />
   <Jobs file="%ModDir%/Jobs/SecurityTransitions.xml" />
   <Jobs file="%ModDir%/Jobs/MechanicTransitions.xml" />
+  <Jobs file="%ModDir%/Jobs/DoctorTransitions.xml" />
+  <Jobs file="%ModDir%/Jobs/AssistantTransitions.xml" />
   <Talents file="%ModDir%/Talents/EngineerTransitionTalents.xml" />
   <Talents file="%ModDir%/Talents/CaptainTransitionTalents.xml" />
   <Talents file="%ModDir%/Talents/SecurityTransitionTalents.xml" />
   <Afflictions file="%ModDir%/Talents/SecurityTalentAfflictions.xml" />
   <Talents file="%ModDir%/Talents/MechanicTransitionTalents.xml" />
   <Afflictions file="%ModDir%/Talents/MechanicTalentAfflictions.xml" />
+  <Talents file="%ModDir%/Talents/DoctorTransitionTalents.xml" />
+  <Afflictions file="%ModDir%/Talents/DoctorTalentAfflictions.xml" />
+  <Talents file="%ModDir%/Talents/AssistantTransitionTalents.xml" />
+  <Talents file="%ModDir%/Talents/AssistantChannelingTalents.xml" />
+  <Afflictions file="%ModDir%/Talents/AssistantTalentAfflictions.xml" />
   <TalentTrees file="%ModDir%/Talents/EngineerTransitionTrees.xml" />
   <TalentTrees file="%ModDir%/Talents/CaptainTransitionTrees.xml" />
   <TalentTrees file="%ModDir%/Talents/SecurityTransitionTrees.xml" />
   <TalentTrees file="%ModDir%/Talents/MechanicTransitionTrees.xml" />
+  <TalentTrees file="%ModDir%/Talents/DoctorTransitionTrees.xml" />
+  <TalentTrees file="%ModDir%/Talents/AssistantTransitionTrees.xml" />
+  <!--⚠ 封存（2026-10）：弹药袋体系整体暂停，物品不再加载；恢复时把下面这行反注释即可
+      （同时恢复 Lua/Autorun/init.lua 里那三个 dofile 与 CSharp/Shared/Legacy/AmmoStorage.cs 的 SEALED 常量）-->
+  <!-- <Item file="%ModDir%/Items/AmmoStorage.xml" /> -->
   <Text file="%ModDir%/Text/Text.xml" />
   <Text file="%ModDir%/Text/Affixes_SChinese.xml" />
   <Text file="%ModDir%/Text/Affixes_English.xml" />
@@ -38,5 +52,9 @@
   <Text file="%ModDir%/Text/SecurityTalents_English.xml" />
   <Text file="%ModDir%/Text/MechanicTransitions_SChinese.xml" />
   <Text file="%ModDir%/Text/MechanicTransitions_English.xml" />
+  <Text file="%ModDir%/Text/DoctorTransitions_SChinese.xml" />
+  <Text file="%ModDir%/Text/DoctorTransitions_English.xml" />
+  <Text file="%ModDir%/Text/AssistantTransitions_SChinese.xml" />
+  <Text file="%ModDir%/Text/AssistantTransitions_English.xml" />
   <Afflictions file="%ModDir%/Items/Afflictions.xml" />
 </contentpackage>

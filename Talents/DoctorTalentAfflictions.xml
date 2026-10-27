@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Afflictions>
+    <!-- 只给临时/全员效果承载状态；自保、减伤、治疗等直接用天赋能力。 -->
+    <!-- 对患者的一次性施加用强度计时，刷新会同步剩余时间，避免客户端只收到强度却没续 duration。 -->
+    <Affliction identifier="Touhou_WhiteDoctor_Diagnosis" type="talentbuff" isbuff="true" limbspecific="false"
+                maxstrength="15" activationthreshold="0.000001" showiconthreshold="0.01">
+        <Effect minstrength="0" maxstrength="15" resistancefor="debuff" minresistance="0.2" maxresistance="0.2" strengthchange="-1">
+            <StatValue stattype="DebuffDurationMultiplier" value="-0.2"/>
+        </Effect>
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sourcerect="0,0,400,400"/>
+    </Affliction>
+    <Affliction identifier="Touhou_WhiteDoctor_Prevention" type="talentbuff" isbuff="true" limbspecific="false"
+                maxstrength="1" duration="3" activationthreshold="0.000001" showiconthreshold="2">
+        <Effect minstrength="0" maxstrength="1" resistancefor="oxygenlow,opiateaddiction,chemaddiction" minresistance="0.2" maxresistance="0.2"/>
+    </Affliction>
+    <Affliction identifier="Touhou_WhiteDoctor_ExtraVitality" type="talentbuff" isbuff="true" limbspecific="false"
+                maxstrength="30" activationthreshold="0.000001" showiconthreshold="0.01">
+        <Effect minstrength="0" maxstrength="30" strengthchange="-1" multiplybymaxvitality="false" minvitalitydecrease="-15" maxvitalitydecrease="-15"/>
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sourcerect="0,0,400,400"/>
+    </Affliction>
+    <Affliction identifier="Touhou_Doctor_Scientist" type="talentbuff" isbuff="true" limbspecific="false"
+                maxstrength="1" duration="2" activationthreshold="0.000001" showiconthreshold="2">
+        <Effect minstrength="0" maxstrength="1" minskillmultiplier="1.15" maxskillmultiplier="1.15"/>
+    </Affliction>
+    <!--奇迹守护者：被守护目标受到的物理伤害 -10%；由 DoctorTalents.cs 在每巡回结束时摘掉-->
+    <Affliction identifier="Touhou_Doctor_MiracleGuardian_Ward" type="talentbuff" isbuff="true" limbspecific="false"
+                maxstrength="1" activationthreshold="0.000001" showiconthreshold="2">
+        <Effect minstrength="0" maxstrength="1" resistancefor="damage" minresistance="0.1" maxresistance="0.1"/>
+        <Icon texture="%ModDir:2941124988%/Images/Talents/Touhou_Talents_Support.png" sourcerect="0,0,400,400"/>
+    </Affliction>
+</Afflictions>

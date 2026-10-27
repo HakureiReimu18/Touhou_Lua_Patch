@@ -254,7 +254,8 @@ namespace Touhou.WeaponEnergy
             }
             // “就绪”只对“满能量才能开”的武器有意义（改装类）；缄默这种低门槛武器仍显示待机。
             bool fullBarGate = settings.MinimumActivationEnergy >= settings.MaxEnergy - 0.01f;
-            bool ready = fullBarGate && control.Energy >= settings.MaxEnergy - 0.01f;
+            bool ready = control.SnapshotReady && fullBarGate && control.State.CanActivate &&
+                control.Energy >= settings.MaxEnergy;
             Color color = control.ControlActive ? activeColor : idleColor;
             string key = !control.SnapshotReady ? settings.BarSyncing :
                 control.ControlActive ? settings.BarActive :
@@ -263,7 +264,7 @@ namespace Touhou.WeaponEnergy
             if (!string.IsNullOrEmpty(settings.BarTitle))
                 title = ResolveText(settings.BarTitle, settings.BarTitle) + "：" + title;
             if (control.SnapshotReady)
-                title += $"  {FormatValue(control.Energy)}/{FormatValue(control.MaxEnergy)}";
+                title += $"  {FormatValue(control.Energy, roundDown: true)}/{FormatValue(control.MaxEnergy)}";
 
             GUI.DrawRectangle(spriteBatch, new Rectangle(x, y, width, height), Color.Black * 0.7f, true);
             if (control.SnapshotReady)
@@ -289,9 +290,10 @@ namespace Touhou.WeaponEnergy
                 title, color, Color.Black * 0.8f, (int)(2f * scale));
         }
 
-        // 数值格式：默认整数；设置页打开“显示小数”后才保留两位。
-        private static string FormatValue(float value)
-            => value.ToString(WeaponEnergyHudConfig.ShowDecimals ? "0.##" : "0",
+        // 当前能量向下取整，免得还差一点就先显示成满能量。
+        private static string FormatValue(float value, bool roundDown = false)
+            => (roundDown && !WeaponEnergyHudConfig.ShowDecimals ? MathF.Floor(value) : value)
+                .ToString(WeaponEnergyHudConfig.ShowDecimals ? "0.##" : "0",
                 CultureInfo.InvariantCulture);
 
         // 文本 id 走游戏本地化；解析不到就当字面文本用（方便现场调试）。

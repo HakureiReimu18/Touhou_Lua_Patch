@@ -18,6 +18,11 @@ namespace Touhou.WeaponEnergy
         internal float Probability = 1f;
         internal EffectMode Mode = EffectMode.Always;
         internal bool IgnoreArmor;
+        // 对应原版 multiplyAfflictionsByMaxVitality（默认 false）：
+        // true = 强度 × MaxVitality/100（高血量目标也吃固定数值）；false = 原版百分比语义。
+        internal bool MultiplyByMaxVitality;
+        // 对应原版 StatusEffect 的 setvalue：false（默认）= 叠加，true = 每次覆盖强度。
+        internal bool SetValue;
     }
 
     // 硬控：只对非人类/非机械/非 Boss/非眩晕免疫生效（沿用 WeaponEnergyRules）。
@@ -328,6 +333,8 @@ namespace Touhou.WeaponEnergy
                 Probability = ClampNumber(element, "probability", 1f, 0f, 1f),
                 Mode = ParseMode(element.GetAttributeString("when", "always")),
                 IgnoreArmor = ParseBool(element, "ignorearmor", false),
+                MultiplyByMaxVitality = ParseBool(element, "multiplyafflictionsbymaxvitality", false),
+                SetValue = ParseBool(element, "setvalue", false),
             });
         }
 
@@ -403,8 +410,12 @@ namespace Touhou.WeaponEnergy
         internal void Snapshot(float energy, bool active)
         {
             Restore(energy);
-            Active = active && Energy > 0f;
+            // 一次性扣满能量的改装，0 能量也可以仍在持续；模式以服务端为准。
+            Active = active;
         }
+
+        internal bool CanActivate => Energy >= Math.Max(Settings.MinimumActivationEnergy, Settings.ActivationCost + Settings.ShotCost) &&
+            Energy >= Settings.ActivationCost;
 
         internal bool Toggle(bool usable)
         {
@@ -413,9 +424,8 @@ namespace Touhou.WeaponEnergy
                 Stop();
                 return true;
             }
-            float required = Math.Max(Settings.MinimumActivationEnergy, Settings.ActivationCost + Settings.ShotCost);
             // 注意是 < 不是 <=：满能量启动（cost == max == 100）必须能过。
-            if (!usable || Energy < required || Energy < Settings.ActivationCost) return false;
+            if (!usable || !CanActivate) return false;
             Energy -= Settings.ActivationCost;
             Active = true;
             Delay = Settings.RechargeDelay;

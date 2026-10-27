@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Jobs>
+    <Job identifier="assistant_arcane" allowalways="false" minkarma="0" vitalitymodifier="0" pricemultiplier="0.8" idlebehavior="Active" initialcount="0" maxnumber="0"
+         hiddenjob="true" minnumber="0" uicolor="0.45,0.65,0.95">
+        <Jobicon>
+            <sprite texture="Content/UI/MainIconsAtlas.png" sourcerect="640,256,128,128" origin="0.5,0.5"/>
+        </Jobicon>
+        <JobiconSmall>
+            <sprite texture="Content/UI/CommandUIAtlas.png" sourcerect="641,669,28,28" origin="0.5,0.5"/>
+        </JobiconSmall>
+        <Skills>
+            <Skill identifier="weapons" level="20,30" pvplevel="55"/>
+            <Skill identifier="mechanical" level="20,30" pvplevel="55"/>
+            <Skill identifier="electrical" level="20,30" pvplevel="55"/>
+            <Skill identifier="medical" level="20,30" pvplevel="55"/>
+            <Skill identifier="helm" level="17.5,20" pvplevel="55"/>
+            <Skill identifier="Touhou_Magic" level="20,30" pvplevel="60"/>
+        </Skills>
+        <ItemSet>
+            <Item identifier="idcard" equip="true" showpreview="false"/>
+            <Item identifier="assistantclothes" identifierteam2="separatistcommoner1" equip="true" outfit="true"/>
+            <Item identifier="wrench" GameMode="PvE"/>
+            <Item identifier="screwdriver" GameMode="PvE"/>
+            <Item identifier="headset" equip="true" showpreview="false"/>
+            <Item identifier="divingknife" equip="false" GameMode="PvP"/>
+            <Item identifier="revolver" GameMode="PvP" equip="false">
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+            </Item>
+        </ItemSet>
+        <AutonomousObjectives>
+            <Order identifier="extinguishfires" prioritymodifier="1"/>
+            <Order identifier="pumpwater" option="pumpout" prioritymodifier="1"/>
+            <Order identifier="rescue" prioritymodifier="1"/>
+            <Order identifier="repairsystems" prioritymodifier="0.5"/>
+            <Order identifier="fixleaks" prioritymodifier="0.5"/>
+            <Order identifier="operatereactor" option="powerup" prioritymodifier="0.4"/>
+        </AutonomousObjectives>
+    </Job>
+    <Job identifier="assistant_mystic" allowalways="false" minkarma="0" vitalitymodifier="0" pricemultiplier="0.8" idlebehavior="Active" initialcount="0" maxnumber="0"
+         hiddenjob="true" minnumber="0" uicolor="0.8,0.35,0.6">
+        <Jobicon>
+            <sprite texture="Content/UI/MainIconsAtlas.png" sourcerect="640,256,128,128" origin="0.5,0.5"/>
+        </Jobicon>
+        <JobiconSmall>
+            <sprite texture="Content/UI/CommandUIAtlas.png" sourcerect="641,669,28,28" origin="0.5,0.5"/>
+        </JobiconSmall>
+        <Skills>
+            <Skill identifier="weapons" level="20,30" pvplevel="55"/>
+            <Skill identifier="mechanical" level="20,30" pvplevel="55"/>
+            <Skill identifier="electrical" level="20,30" pvplevel="55"/>
+            <Skill identifier="medical" level="20,30" pvplevel="55"/>
+            <Skill identifier="helm" level="17.5,20" pvplevel="55"/>
+            <Skill identifier="Touhou_Magic" level="20,30" pvplevel="60"/>
+        </Skills>
+        <ItemSet>
+            <Item identifier="idcard" equip="true" showpreview="false"/>
+            <Item identifier="assistantclothes" identifierteam2="separatistcommoner1" equip="true" outfit="true"/>
+            <Item identifier="wrench" GameMode="PvE"/>
+            <Item identifier="screwdriver" GameMode="PvE"/>
+            <Item identifier="headset" equip="true" showpreview="false"/>
+            <Item identifier="divingknife" equip="false" GameMode="PvP"/>
+            <Item identifier="revolver" GameMode="PvP" equip="false">
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+                <Item identifier="revolverround"/>
+            </Item>
+        </ItemSet>
+        <AutonomousObjectives>
+            <Order identifier="extinguishfires" prioritymodifier="1"/>
+            <Order identifier="pumpwater" option="pumpout" prioritymodifier="1"/>
+            <Order identifier="rescue" prioritymodifier="1"/>
+            <Order identifier="repairsystems" prioritymodifier="0.5"/>
+            <Order identifier="fixleaks" prioritymodifier="0.5"/>
+            <Order identifier="operatereactor" option="powerup" prioritymodifier="0.4"/>
+        </AutonomousObjectives>
+    </Job>
+</Jobs>

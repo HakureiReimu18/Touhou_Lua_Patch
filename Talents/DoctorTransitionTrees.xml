@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TalentTrees>
+    <!-- 先沿用原版医生底树；以后直接改本文件，运行时不重新拼接。 -->
+    <TalentTree jobidentifier="medicaldoctor_arcane">
+        <SubTree identifier="medical_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="nobodyimportantdies"/>
+                <TalentOption identifier="laresistance"/>
+                <TalentOption identifier="selfcare"/>
+                <TalentOption identifier="stayinalive"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="firemanscarry"/>
+                <TalentOption identifier="dontdieonme"/>
+                <TalentOption identifier="nopressure"/>
+                <TalentOption identifier="blooddonor"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="xenologist" type="specialization" requires="medical_primary" blocks="medic,scientist">
+            <TalentOptions>
+                <TalentOption identifier="geneharvester"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="genesplicer"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="blackmarketgenes"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="geneticgenious"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="medic" type="specialization" requires="medical_primary" blocks="xenologist,scientist">
+            <TalentOptions>
+                <TalentOption identifier="medicalexpertise"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="medicalassistance"/>
+                <TalentOption identifier="emergencyresponse"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="drsubmarine"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Doctor_MiracleGuardian"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="scientist" type="specialization" requires="medical_primary" blocks="xenologist,medic">
+            <TalentOptions>
+                <TalentOption identifier="plaguedoctor"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="deliverysystem"/>
+                <TalentOption identifier="labcontacts"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="supersoldiers"/>
+                <TalentOption identifier="whatastench"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="macrodosing"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="white_doctor" nameidentifier="talenttree.white_doctor" type="specialization" requires="medical_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_WhiteDoctor_Talent01"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_WhiteDoctor_Talent02"/>
+                <TalentOption identifier="Touhou_WhiteDoctor_Talent03"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_WhiteDoctor_Talent04"/>
+                <TalentOption identifier="Touhou_WhiteDoctor_Talent05"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Doctor_Talent_Completed"/>
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+    
+    <TalentTree jobidentifier="medicaldoctor_mystic">
+        <SubTree identifier="medical_primary" nameidentifier="talenttree.primary" type="primary">
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="nobodyimportantdies"/>
+                <TalentOption identifier="laresistance"/>
+                <TalentOption identifier="selfcare"/>
+                <TalentOption identifier="stayinalive"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="2" maxchosentalents="4">
+                <TalentOption identifier="firemanscarry"/>
+                <TalentOption identifier="dontdieonme"/>
+                <TalentOption identifier="nopressure"/>
+                <TalentOption identifier="blooddonor"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="xenologist" type="specialization" requires="medical_primary" blocks="medic,scientist">
+            <TalentOptions>
+                <TalentOption identifier="geneharvester"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="genesplicer"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="blackmarketgenes"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="geneticgenious"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="medic" type="specialization" requires="medical_primary" blocks="xenologist,scientist">
+            <TalentOptions>
+                <TalentOption identifier="medicalexpertise"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="medicalassistance"/>
+                <TalentOption identifier="emergencyresponse"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="drsubmarine"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="Touhou_Doctor_MiracleGuardian"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="scientist" type="specialization" requires="medical_primary" blocks="xenologist,medic">
+            <TalentOptions>
+                <TalentOption identifier="plaguedoctor"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="deliverysystem"/>
+                <TalentOption identifier="labcontacts"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="supersoldiers"/>
+                <TalentOption identifier="whatastench"/>
+            </TalentOptions>
+            <TalentOptions>
+                <TalentOption identifier="macrodosing"/>
+            </TalentOptions>
+        </SubTree>
+        <SubTree identifier="nether_doctor" nameidentifier="talenttree.nether_doctor" type="specialization" requires="medical_primary">
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_NetherDoctor_Talent01"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_NetherDoctor_Talent02"/>
+                <TalentOption identifier="Touhou_NetherDoctor_Talent03"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_NetherDoctor_Talent04"/>
+                <TalentOption identifier="Touhou_NetherDoctor_Talent05"/>
+            </TalentOptions>
+            <TalentOptions requiredtalents="1" maxchosentalents="1">
+                <TalentOption identifier="Touhou_Special_Doctor_Talent_Completed"/>
+            </TalentOptions>
+        </SubTree>
+    </TalentTree>
+</TalentTrees>
